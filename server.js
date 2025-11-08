@@ -8,9 +8,13 @@ const twilio = require('twilio')
 require('dotenv').config()
 
 const app = express()
-const PORT = process.env.PORT || 5000
-const DATA_DIR = path.join(__dirname, 'data')
-const DATA_FILE = path.join(DATA_DIR, 'consultations.json')
+const PORT = Number(process.env.PORT) || 5000
+const DATA_ROOT = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(__dirname, 'data')
+const DATA_FILE_NAME = process.env.DATA_FILE || 'consultations.json'
+const DATA_DIR = DATA_ROOT
+const DATA_FILE = path.join(DATA_DIR, DATA_FILE_NAME)
+
+console.info(`[ygsa] 상담 데이터 저장 위치: ${DATA_FILE}`)
 
 const sseClients = new Set()
 
