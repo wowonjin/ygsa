@@ -751,16 +751,19 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script>
-      const BACKEND_ORIGIN = (window.BACKEND_ORIGIN || '').trim().replace(/\/$/, '')
+      const HOSTNAME = window.location && window.location.hostname
+      const IS_LOCAL_HOST = /^(localhost|127\.0\.0\.1)$/i.test(HOSTNAME || '')
+      const DEFAULT_BACKEND_ORIGIN = IS_LOCAL_HOST
+        ? 'http://localhost:5000'
+        : 'https://ygsa-backend.onrender.com'
+      const BACKEND_ORIGIN_RAW = (window.BACKEND_ORIGIN || '').trim()
+      const BACKEND_ORIGIN = (BACKEND_ORIGIN_RAW || DEFAULT_BACKEND_ORIGIN).replace(/\/$/, '')
       const API_BASE_URL = BACKEND_ORIGIN
-      const API_URL = API_BASE_URL ? `${API_BASE_URL}/api/consult` : '/api/consult'
-      const API_IMPORT_URL = API_BASE_URL ? `${API_BASE_URL}/api/consult/import` : '/api/consult/import'
-      const EVENTS_URL = API_BASE_URL ? `${API_BASE_URL}/events` : '/events'
-      const IS_REMOTE_ENV = !/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(window.location.origin)
-      if (!API_BASE_URL && IS_REMOTE_ENV) {
-        console.warn(
-          '[ygsa] 원격 배포 환경에서 BACKEND_ORIGIN이 비어 있습니다. backend-config.js의 REMOTE_DEFAULT 값을 실제 서버 주소로 설정하세요.'
-        )
+      const API_URL = `${API_BASE_URL}/api/consult`
+      const API_IMPORT_URL = `${API_BASE_URL}/api/consult/import`
+      const EVENTS_URL = `${API_BASE_URL}/events`
+      if (!BACKEND_ORIGIN_RAW) {
+        console.info(`[ygsa] BACKEND_ORIGIN 미설정 – 기본값 ${API_BASE_URL} 사용`)
       }
       const cardsEl = document.getElementById('cardsContainer')
       const emptyEl = document.getElementById('emptyState')
