@@ -1,0 +1,1779 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>상담 신청 대시보드</title>
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <style>
+      body.modal-open {
+        overflow: hidden;
+      }
+      :root {
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", Roboto, "Helvetica Neue", Arial, sans-serif;
+        background: #0d1117;
+        color: #c9d1d9;
+      }
+      a {
+        color: inherit;
+      }
+      header {
+        padding: 32px clamp(24px, 6vw, 72px);
+        border-bottom: 1px solid #30363d;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 24px;
+      }
+      .header-left {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .header-left button {
+        align-self: flex-start;
+        border: 1px solid #30363d;
+        background: #21262d;
+        color: #f0f6fc;
+        padding: 10px 18px;
+        border-radius: 999px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.15s ease, transform 0.15s ease;
+      }
+      .header-left button:hover {
+        background: #30363d;
+        transform: translateY(-1px);
+      }
+      header h1 {
+        margin: 0;
+        font-size: clamp(28px, 4vw, 36px);
+      }
+      .header-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      .header-links a,
+      .toolbar-actions button {
+        border: 1px solid #2f353d;
+        background: #21262d;
+        color: #f0f6fc;
+        padding: 10px 18px;
+        border-radius: 10px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: transform 0.15s ease, background 0.2s ease, box-shadow 0.2s ease;
+      }
+      .header-links a:hover,
+      .toolbar-actions button:hover {
+        background: #30363d;
+        transform: translateY(-1px);
+        box-shadow: 0 12px 24px rgba(13, 17, 23, 0.35);
+      }
+      main {
+        padding: 24px clamp(24px, 5vw, 72px) 64px;
+      }
+      .toolbar {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        margin: 24px clamp(24px, 5vw, 72px) 32px;
+      }
+      .toolbar-filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      .toolbar button,
+      .toolbar select,
+      .toolbar input {
+        border: 1px solid #30363d;
+        background: #21262d;
+        color: #f0f6fc;
+        padding: 10px 14px;
+        border-radius: 8px;
+        transition: background 0.15s ease, transform 0.15s ease, border-color 0.2s ease;
+        font-family: inherit;
+      }
+      .toolbar input:focus,
+      .toolbar select:focus {
+        outline: none;
+        border-color: #1f6feb;
+        box-shadow: 0 0 0 2px rgba(31, 111, 235, 0.35);
+      }
+      .toolbar input {
+        width: min(260px, 100%);
+      }
+      .toolbar select {
+        min-width: 150px;
+      }
+      .toolbar-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        justify-content: flex-start;
+      }
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 18px;
+      }
+      .card-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+      }
+      .card-controls {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .card-controls .select-checkbox {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: #1f6feb;
+      }
+      .card-controls .detail-btn {
+        border: 1px solid #30363d;
+        background: #21262d;
+        color: #f0f6fc;
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: 13px;
+        cursor: pointer;
+        transition: background 0.15s ease, transform 0.15s ease;
+      }
+      .card-controls .detail-btn:hover {
+        background: #30363d;
+        transform: translateY(-1px);
+      }
+      .bulk-action-bar {
+        position: fixed;
+        left: 50%;
+        bottom: 24px;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        background: rgba(13, 17, 23, 0.92);
+        border: 1px solid #30363d;
+        border-radius: 999px;
+        padding: 12px 20px;
+        box-shadow: 0 18px 46px rgba(1, 4, 9, 0.5);
+        backdrop-filter: blur(6px);
+        z-index: 70;
+      }
+      .bulk-action-bar[hidden] {
+        display: none;
+      }
+      .bulk-action-bar span {
+        font-size: 14px;
+        color: #c9d1d9;
+      }
+      .bulk-action-bar button {
+        border: none;
+        background: #ef4444;
+        color: #ffffff;
+        font-weight: 700;
+        padding: 10px 18px;
+        border-radius: 999px;
+        cursor: pointer;
+        transition: transform 0.15s ease, box-shadow 0.2s ease;
+      }
+      .bulk-action-bar button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 18px 38px rgba(239, 68, 68, 0.35);
+      }
+      .calendar-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(2, 6, 12, 0.68);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 90;
+        padding: 32px clamp(16px, 4vw, 48px);
+      }
+      .calendar-overlay[hidden] {
+        display: none;
+      }
+      .calendar-dialog {
+        width: min(1080px, 100%);
+        background: linear-gradient(160deg, rgba(13, 17, 23, 0.92), rgba(13, 17, 23, 0.98));
+        border: 1px solid #30363d;
+        border-radius: 28px;
+        box-shadow: 0 40px 120px rgba(1, 4, 9, 0.6);
+        padding: 32px clamp(24px, 4vw, 40px);
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+      .calendar-dialog header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        padding: 0;
+        border: none;
+      }
+      .calendar-dialog header h2 {
+        margin: 0;
+        font-size: 26px;
+      }
+      .calendar-dialog header button.close {
+        border: none;
+        background: transparent;
+        color: #8b949e;
+        font-size: 30px;
+        cursor: pointer;
+      }
+      .calendar-dialog header button.close:hover {
+        color: #f0f6fc;
+      }
+      .calendar-controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+      }
+      .calendar-nav {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .calendar-nav h3 {
+        margin: 0;
+        font-size: 20px;
+      }
+      .calendar-nav button,
+      .calendar-today {
+        border: 1px solid #30363d;
+        background: #21262d;
+        color: #f0f6fc;
+        padding: 8px 14px;
+        border-radius: 999px;
+        cursor: pointer;
+        transition: background 0.15s ease, transform 0.15s ease;
+      }
+      .calendar-nav button:hover,
+      .calendar-today:hover {
+        background: #30363d;
+        transform: translateY(-1px);
+      }
+      .calendar-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 3fr) minmax(260px, 1fr);
+        gap: 24px;
+        align-items: start;
+      }
+      .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .calendar-weekday {
+        text-align: center;
+        font-size: 13px;
+        font-weight: 600;
+        color: #8b949e;
+        padding-bottom: 4px;
+      }
+      .calendar-day {
+        border: 1px solid rgba(48, 54, 61, 0.6);
+        border-radius: 14px;
+        padding: 12px 10px;
+        min-height: 92px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        background: rgba(22, 27, 34, 0.82);
+        cursor: pointer;
+        transition: border-color 0.15s ease, transform 0.15s ease;
+      }
+      .calendar-day:hover {
+        border-color: #1f6feb;
+        transform: translateY(-2px);
+      }
+      .calendar-day.other-month {
+        opacity: 0.35;
+      }
+      .calendar-day.today {
+        border-color: #1f6feb;
+        box-shadow: 0 0 0 1px #1f6feb;
+      }
+      .calendar-day.selected {
+        background: rgba(31, 110, 235, 0.18);
+        border-color: #3b82f6;
+      }
+      .calendar-day .day-number {
+        font-weight: 700;
+        font-size: 15px;
+      }
+      .calendar-day .day-count {
+        align-self: flex-end;
+        font-size: 12px;
+        color: #8b949e;
+      }
+      .calendar-day.has-events .day-count {
+        background: rgba(63, 185, 80, 0.2);
+        color: #32d583;
+        padding: 2px 8px;
+        border-radius: 999px;
+      }
+      .calendar-panel {
+        border: 1px solid rgba(48, 54, 61, 0.6);
+        border-radius: 18px;
+        background: rgba(13, 17, 23, 0.95);
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        min-height: 260px;
+      }
+      .calendar-panel h4 {
+        margin: 0;
+        font-size: 18px;
+      }
+      .calendar-appointments {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .calendar-appointments li {
+        border: 1px solid rgba(48, 54, 61, 0.6);
+        border-radius: 16px;
+        padding: 12px 14px;
+        background: rgba(22, 27, 34, 0.92);
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        cursor: pointer;
+        transition: transform 0.15s ease, border-color 0.15s ease;
+      }
+      .calendar-appointments li:hover {
+        transform: translateY(-1px);
+        border-color: #1f6feb;
+      }
+      .calendar-appointments li time {
+        font-size: 15px;
+        font-weight: 700;
+      }
+      .calendar-appointments li span {
+        font-size: 13px;
+        color: #8b949e;
+      }
+      .calendar-appointments li .meta-line {
+        font-size: 12px;
+        color: #9da4b0;
+      }
+      .calendar-appointments li .note-line {
+        color: #c9d1d9;
+        font-size: 12px;
+      }
+      .calendar-appointments .calendar-empty-item {
+        border: 1px dashed rgba(48, 54, 61, 0.7);
+        background: transparent;
+        color: #8b949e;
+        cursor: default;
+      }
+      .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(2, 6, 12, 0.65);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 80;
+        padding: 24px;
+      }
+      .modal-overlay[hidden] {
+        display: none;
+      }
+      .modal-content {
+        width: min(520px, 100%);
+        background: #0d1117;
+        border: 1px solid #30363d;
+        border-radius: 20px;
+        box-shadow: 0 30px 80px rgba(1, 4, 9, 0.55);
+        padding: 28px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+      }
+      .modal-header h2 {
+        margin: 0;
+        font-size: 22px;
+        color: #f0f6fc;
+      }
+      .modal-header button {
+        border: none;
+        background: transparent;
+        color: #8b949e;
+        font-size: 22px;
+        cursor: pointer;
+      }
+      .modal-header button:hover {
+        color: #f0f6fc;
+      }
+      .modal-subtitle {
+        margin: 0;
+        color: #8b949e;
+        font-size: 14px;
+      }
+      .modal-form {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .modal-form label {
+        display: block;
+        font-size: 13px;
+        color: #c9d1d9;
+        margin-bottom: 6px;
+        font-weight: 600;
+      }
+      .modal-form select,
+      .modal-form input[type='date'],
+      .modal-form textarea,
+      .modal-form .time-select {
+        width: 100%;
+        border: 1px solid #30363d;
+        background: #161b22;
+        color: #f0f6fc;
+        border-radius: 10px;
+        padding: 12px 14px;
+        font-family: inherit;
+        font-size: 14px;
+      }
+      .modal-form textarea {
+        min-height: 100px;
+        resize: vertical;
+      }
+      .modal-form .inline-group {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+      .modal-form .inline-group > *:first-child {
+        flex: 1;
+      }
+      .modal-form .inline-group button {
+        border: 1px solid #30363d;
+        background: #21262d;
+        color: #f0f6fc;
+        padding: 10px 14px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 13px;
+      }
+      .modal-form .inline-group button:hover {
+        background: #30363d;
+      }
+      .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        margin-top: 8px;
+      }
+      .modal-actions button {
+        padding: 12px 20px;
+        border-radius: 12px;
+        border: none;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .modal-actions .secondary {
+        background: #21262d;
+        color: #c9d1d9;
+      }
+      .modal-actions .secondary:hover {
+        background: #30363d;
+      }
+      .modal-actions .primary {
+        background: #1f6feb;
+        color: #ffffff;
+        box-shadow: 0 18px 36px rgba(31, 110, 235, 0.3);
+      }
+      .modal-actions .primary:hover {
+        transform: translateY(-1px);
+      }
+      .card {
+        background: linear-gradient(160deg, #161b22 0%, #0d1117 100%);
+        border: 1px solid #30363d;
+        border-radius: 16px;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        box-shadow: 0 18px 36px rgba(1, 4, 9, 0.4);
+      }
+      .card h2 {
+        margin: 0;
+        font-size: 20px;
+        color: #f0f6fc;
+      }
+      .meta {
+        font-size: 13px;
+        color: #8b949e;
+      }
+      dl {
+        margin: 0;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        font-size: 14px;
+      }
+      dt {
+        color: #6e7681;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-size: 12px;
+      }
+      dd {
+        margin: 4px 0 0;
+        font-weight: 600;
+        color: #c9d1d9;
+      }
+      .empty {
+        text-align: center;
+        padding: 80px 24px;
+        border: 1px dashed #30363d;
+        border-radius: 16px;
+        color: #8b949e;
+      }
+      .toast {
+        position: fixed;
+        right: 24px;
+        bottom: 24px;
+        padding: 14px 18px;
+        background: rgba(35, 134, 54, 0.12);
+        border: 1px solid rgba(63, 185, 80, 0.45);
+        border-radius: 12px;
+        color: #3fb950;
+        font-weight: 600;
+        opacity: 0;
+        transform: translateY(12px);
+        transition: opacity 0.3s ease, transform 0.3s ease;
+        pointer-events: none;
+      }
+      .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      .sticky-note {
+        position: fixed;
+        right: 18px;
+        bottom: 18px;
+        width: min(320px, 80vw);
+        background: rgba(13, 17, 23, 0.72);
+        border: 1px solid #30363d;
+        border-radius: 12px;
+        box-shadow: 0 18px 40px rgba(1, 4, 9, 0.48);
+        backdrop-filter: blur(6px);
+        color: #c9d1d9;
+        padding: 14px 18px;
+        font-size: 14px;
+        line-height: 1.6;
+        z-index: 60;
+      }
+      @media (max-width: 640px) {
+        header {
+          padding: 24px 20px;
+          flex-direction: column;
+          align-items: stretch;
+        }
+        .header-left button {
+          width: 100%;
+          text-align: center;
+        }
+        .header-links {
+          flex-direction: column;
+          gap: 10px;
+        }
+        .toolbar-actions {
+          justify-content: flex-start;
+        }
+        .toolbar-actions button {
+          width: 100%;
+        }
+        .bulk-action-bar {
+          left: 12px;
+          right: 12px;
+          transform: none;
+          border-radius: 18px;
+          flex-direction: column;
+          align-items: stretch;
+          gap: 10px;
+        }
+        .bulk-action-bar button {
+          width: 100%;
+        }
+        main {
+          padding: 20px;
+        }
+        dl {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="header-left">
+        <h1>연결사 상담 센터</h1>
+        <button type="button" id="calendarScrollBtn">캘린더 보기</button>
+      </div>
+      <div class="header-links">
+        <a href="https://yeongyeolsa.imweb.me/admin/?type=page&_gl=1*zufqzi*_gcl_au*MTY3OTEyMjExNS4xNzYwNDk3ODM3LjE1NzI0MTM0ODIuMTc2MjE1NjIzNC4xNzYyMTU2Mjc1*_ga*NTAyMzEzOC4xNzYwNjc3MTc0*_ga_HP37L08LP3*czE3NjIxNTYyMjckbzYkZzEkdDE3NjIxNTYyNzgkajkkbDAkaDA.&_ga=2.97118614.820021611.1762135185-5023138.1760677174" target="_blank" rel="noopener noreferrer">연결사 admin</a>
+        <a href="https://ygsa.co.kr/" target="_blank" rel="noopener noreferrer">연결사 Website</a>
+        <a href="https://www.notion.so/29ef5285ecb6807cb866c135f877c7a3?source=copy_link" target="_blank" rel="noopener noreferrer">연결사 Notion</a>
+      </div>
+    </header>
+    <section class="toolbar" aria-label="필터">
+      <div class="toolbar-filters">
+        <input type="search" id="searchInput" placeholder="이름, 연락처, 지역 검색" aria-label="검색" />
+        <select id="genderFilter" aria-label="성별 필터">
+          <option value="all">성별 전체</option>
+        </select>
+        <select id="regionFilter" aria-label="지역 필터">
+          <option value="all">지역 전체</option>
+        </select>
+        <select id="sortSelect" aria-label="정렬">
+          <option value="latest">최신 순</option>
+          <option value="oldest">오래된 순</option>
+          <option value="name">이름 순</option>
+          <option value="region">지역 순</option>
+        </select>
+      </div>
+      <div class="toolbar-actions">
+        <button type="button" id="exportBtn">엑셀로 내보내기</button>
+        <button type="button" id="importBtn">엑셀에서 불러오기</button>
+        <input type="file" id="excelInput" accept=".xlsx,.xls" hidden />
+      </div>
+    </section>
+    <main>
+      <section id="cardsContainer" class="cards"></section>
+      <div id="emptyState" class="empty" hidden>아직 접수된 상담 신청이 없습니다.</div>
+    </main>
+    <div id="toast" class="toast">새로운 상담 신청이 도착했습니다!</div>
+    <div class="calendar-overlay" id="calendarModal" hidden>
+      <div class="calendar-dialog">
+        <header>
+          <h2>대면 상담 캘린더</h2>
+          <button type="button" class="close" id="calendarCloseBtn" aria-label="닫기">×</button>
+        </header>
+        <div class="calendar-controls">
+          <div class="calendar-nav">
+            <button type="button" id="calendarPrevBtn" aria-label="이전 달">◀</button>
+            <h3 id="calendarCurrentMonth">2025년 1월</h3>
+            <button type="button" id="calendarNextBtn" aria-label="다음 달">▶</button>
+          </div>
+          <button type="button" id="calendarTodayBtn" class="calendar-today">오늘</button>
+        </div>
+        <div class="calendar-layout">
+          <div class="calendar-grid" id="calendarGrid" role="grid"></div>
+          <aside class="calendar-panel">
+            <h4 id="calendarSelectedTitle">선택된 일정</h4>
+            <ul id="calendarAppointmentList" class="calendar-appointments"></ul>
+          </aside>
+        </div>
+      </div>
+    </div>
+    <div class="modal-overlay" id="detailModal" hidden>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="detailTitle">상세 정보</h2>
+          <button type="button" id="detailCloseBtn" aria-label="닫기">×</button>
+        </div>
+        <p class="modal-subtitle" id="detailSubtitle"></p>
+        <form id="detailForm" class="modal-form">
+          <div>
+            <label for="detailPhoneStatus">전화 상담 상태</label>
+            <select id="detailPhoneStatus">
+              <option value="pending">미진행</option>
+              <option value="scheduled">전화 예정</option>
+              <option value="done">전화 완료</option>
+            </select>
+          </div>
+          <div>
+            <label>대면 상담 일정 (15분 단위)</label>
+            <div class="inline-group">
+              <input type="date" id="detailDate" />
+              <select id="detailTime" class="time-select" disabled>
+                <option value="">시간 선택</option>
+              </select>
+              <button type="button" id="detailClearSchedule" aria-label="일정 초기화">🗑</button>
+            </div>
+            <p class="modal-subtitle" id="detailScheduleInfo"></p>
+          </div>
+          <div>
+            <label for="detailNotes">특이사항 메모</label>
+            <textarea id="detailNotes" placeholder="상담 기록을 입력하세요."></textarea>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="secondary" id="detailCancelBtn">취소</button>
+            <button type="submit" class="primary">저장</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div class="bulk-action-bar" id="bulkActionBar" hidden>
+      <span id="selectionInfo"></span>
+      <button type="button" id="deleteSelectedBtn">정보 삭제하기</button>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script>
+      const API_URL = '/api/consult'
+      const cardsEl = document.getElementById('cardsContainer')
+      const emptyEl = document.getElementById('emptyState')
+      const exportBtn = document.getElementById('exportBtn')
+      const importBtn = document.getElementById('importBtn')
+      const excelInput = document.getElementById('excelInput')
+      const deleteSelectedBtn = document.getElementById('deleteSelectedBtn')
+      const selectionInfoEl = document.getElementById('selectionInfo')
+      const bulkActionBar = document.getElementById('bulkActionBar')
+      const toastEl = document.getElementById('toast')
+      const searchInput = document.getElementById('searchInput')
+      const genderFilter = document.getElementById('genderFilter')
+      const regionFilter = document.getElementById('regionFilter')
+      const sortSelect = document.getElementById('sortSelect')
+      const detailModal = document.getElementById('detailModal')
+      const detailForm = document.getElementById('detailForm')
+      const detailCloseBtn = document.getElementById('detailCloseBtn')
+      const detailCancelBtn = document.getElementById('detailCancelBtn')
+      const detailTitleEl = document.getElementById('detailTitle')
+      const detailSubtitleEl = document.getElementById('detailSubtitle')
+      const detailPhoneStatusEl = document.getElementById('detailPhoneStatus')
+      const detailDateInput = document.getElementById('detailDate')
+      const detailTimeSelect = document.getElementById('detailTime')
+      const detailClearScheduleBtn = document.getElementById('detailClearSchedule')
+      const detailNotesInput = document.getElementById('detailNotes')
+      const detailScheduleInfo = document.getElementById('detailScheduleInfo')
+      const calendarScrollBtn = document.getElementById('calendarScrollBtn')
+      const calendarModal = document.getElementById('calendarModal')
+      const calendarCloseBtn = document.getElementById('calendarCloseBtn')
+      const calendarPrevBtn = document.getElementById('calendarPrevBtn')
+      const calendarNextBtn = document.getElementById('calendarNextBtn')
+      const calendarTodayBtn = document.getElementById('calendarTodayBtn')
+      const calendarCurrentMonthEl = document.getElementById('calendarCurrentMonth')
+      const calendarSelectedTitleEl = document.getElementById('calendarSelectedTitle')
+      const calendarAppointmentList = document.getElementById('calendarAppointmentList')
+      const calendarGrid = document.getElementById('calendarGrid')
+      let items = []
+      const selectedIds = new Set()
+      let suppressDeleteToast = false
+      let suppressUpdateToast = false
+      let detailRecordId = null
+      const viewState = {
+        search: '',
+        gender: 'all',
+        region: 'all',
+        sort: 'latest',
+      }
+      const calendarState = {
+        current: new Date(),
+        selectedDate: '',
+      }
+      const PHONE_STATUS_VALUES = ['pending', 'scheduled', 'done']
+      const TIME_SLOT_START_HOUR = 9
+      const TIME_SLOT_END_HOUR = 21
+      const TIME_SLOT_INTERVAL_MINUTES = 15
+
+      exportBtn.addEventListener('click', exportToExcel)
+      importBtn.addEventListener('click', () => excelInput.click())
+      excelInput.addEventListener('change', handleExcelImport)
+      deleteSelectedBtn.addEventListener('click', handleDeleteSelected)
+      cardsEl.addEventListener('change', handleCardChange)
+      cardsEl.addEventListener('click', handleCardButtonClick)
+      detailCloseBtn.addEventListener('click', closeDetailModal)
+      detailCancelBtn.addEventListener('click', (event) => {
+        event.preventDefault()
+        closeDetailModal()
+      })
+      detailModal.addEventListener('click', (event) => {
+        if (event.target === detailModal) {
+          closeDetailModal()
+        }
+      })
+      detailForm.addEventListener('submit', handleDetailSubmit)
+      detailDateInput.addEventListener('change', handleDetailDateChange)
+      detailTimeSelect.addEventListener('change', handleDetailTimeChange)
+      detailClearScheduleBtn.addEventListener('click', handleClearSchedule)
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !detailModal.hidden) {
+          closeDetailModal()
+        }
+      })
+      if (calendarScrollBtn) {
+        calendarScrollBtn.addEventListener('click', () => openCalendarModal(true))
+      }
+      calendarCloseBtn.addEventListener('click', closeCalendarModal)
+      calendarPrevBtn.addEventListener('click', () => changeCalendarMonth(-1))
+      calendarNextBtn.addEventListener('click', () => changeCalendarMonth(1))
+      calendarTodayBtn.addEventListener('click', () => goToToday())
+      calendarModal.addEventListener('click', (event) => {
+        if (event.target === calendarModal) closeCalendarModal()
+      })
+      calendarGrid.addEventListener('click', handleCalendarDayClick)
+      calendarAppointmentList.addEventListener('click', handleCalendarAppointmentClick)
+      searchInput.addEventListener('input', (event) => {
+        viewState.search = event.target.value.trim()
+        render()
+      })
+      genderFilter.addEventListener('change', (event) => {
+        viewState.gender = event.target.value
+        render()
+      })
+      regionFilter.addEventListener('change', (event) => {
+        viewState.region = event.target.value
+        render()
+      })
+      sortSelect.addEventListener('change', (event) => {
+        viewState.sort = event.target.value
+        render()
+      })
+      updateSelectionInfo()
+
+      async function loadData() {
+        try {
+          const res = await fetch(API_URL)
+          const body = await res.json()
+          if (!body?.ok) throw new Error(body?.message || '데이터 오류')
+          items = (body.data || []).map(normalizeRecord)
+          syncSelectionWithItems()
+          syncFilterOptions()
+          render()
+          if (!calendarModal.hidden) {
+            refreshCalendar(true)
+          }
+        } catch (error) {
+          console.error(error)
+          showToast('데이터를 불러오는데 실패했습니다.')
+        }
+      }
+
+      function render() {
+        cardsEl.innerHTML = ''
+        const prepared = getPreparedItems()
+        if (!prepared.length) {
+          emptyEl.hidden = false
+          return
+        }
+        emptyEl.hidden = true
+        const fragment = document.createDocumentFragment()
+        prepared.forEach((item) => {
+          const card = document.createElement('article')
+          card.className = 'card'
+          card.dataset.id = item.id || ''
+          const idAttr = escapeHtml(item.id || '')
+          const isSelected = selectedIds.has(item.id)
+          card.innerHTML = `
+              <div class="card-top">
+                <div>
+                  <h2>${escapeHtml(item.name || '익명')}</h2>
+                  <div class="meta">${formatDate(item.createdAt)} 접수</div>
+                </div>
+                <div class="card-controls">
+                  <input
+                    type="checkbox"
+                    class="select-checkbox"
+                    data-id="${idAttr}"
+                    ${isSelected ? 'checked' : ''}
+                    aria-label="상담 선택"
+                  />
+                </div>
+              </div>
+              <dl>
+                ${renderEntry('연락처', item.phone)}
+                ${renderEntry('성별', item.gender)}
+                ${renderEntry('생년월일', item.birth)}
+                ${renderEntry('거주지역', item.region)}
+                ${renderEntry('최종학력', item.education)}
+              </dl>
+            `
+          fragment.appendChild(card)
+        })
+        cardsEl.appendChild(fragment)
+      }
+
+      function openDetailModal(id) {
+        const record = items.find((item) => item.id === id)
+        if (!record) {
+          showToast('상세 정보를 불러오지 못했습니다.')
+          return
+        }
+
+        detailRecordId = id
+        detailTitleEl.textContent = record.name || '상담 신청'
+        detailSubtitleEl.textContent = [
+          record.phone ? `연락처 ${record.phone}` : null,
+          record.region ? `지역 ${record.region}` : null,
+          record.createdAt ? `신청 ${formatDate(record.createdAt)}` : null,
+        ]
+          .filter(Boolean)
+          .join(' · ')
+
+        const status = PHONE_STATUS_VALUES.includes(record.phoneConsultStatus)
+          ? record.phoneConsultStatus
+          : 'pending'
+        detailPhoneStatusEl.value = status
+
+        const { date: scheduledDate, time: scheduledTime } = splitLocalDateTime(
+          record.meetingSchedule,
+        )
+        detailDateInput.value = scheduledDate
+        updateTimeOptions(scheduledDate, scheduledTime, id)
+        detailNotesInput.value = record.notes || ''
+        detailScheduleInfo.textContent = record.meetingSchedule
+          ? `현재 예약: ${formatDate(record.meetingSchedule)}`
+          : '대면 상담 일정이 아직 없습니다.'
+
+        detailModal.hidden = false
+        document.body.classList.add('modal-open')
+      }
+
+      function closeDetailModal() {
+        detailModal.hidden = true
+        document.body.classList.remove('modal-open')
+        detailRecordId = null
+        detailForm.reset()
+        detailTimeSelect.innerHTML = '<option value="">시간 선택</option>'
+        detailTimeSelect.disabled = true
+        detailScheduleInfo.textContent = ''
+      }
+
+      function renderEntry(label, value) {
+        return `
+          <div>
+            <dt>${label}</dt>
+            <dd>${escapeHtml(value || '-')}</dd>
+          </div>
+        `
+      }
+
+      function handleDetailDateChange() {
+        const dateValue = detailDateInput.value
+        updateTimeOptions(dateValue, '', detailRecordId)
+        handleDetailTimeChange()
+      }
+
+      function handleDetailTimeChange() {
+        const dateValue = detailDateInput.value
+        const timeValue = detailTimeSelect.value
+        if (dateValue && timeValue) {
+          detailScheduleInfo.textContent = `선택한 일정: ${dateValue} ${timeValue}`
+        } else if (dateValue && !timeValue) {
+          detailScheduleInfo.textContent = '상담 시간을 선택해 주세요.'
+        }
+      }
+
+      function handleClearSchedule(event) {
+        event.preventDefault()
+        detailDateInput.value = ''
+        updateTimeOptions('', '', detailRecordId)
+        detailScheduleInfo.textContent = '대면 상담 일정이 아직 없습니다.'
+      }
+
+      async function handleDetailSubmit(event) {
+        event.preventDefault()
+        if (!detailRecordId) {
+          showToast('대상을 찾을 수 없습니다.')
+          return
+        }
+
+        const phoneStatus = detailPhoneStatusEl.value
+        if (!PHONE_STATUS_VALUES.includes(phoneStatus)) {
+          showToast('전화 상담 상태를 선택해 주세요.')
+          return
+        }
+
+        const dateValue = detailDateInput.value
+        const timeValue = detailTimeSelect.disabled ? '' : detailTimeSelect.value
+
+        if (dateValue && !timeValue) {
+          showToast('상담 시간을 선택해 주세요.')
+          return
+        }
+        if (!dateValue && timeValue) {
+          showToast('상담 날짜를 선택해 주세요.')
+          return
+        }
+
+        let meetingSchedule = ''
+        if (dateValue && timeValue) {
+          const date = new Date(`${dateValue}T${timeValue}`)
+          if (Number.isNaN(date.getTime())) {
+            showToast('유효한 상담 일정을 선택해 주세요.')
+            return
+          }
+          meetingSchedule = date.toISOString()
+        }
+
+        const payload = {
+          phoneConsultStatus: phoneStatus,
+          meetingSchedule,
+          notes: detailNotesInput.value?.trim() || '',
+        }
+
+        suppressUpdateToast = true
+        try {
+          const res = await fetch(`${API_URL}/${detailRecordId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          })
+          const body = await res.json().catch(() => ({}))
+          if (!res.ok || !body?.ok) {
+            throw new Error(body?.message || '상세 정보를 저장하지 못했습니다.')
+          }
+
+          const updated = normalizeRecord(body.data)
+          if (updated?.id) {
+            const index = items.findIndex((item) => item.id === updated.id)
+            if (index !== -1) {
+              items[index] = updated
+            } else {
+              items.push(updated)
+            }
+          }
+          syncFilterOptions()
+          syncSelectionWithItems()
+          render()
+          if (!calendarModal.hidden) {
+            refreshCalendar(true)
+          }
+          showToast('상세 정보를 저장했습니다.')
+          closeDetailModal()
+        } catch (error) {
+          suppressUpdateToast = false
+          console.error(error)
+          showToast(error.message || '상세 정보를 저장하지 못했습니다.')
+        } finally {
+          setTimeout(() => {
+            suppressUpdateToast = false
+          }, 1000)
+        }
+      }
+
+      function updateTimeOptions(dateValue, selectedTime, currentId) {
+        detailTimeSelect.innerHTML = '<option value="">시간 선택</option>'
+        if (!dateValue) {
+          detailTimeSelect.disabled = true
+          detailScheduleInfo.textContent = '대면 상담 일정이 아직 없습니다.'
+          return
+        }
+
+        const reserved = getReservedTimes(dateValue, currentId)
+        let hasAvailable = false
+        generateTimeSlots().forEach((slot) => {
+          const option = document.createElement('option')
+          option.value = slot
+          option.textContent = slot
+          if (reserved.has(slot) && slot !== selectedTime) {
+            option.disabled = true
+            option.textContent = `${slot} (예약됨)`
+          } else {
+            hasAvailable = true
+          }
+          detailTimeSelect.appendChild(option)
+        })
+
+        detailTimeSelect.disabled = false
+        if (selectedTime) {
+          detailTimeSelect.value = selectedTime
+        } else {
+          detailTimeSelect.value = ''
+        }
+
+        if (!hasAvailable && !selectedTime) {
+          detailScheduleInfo.textContent = '선택한 날짜에는 예약 가능한 시간이 없습니다.'
+        } else if (!selectedTime) {
+          detailScheduleInfo.textContent =
+            '예약된 시간은 자동으로 비활성화됩니다.'
+        }
+      }
+
+      function generateTimeSlots() {
+        const slots = []
+        for (let hour = TIME_SLOT_START_HOUR; hour <= TIME_SLOT_END_HOUR; hour += 1) {
+          for (let minute = 0; minute < 60; minute += TIME_SLOT_INTERVAL_MINUTES) {
+            if (hour === TIME_SLOT_END_HOUR && minute > 0) break
+            const h = String(hour).padStart(2, '0')
+            const m = String(minute).padStart(2, '0')
+            slots.push(`${h}:${m}`)
+          }
+        }
+        return slots
+      }
+
+      function getReservedTimes(dateValue, currentId) {
+        const reserved = new Set()
+        if (!dateValue) return reserved
+
+        items.forEach((item) => {
+          if (!item.meetingSchedule || item.id === currentId) return
+          const { date, time } = splitLocalDateTime(item.meetingSchedule)
+          if (date === dateValue && time) {
+            reserved.add(time)
+          }
+        })
+        return reserved
+      }
+
+      function openCalendarModal(forceRefresh = false) {
+        calendarModal.hidden = false
+        document.body.classList.add('modal-open')
+        refreshCalendar(forceRefresh)
+      }
+
+      function closeCalendarModal() {
+        calendarModal.hidden = true
+        document.body.classList.remove('modal-open')
+      }
+
+      function refreshCalendar(forceSelection = false) {
+        const meetings = getMeetingsGroupedByDate()
+        const todayKey = getDateKey(new Date())
+
+        if (
+          !calendarState.selectedDate ||
+          forceSelection ||
+          (calendarState.selectedDate && !meetings.has(calendarState.selectedDate))
+        ) {
+          if (meetings.has(todayKey)) {
+            calendarState.selectedDate = todayKey
+          } else if (meetings.size) {
+            const earliest = Array.from(meetings.keys()).sort()[0]
+            calendarState.selectedDate = earliest
+          } else {
+            calendarState.selectedDate = todayKey
+          }
+        }
+
+        const selectedDateObj = new Date(calendarState.selectedDate)
+        if (!Number.isNaN(selectedDateObj.getTime())) {
+          calendarState.current = new Date(
+            selectedDateObj.getFullYear(),
+            selectedDateObj.getMonth(),
+            1,
+          )
+        }
+
+        renderCalendar(meetings)
+        renderCalendarAppointments(meetings)
+      }
+
+      function changeCalendarMonth(offset) {
+        calendarState.current = new Date(
+          calendarState.current.getFullYear(),
+          calendarState.current.getMonth() + offset,
+          1,
+        )
+        const meetings = getMeetingsGroupedByDate()
+        const year = calendarState.current.getFullYear()
+        const month = String(calendarState.current.getMonth() + 1).padStart(2, '0')
+        const monthDates = Array.from(meetings.keys())
+          .filter((key) => key.startsWith(`${year}-${month}-`))
+          .sort()
+
+        if (monthDates.length) {
+          calendarState.selectedDate = monthDates[0]
+        } else {
+          calendarState.selectedDate = getDateKey(
+            new Date(calendarState.current.getFullYear(), calendarState.current.getMonth(), 1),
+          )
+        }
+
+        renderCalendar(meetings)
+        renderCalendarAppointments(meetings)
+      }
+
+      function goToToday() {
+        const today = new Date()
+        calendarState.current = new Date(today.getFullYear(), today.getMonth(), 1)
+        calendarState.selectedDate = getDateKey(today)
+        refreshCalendar(true)
+      }
+
+      function handleCalendarDayClick(event) {
+        const dayEl = event.target.closest('.calendar-day')
+        if (!dayEl || !dayEl.dataset.date) return
+        calendarState.selectedDate = dayEl.dataset.date
+        const dateObj = new Date(calendarState.selectedDate)
+        if (!Number.isNaN(dateObj.getTime())) {
+          calendarState.current = new Date(dateObj.getFullYear(), dateObj.getMonth(), 1)
+        }
+        const meetings = getMeetingsGroupedByDate()
+        renderCalendar(meetings)
+        renderCalendarAppointments(meetings)
+      }
+
+      function handleCalendarAppointmentClick(event) {
+        const itemEl = event.target.closest('li[data-id]')
+        if (!itemEl || itemEl.classList.contains('calendar-empty-item')) return
+        const { id } = itemEl.dataset
+        if (id) openDetailModal(id)
+      }
+
+      function renderCalendar(meetingsMap) {
+        const year = calendarState.current.getFullYear()
+        const month = calendarState.current.getMonth()
+        calendarCurrentMonthEl.textContent = `${year}년 ${month + 1}월`
+
+        calendarGrid.innerHTML = ''
+        const fragment = document.createDocumentFragment()
+        const weekdays = ['일', '월', '화', '수', '목', '금', '토']
+        weekdays.forEach((label) => {
+          const cell = document.createElement('div')
+          cell.className = 'calendar-weekday'
+          cell.textContent = label
+          fragment.appendChild(cell)
+        })
+
+        const firstDay = new Date(year, month, 1)
+        const startDate = new Date(firstDay)
+        startDate.setDate(firstDay.getDate() - firstDay.getDay())
+
+        const todayKey = getDateKey(new Date())
+
+        for (let i = 0; i < 42; i += 1) {
+          const date = new Date(startDate)
+          date.setDate(startDate.getDate() + i)
+          const dateKey = getDateKey(date)
+          const dayCell = document.createElement('div')
+          dayCell.className = 'calendar-day'
+          dayCell.dataset.date = dateKey
+
+          if (date.getMonth() !== month) dayCell.classList.add('other-month')
+          if (dateKey === todayKey) dayCell.classList.add('today')
+          if (dateKey === calendarState.selectedDate) dayCell.classList.add('selected')
+
+          const events = meetingsMap.get(dateKey) || []
+          if (events.length) dayCell.classList.add('has-events')
+
+          const dayNumber = document.createElement('div')
+          dayNumber.className = 'day-number'
+          dayNumber.textContent = date.getDate()
+
+          const dayCount = document.createElement('div')
+          dayCount.className = 'day-count'
+          dayCount.textContent = events.length ? `${events.length}건` : ''
+
+          dayCell.appendChild(dayNumber)
+          dayCell.appendChild(dayCount)
+          fragment.appendChild(dayCell)
+        }
+
+        calendarGrid.appendChild(fragment)
+      }
+
+      function renderCalendarAppointments(meetingsMap) {
+        const dateKey = calendarState.selectedDate
+        calendarSelectedTitleEl.textContent = formatSelectedDateTitle(dateKey)
+        calendarAppointmentList.innerHTML = ''
+
+        const meetings = meetingsMap.get(dateKey) || []
+        if (!meetings.length) {
+          const emptyItem = document.createElement('li')
+          emptyItem.className = 'calendar-empty-item'
+          emptyItem.textContent = '예약된 일정이 없습니다.'
+          calendarAppointmentList.appendChild(emptyItem)
+          return
+        }
+
+        meetings
+          .map((entry) => ({
+            ...entry,
+            displaySchedule: formatCalendarSchedule(entry.record.meetingSchedule, entry.time, dateKey),
+          }))
+          .sort((a, b) => a.displaySchedule.localeCompare(b.displaySchedule))
+          .forEach((entry) => {
+            const li = document.createElement('li')
+            li.dataset.id = entry.id
+
+            const phoneLine = escapeHtml(entry.record.phone || '-')
+            const regionLine = escapeHtml(entry.record.region || '-')
+
+            li.innerHTML = `
+            <time>${entry.displaySchedule}</time>
+            <span>${escapeHtml(entry.name || '익명')} · ${formatPhoneStatus(entry.record.phoneConsultStatus)}</span>
+            <span class="meta-line">연락처 ${phoneLine}</span>
+            <span class="meta-line">지역 ${regionLine}</span>
+          `
+            if (entry.record.notes) {
+              const noteSpan = document.createElement('span')
+              noteSpan.className = 'note-line'
+              noteSpan.textContent = entry.record.notes
+              li.appendChild(noteSpan)
+            }
+            calendarAppointmentList.appendChild(li)
+          })
+      }
+
+      function formatCalendarSchedule(schedule, fallbackTime, fallbackDateKey) {
+        if (schedule) {
+          const date = new Date(schedule)
+          if (!Number.isNaN(date.getTime())) {
+            const time = `${String(date.getHours()).padStart(2, '0')}:${String(
+              date.getMinutes(),
+            ).padStart(2, '0')}`
+            return `${String(date.getFullYear())}년 ${String(date.getMonth() + 1)}월 ${String(
+              date.getDate(),
+            )}일 ${time}`
+          }
+        }
+        return `${fallbackDateKey} ${fallbackTime}`
+      }
+
+      function getMeetingsGroupedByDate() {
+        const map = new Map()
+        items.forEach((item) => {
+          if (!item.meetingSchedule) return
+          const { date, time } = splitLocalDateTime(item.meetingSchedule)
+          if (!date || !time) return
+          if (!map.has(date)) {
+            map.set(date, [])
+          }
+          map.get(date).push({
+            id: item.id,
+            name: item.name,
+            time,
+            record: item,
+          })
+        })
+
+        map.forEach((list, key) => list.sort((a, b) => a.time.localeCompare(b.time)))
+        return map
+      }
+
+      function getDateKey(date) {
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const day = String(date.getDate()).padStart(2, '0')
+        return `${year}-${month}-${day}`
+      }
+
+      function formatSelectedDateTitle(dateKey) {
+        if (!dateKey) return '선택된 일정'
+        const [year, month, day] = dateKey.split('-').map((value) => Number(value))
+        if ([year, month, day].some((value) => Number.isNaN(value))) return '선택된 일정'
+        return `${year}년 ${month}월 ${day}일 일정`
+      }
+
+
+      function normalizeRecord(record) {
+        if (!record || typeof record !== 'object') return record
+        const normalized = { ...record }
+        if (!PHONE_STATUS_VALUES.includes(normalized.phoneConsultStatus)) {
+          normalized.phoneConsultStatus = 'pending'
+        }
+        if (typeof normalized.meetingSchedule !== 'string') {
+          normalized.meetingSchedule = ''
+        }
+        if (typeof normalized.notes !== 'string') {
+          normalized.notes = ''
+        }
+        return normalized
+      }
+
+      function splitLocalDateTime(value) {
+        if (!value) return { date: '', time: '' }
+        const date = new Date(value)
+        if (Number.isNaN(date.getTime())) return { date: '', time: '' }
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const day = String(date.getDate()).padStart(2, '0')
+        const hours = String(date.getHours()).padStart(2, '0')
+        const minutes = String(date.getMinutes()).padStart(2, '0')
+        return {
+          date: `${year}-${month}-${day}`,
+          time: `${hours}:${minutes}`,
+        }
+      }
+
+      function getPreparedItems() {
+        let result = items.slice()
+        if (viewState.search) {
+          const term = viewState.search.toLowerCase()
+          result = result.filter((item) =>
+            ['name', 'phone', 'region', 'education']
+              .map((key) => String(item[key] || '').toLowerCase())
+              .some((value) => value.includes(term))
+          )
+        }
+        if (viewState.gender !== 'all') {
+          result = result.filter((item) => (item.gender || '') === viewState.gender)
+        }
+        if (viewState.region !== 'all') {
+          result = result.filter((item) => (item.region || '') === viewState.region)
+        }
+
+        switch (viewState.sort) {
+          case 'oldest':
+            result.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+            break
+          case 'name':
+            result.sort((a, b) =>
+              String(a.name || '').localeCompare(String(b.name || ''), 'ko-KR')
+            )
+            break
+          case 'region':
+            result.sort((a, b) =>
+              String(a.region || '').localeCompare(String(b.region || ''), 'ko-KR')
+            )
+            break
+          case 'latest':
+          default:
+            result.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+            break
+        }
+
+        return result
+      }
+
+      function syncFilterOptions() {
+        populateSelect(
+          genderFilter,
+          uniqueSorted(items.map((item) => item.gender)),
+          '성별 전체'
+        )
+        populateSelect(
+          regionFilter,
+          uniqueSorted(items.map((item) => item.region)),
+          '지역 전체'
+        )
+      }
+
+      function populateSelect(selectEl, values, placeholder) {
+        const previous = selectEl.value || 'all'
+        selectEl.innerHTML = ''
+        const fragment = document.createDocumentFragment()
+        const allOption = document.createElement('option')
+        allOption.value = 'all'
+        allOption.textContent = placeholder
+        fragment.appendChild(allOption)
+        values
+          .filter(Boolean)
+          .forEach((value) => {
+            const option = document.createElement('option')
+            option.value = value
+            option.textContent = value
+            fragment.appendChild(option)
+          })
+        selectEl.appendChild(fragment)
+        if (values.includes(previous)) {
+          selectEl.value = previous
+        } else {
+          selectEl.value = 'all'
+        }
+        if (selectEl === genderFilter) {
+          viewState.gender = selectEl.value
+        }
+        if (selectEl === regionFilter) {
+          viewState.region = selectEl.value
+        }
+      }
+
+      function uniqueSorted(values) {
+        return Array.from(
+          new Set(values.filter((value) => value && value.trim()))
+        ).sort((a, b) => a.localeCompare(b, 'ko-KR'))
+      }
+
+      function syncSelectionWithItems() {
+        const validIds = new Set(items.map((item) => item.id))
+        Array.from(selectedIds).forEach((id) => {
+          if (!validIds.has(id)) selectedIds.delete(id)
+        })
+        updateSelectionInfo()
+      }
+
+      function updateSelectionInfo() {
+        const count = selectedIds.size
+        selectionInfoEl.textContent = count ? `${count}건 선택됨` : ''
+        bulkActionBar.hidden = count === 0
+        deleteSelectedBtn.disabled = count === 0
+      }
+
+      function formatDate(value) {
+        if (!value) return '-'
+        try {
+          return new Date(value).toLocaleString('ko-KR')
+        } catch (error) {
+          return value
+        }
+      }
+
+      function escapeHtml(str) {
+        return String(str || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;')
+      }
+
+      function showToast(message) {
+        toastEl.textContent = message
+        toastEl.classList.add('show')
+        setTimeout(() => toastEl.classList.remove('show'), 2500)
+      }
+
+      function handleCardChange(event) {
+        const target = event.target
+        if (!target.classList.contains('select-checkbox')) return
+        const id = target.dataset.id
+        if (!id) return
+        if (target.checked) {
+          selectedIds.add(id)
+        } else {
+          selectedIds.delete(id)
+        }
+        updateSelectionInfo()
+      }
+
+      function handleCardButtonClick(event) {
+        const card = event.target.closest('.card')
+        if (!card) return
+        const checkbox = event.target.closest('.select-checkbox')
+        if (checkbox) return
+        const { id } = card.dataset
+        if (id) openDetailModal(id)
+      }
+
+      function handleDeleteSelected() {
+        if (!selectedIds.size) return
+        if (!confirm('선택한 상담을 삭제할까요?')) return
+        deleteRecords(Array.from(selectedIds))
+      }
+
+      async function deleteRecords(ids) {
+        const unique = Array.from(new Set((ids || []).filter(Boolean)))
+        if (!unique.length) return
+        suppressDeleteToast = true
+        try {
+          const res = await fetch(API_URL, {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ ids: unique }),
+          })
+          const body = await res.json().catch(() => ({}))
+          if (!res.ok || !body?.ok) {
+            throw new Error(body?.message || '삭제에 실패했습니다.')
+          }
+          const idSet = new Set(unique)
+          items = items.filter((item) => !idSet.has(item.id))
+          unique.forEach((id) => selectedIds.delete(id))
+          syncSelectionWithItems()
+          syncFilterOptions()
+          render()
+          if (!calendarModal.hidden) {
+            refreshCalendar(true)
+          }
+          showToast(`${body.count ?? unique.length}건을 삭제했습니다.`)
+        } catch (error) {
+          suppressDeleteToast = false
+          console.error(error)
+          showToast(error.message || '삭제에 실패했습니다.')
+        } finally {
+          setTimeout(() => {
+            suppressDeleteToast = false
+          }, 2000)
+        }
+      }
+
+      function setupSSE() {
+        if (!('EventSource' in window)) return
+        const source = new EventSource('/events')
+        source.addEventListener('message', (event) => {
+          if (!event?.data) return
+          try {
+            const payload = JSON.parse(event.data)
+            if (payload?.type === 'consult:new') {
+              items.push(normalizeRecord(payload.payload))
+              syncFilterOptions()
+              syncSelectionWithItems()
+              render()
+              if (!calendarModal.hidden) refreshCalendar(true)
+              showToast('새로운 상담 신청이 도착했습니다!')
+            } else if (payload?.type === 'consult:import') {
+              items = Array.isArray(payload.payload)
+                ? payload.payload.map(normalizeRecord)
+                : []
+              selectedIds.clear()
+              syncSelectionWithItems()
+              syncFilterOptions()
+              render()
+              if (!calendarModal.hidden) refreshCalendar(true)
+              showToast('엑셀 데이터가 반영되었습니다.')
+            } else if (payload?.type === 'consult:update') {
+              const updated = normalizeRecord(payload.payload)
+              if (updated?.id) {
+                const index = items.findIndex((item) => item.id === updated.id)
+                if (index !== -1) {
+                  items[index] = updated
+                } else {
+                  items.push(updated)
+                }
+              }
+              syncSelectionWithItems()
+              syncFilterOptions()
+              render()
+              if (!calendarModal.hidden) refreshCalendar(true)
+              if (suppressUpdateToast) {
+                suppressUpdateToast = false
+              } else if (updated?.name) {
+                showToast(`${updated.name} 님의 정보가 업데이트되었습니다.`)
+              }
+            } else if (payload?.type === 'consult:delete') {
+              const ids = Array.isArray(payload.payload?.ids) ? payload.payload.ids : []
+              if (!ids.length) return
+              const idSet = new Set(ids)
+              const before = items.length
+              items = items.filter((item) => !idSet.has(item.id))
+              ids.forEach((id) => selectedIds.delete(id))
+              syncSelectionWithItems()
+              syncFilterOptions()
+              render()
+              if (!calendarModal.hidden) refreshCalendar(true)
+              if (suppressDeleteToast) {
+                suppressDeleteToast = false
+              } else if (before !== items.length) {
+                showToast(`${ids.length}건이 삭제되었습니다.`)
+              }
+            }
+          } catch (error) {
+            console.error(error)
+          }
+        })
+        source.addEventListener('error', () => {
+          showToast('실시간 연결이 끊겼습니다. 잠시 후 자동 재연결합니다.')
+        })
+      }
+
+      function exportToExcel() {
+        const prepared = getPreparedItems()
+        if (!prepared.length) {
+          showToast('내보낼 데이터가 없습니다.')
+          return
+        }
+        if (typeof XLSX === 'undefined') {
+          showToast('엑셀 라이브러리를 불러오는 데 실패했습니다.')
+          return
+        }
+        const rows = prepared.map((item, index) => ({
+          번호: index + 1,
+          성명: item.name || '',
+          성별: item.gender || '',
+          연락처: item.phone || '',
+          생년월일: item.birth || '',
+          거주지역: item.region || '',
+          최종학력: item.education || '',
+          접수시간: formatDate(item.createdAt),
+        }))
+        const worksheet = XLSX.utils.json_to_sheet(rows)
+        const workbook = XLSX.utils.book_new()
+        XLSX.utils.book_append_sheet(workbook, worksheet, '상담 신청')
+        const dateLabel = new Date().toISOString().slice(0, 10)
+        XLSX.writeFile(workbook, `consultations-${dateLabel}.xlsx`)
+        showToast('엑셀 파일이 다운로드되었습니다.')
+      }
+
+      async function handleExcelImport(event) {
+        const file = event.target.files?.[0]
+        if (!file) return
+        if (typeof XLSX === 'undefined') {
+          showToast('엑셀 라이브러리를 불러오는 데 실패했습니다.')
+          return
+        }
+
+        try {
+          const data = await file.arrayBuffer()
+          const workbook = XLSX.read(data, { type: 'array' })
+          const sheetName = workbook.SheetNames[0]
+          if (!sheetName) {
+            showToast('시트를 찾을 수 없습니다.')
+            return
+          }
+
+          const sheet = workbook.Sheets[sheetName]
+          const json = XLSX.utils.sheet_to_json(sheet, { defval: '' })
+          if (!json.length) {
+            showToast('엑셀에서 데이터를 찾지 못했습니다.')
+            return
+          }
+
+          const normalized = json.map((row) => ({
+            id: row.id || row.ID || row.Id || String(Math.random()).slice(2),
+            name: row.성명 || row.이름 || row.name || '',
+            gender: row.성별 || row.gender || '',
+            phone: row.연락처 || row.phone || '',
+            birth: row.생년월일 || row.birth || '',
+            region: row.거주지역 || row.지역 || row.region || '',
+            education: row.최종학력 || row.education || '',
+            createdAt: row.접수시간
+              ? new Date(row.접수시간).toISOString()
+              : row.createdAt || new Date().toISOString(),
+          }))
+
+          const response = await fetch('/api/consult/import', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ items: normalized }),
+          })
+
+          const body = await response.json()
+          if (!response.ok || !body?.ok) {
+            throw new Error(body?.message || '엑셀 데이터를 반영하지 못했습니다.')
+          }
+
+          showToast(`엑셀 데이터 ${normalized.length}건을 반영했습니다.`)
+          selectedIds.clear()
+          updateSelectionInfo()
+          excelInput.value = ''
+          await loadData()
+        } catch (error) {
+          console.error(error)
+          showToast(error.message || '엑셀 파일 처리에 실패했습니다.')
+        } finally {
+          excelInput.value = ''
+        }
+      }
+
+      loadData()
+      setupSSE()
+    </script>
+    <div class="sticky-note">[아임웹 아이디 비번 비밀번호] <br>
+ID: yeongyeolsa@gmail.com <br>
+PS: 10Aksghldnjs!
+<br><br>
+[구글 아이디 비번 비밀번호] <br>
+ID: yeongyeolsa@gmail.com <br>
+PS: 10Aksghldnjs!</div>
+  </body>
+</html>
+
