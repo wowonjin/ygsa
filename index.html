@@ -636,6 +636,7 @@
         }
       }
     </style>
+    <script src="backend-config.js"></script>
   </head>
   <body>
     <header>
@@ -743,7 +744,17 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script>
-      const API_URL = '/api/consult'
+      const BACKEND_ORIGIN = (window.BACKEND_ORIGIN || '').trim().replace(/\/$/, '')
+      const API_BASE_URL = BACKEND_ORIGIN
+      const API_URL = API_BASE_URL ? `${API_BASE_URL}/api/consult` : '/api/consult'
+      const API_IMPORT_URL = API_BASE_URL ? `${API_BASE_URL}/api/consult/import` : '/api/consult/import'
+      const EVENTS_URL = API_BASE_URL ? `${API_BASE_URL}/events` : '/events'
+      const IS_REMOTE_ENV = !/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(window.location.origin)
+      if (!API_BASE_URL && IS_REMOTE_ENV) {
+        console.warn(
+          '[ygsa] 원격 배포 환경에서 BACKEND_ORIGIN이 비어 있습니다. backend-config.js의 REMOTE_DEFAULT 값을 실제 서버 주소로 설정하세요.'
+        )
+      }
       const cardsEl = document.getElementById('cardsContainer')
       const emptyEl = document.getElementById('emptyState')
       const exportBtn = document.getElementById('exportBtn')
@@ -1606,7 +1617,7 @@
 
       function setupSSE() {
         if (!('EventSource' in window)) return
-        const source = new EventSource('/events')
+        const source = new EventSource(EVENTS_URL)
         source.addEventListener('message', (event) => {
           if (!event?.data) return
           try {
@@ -1738,7 +1749,7 @@
               : row.createdAt || new Date().toISOString(),
           }))
 
-          const response = await fetch('/api/consult/import', {
+        const response = await fetch(API_IMPORT_URL, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
