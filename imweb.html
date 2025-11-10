@@ -95,6 +95,37 @@
     transition-delay:0s;
     will-change:opacity,transform
   }
+
+  @media(max-width:640px){
+    .consult-form{
+      font-size:15px;
+      padding:0 4px;
+    }
+    .consult-form .grid{
+      gap:12px;
+    }
+    .consult-form .label{
+      font-size:16px;
+    }
+    .consult-form .input,
+    .consult-form .select,
+    .consult-form .textarea{
+      font-size:14px;
+      padding:12px 12px;
+    }
+    .consult-form .hint{
+      font-size:12px;
+    }
+    .consult-form .btn{
+      width:100%;
+      min-width:auto;
+      font-size:16px;
+      padding:14px 16px;
+    }
+    .consult-form .textarea{
+      min-height:80px;
+    }
+  }
   .reveal-on-scroll.is-visible{
     opacity:1;
     transform:translate3d(0,0,0)
