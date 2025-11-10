@@ -28,8 +28,89 @@
         background: #0d1117;
         color: #c9d1d9;
       }
+      body.auth-locked {
+        overflow: hidden;
+      }
       a {
         color: inherit;
+      }
+      .auth-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(13, 17, 23, 0.92);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 200;
+        backdrop-filter: blur(6px);
+        transition: opacity 0.25s ease, visibility 0.25s ease;
+      }
+      .auth-overlay.hidden {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+      .auth-dialog {
+        width: min(360px, 90vw);
+        background: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 18px;
+        padding: 28px;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        box-shadow: 0 30px 80px rgba(1, 4, 9, 0.55);
+      }
+      .auth-dialog h2 {
+        margin: 0;
+        font-size: 24px;
+        color: #f0f6fc;
+      }
+      .auth-dialog p {
+        margin: 0;
+        color: #8b949e;
+        font-size: 14px;
+        line-height: 1.6;
+      }
+      .auth-dialog label {
+        font-size: 14px;
+        font-weight: 600;
+        color: #c9d1d9;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .auth-dialog input {
+        border: 1px solid #30363d;
+        background: #0d1117;
+        color: #f0f6fc;
+        border-radius: 10px;
+        padding: 12px 14px;
+        font-size: 14px;
+      }
+      .auth-dialog input:focus {
+        outline: none;
+        border-color: #1f6feb;
+        box-shadow: 0 0 0 2px rgba(31, 111, 235, 0.35);
+      }
+      .auth-dialog button {
+        border: none;
+        background: #1f6feb;
+        color: #ffffff;
+        font-weight: 700;
+        padding: 12px 18px;
+        border-radius: 12px;
+        font-size: 15px;
+        cursor: pointer;
+        transition: transform 0.15s ease, box-shadow 0.2s ease;
+      }
+      .auth-dialog button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 18px 36px rgba(31, 111, 235, 0.3);
+      }
+      .auth-error {
+        color: #f87171;
+        font-size: 14px;
       }
       header {
         padding: 32px clamp(24px, 6vw, 72px);
@@ -742,7 +823,30 @@
     </style>
     <script src="backend-config.js"></script>
   </head>
-  <body>
+  <body class="auth-locked">
+    <div id="authOverlay" class="auth-overlay" role="dialog" aria-modal="true">
+      <form id="authForm" class="auth-dialog" novalidate>
+        <h2>관리자 로그인</h2>
+        <p>상담 대시보드를 확인하려면 관리자 계정으로 로그인해주세요.</p>
+        <label>
+          아이디
+          <input id="authId" type="text" autocomplete="username" placeholder="아이디를 입력하세요" required />
+        </label>
+        <label>
+          비밀번호
+          <input
+            id="authPassword"
+            type="password"
+            autocomplete="current-password"
+            placeholder="비밀번호를 입력하세요"
+            required
+          />
+        </label>
+        <div id="authError" class="auth-error" role="alert" hidden>아이디 또는 비밀번호가 올바르지 않습니다.</div>
+        <button type="submit">접속하기</button>
+      </form>
+    </div>
+    <div id="appContent" hidden>
     <header>
       <div class="header-left">
         <h1>연결사 상담 센터</h1>
@@ -947,6 +1051,58 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script>
+      const ADMIN_ID = 'admin'
+      const ADMIN_PASSWORD = 'admin'
+      const authOverlay = document.getElementById('authOverlay')
+      const authForm = document.getElementById('authForm')
+      const authIdInput = document.getElementById('authId')
+      const authPasswordInput = document.getElementById('authPassword')
+      const authErrorEl = document.getElementById('authError')
+      const appContentEl = document.getElementById('appContent')
+      let isAuthenticated = false
+      let appInitialized = false
+
+      function initializeApp() {
+        if (appInitialized) return
+        appInitialized = true
+        updateStats()
+        loadData()
+        setupSSE()
+      }
+
+      function unlockApp() {
+        isAuthenticated = true
+        if (authOverlay) {
+          authOverlay.classList.add('hidden')
+          setTimeout(() => authOverlay?.setAttribute('hidden', ''), 260)
+        }
+        if (appContentEl) {
+          appContentEl.hidden = false
+        }
+        document.body.classList.remove('auth-locked')
+        initializeApp()
+      }
+
+      if (authForm) {
+        authForm.addEventListener('submit', (event) => {
+          event.preventDefault()
+          const id = authIdInput?.value.trim()
+          const pw = authPasswordInput?.value || ''
+          if (id === ADMIN_ID && pw === ADMIN_PASSWORD) {
+            if (authErrorEl) authErrorEl.hidden = true
+            unlockApp()
+          } else {
+            if (authErrorEl) {
+              authErrorEl.hidden = false
+              authErrorEl.textContent = '아이디 또는 비밀번호가 올바르지 않습니다.'
+            }
+            authPasswordInput?.focus()
+            authPasswordInput?.select?.()
+          }
+        })
+        authIdInput?.focus()
+      }
+
       const HOSTNAME = window.location && window.location.hostname
       const IS_LOCAL_HOST = /^(localhost|127\.0\.0\.1)$/i.test(HOSTNAME || '')
       const DEFAULT_BACKEND_ORIGIN = IS_LOCAL_HOST
@@ -2192,9 +2348,11 @@
           excelInput.value = ''
         }
       }
-      updateStats()
-      loadData()
-      setupSSE()
+      if (!authForm) {
+        if (appContentEl) appContentEl.hidden = false
+        document.body.classList.remove('auth-locked')
+        initializeApp()
+      }
     </script>
     <div class="sticky-note">[아임웹 아이디 비번 비밀번호] <br>
 ID: yeongyeolsa@gmail.com <br>
@@ -2203,6 +2361,7 @@ PS: 10Aksghldnjs!
 [구글 아이디 비번 비밀번호] <br>
 ID: gyeolsay@gmail.com <br>
 PS: dusruftk123!</div>
+    </div>
   </body>
 </html>
 
