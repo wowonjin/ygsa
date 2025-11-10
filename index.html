@@ -1206,6 +1206,8 @@
     <script>
       const ADMIN_ID = 'admin'
       const ADMIN_PASSWORD = 'admin'
+      const AUTH_STORAGE_KEY = 'ygsa_admin_auth'
+      const AUTH_DURATION_MS = 60 * 60 * 1000
       const authOverlay = document.getElementById('authOverlay')
       const authForm = document.getElementById('authForm')
       const authIdInput = document.getElementById('authId')
@@ -1223,6 +1225,32 @@
         setupSSE()
       }
 
+      function recordAuthentication() {
+        try {
+          const expiresAt = Date.now() + AUTH_DURATION_MS
+          localStorage.setItem(AUTH_STORAGE_KEY, String(expiresAt))
+        } catch (error) {
+          console.warn('[auth] 세션 저장 실패', error)
+        }
+      }
+
+      function hasValidSession() {
+        try {
+          const raw = localStorage.getItem(AUTH_STORAGE_KEY)
+          if (!raw) return false
+          const expiresAt = Number(raw)
+          if (!Number.isFinite(expiresAt)) return false
+          if (Date.now() >= expiresAt) {
+            localStorage.removeItem(AUTH_STORAGE_KEY)
+            return false
+          }
+          return true
+        } catch (error) {
+          console.warn('[auth] 세션 확인 실패', error)
+          return false
+        }
+      }
+
       function unlockApp() {
         isAuthenticated = true
         if (authOverlay) {
@@ -1233,6 +1261,7 @@
           appContentEl.hidden = false
         }
         document.body.classList.remove('auth-locked')
+        recordAuthentication()
         initializeApp()
       }
 
@@ -2720,6 +2749,8 @@
         if (appContentEl) appContentEl.hidden = false
         document.body.classList.remove('auth-locked')
         initializeApp()
+      } else if (hasValidSession()) {
+        unlockApp()
       }
     </script>
     <div class="sticky-note">[아임웹 아이디 비번 비밀번호] <br>
