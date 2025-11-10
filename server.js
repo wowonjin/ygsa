@@ -179,6 +179,19 @@ app.patch('/api/consult/:id', async (req, res) => {
     updates.notes = sanitizeNotes(req.body.notes)
   }
 
+  const mutableTextFields = ['name', 'gender', 'phone', 'birth', 'job', 'district', 'education']
+  for (const field of mutableTextFields) {
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, field)) {
+      updates[field] = sanitizeText(req.body[field])
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(req.body || {}, 'height')) {
+    updates.height = normalizeHeight(req.body.height)
+  } else if (Object.prototype.hasOwnProperty.call(req.body || {}, 'region')) {
+    updates.height = normalizeHeight(req.body.region)
+  }
+
   if (!Object.keys(updates).length) {
     return res.status(400).json({ ok: false, message: '변경할 항목이 없습니다.' })
   }
@@ -198,6 +211,17 @@ app.patch('/api/consult/:id', async (req, res) => {
       )
     ) {
       return res.status(409).json({ ok: false, message: '이미 예약된 일정입니다.' })
+    }
+
+    const candidate = { ...list[index], ...updates }
+    const validationErrors = validatePayload(candidate)
+    if (validationErrors.length) {
+      const [firstError] = validationErrors
+      return res.status(400).json({
+        ok: false,
+        message: firstError?.message || '유효한 상담 정보가 아닙니다.',
+        errors: validationErrors,
+      })
     }
 
     const updatedAt = new Date().toISOString()

@@ -492,35 +492,38 @@
         color: #8b949e;
         font-size: 14px;
       }
-      .detail-info {
+      .detail-fields {
         border: 1px solid #30363d;
         border-radius: 16px;
         background: rgba(13, 17, 23, 0.78);
         padding: 18px;
         display: grid;
-        gap: 14px;
+        gap: 18px;
       }
-      .detail-info dl {
-        margin: 0;
+      .detail-fields .field-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
       }
-      .detail-info div {
+      .detail-fields .field {
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 6px;
       }
-      .detail-info dt {
+      .detail-fields .field label {
         font-size: 13px;
         color: #8b949e;
-        font-weight: 500;
-      }
-      .detail-info dd {
-        margin: 0;
-        font-size: 15px;
         font-weight: 600;
+      }
+      .detail-fields .field input,
+      .detail-fields .field select {
+        border: 1px solid #30363d;
+        background: #161b22;
         color: #f0f6fc;
+        border-radius: 10px;
+        padding: 12px 14px;
+        font-family: inherit;
+        font-size: 14px;
       }
       .modal-form {
         display: flex;
@@ -534,6 +537,8 @@
         margin-bottom: 6px;
         font-weight: 600;
       }
+      .modal-form input[type='text'],
+      .modal-form input[type='tel'],
       .modal-form select,
       .modal-form input[type='date'],
       .modal-form textarea,
@@ -814,10 +819,98 @@
           <button type="button" id="detailCloseBtn" aria-label="닫기">×</button>
         </div>
         <p class="modal-subtitle" id="detailSubtitle"></p>
-        <div class="detail-info" aria-live="polite">
-          <dl id="detailInfoList"></dl>
-        </div>
         <form id="detailForm" class="modal-form">
+          <div class="detail-fields" aria-live="polite">
+            <div class="field-grid">
+              <div class="field">
+                <label for="detailName">성명</label>
+                <input id="detailName" type="text" autocomplete="name" required />
+              </div>
+              <div class="field">
+                <label for="detailPhone">연락처</label>
+                <input
+                  id="detailPhone"
+                  type="tel"
+                  inputmode="tel"
+                  autocomplete="tel-national"
+                  placeholder="010-1234-5678"
+                  required
+                />
+              </div>
+              <div class="field">
+                <label for="detailGender">성별</label>
+                <select id="detailGender" required>
+                  <option value="">선택</option>
+                  <option value="남">남자</option>
+                  <option value="여">여자</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="detailBirth">생년</label>
+                <input
+                  id="detailBirth"
+                  type="text"
+                  inputmode="numeric"
+                  maxlength="6"
+                  placeholder="1998년"
+                  required
+                />
+              </div>
+              <div class="field">
+                <label for="detailHeight">신장</label>
+                <input
+                  id="detailHeight"
+                  type="text"
+                  inputmode="numeric"
+                  maxlength="5"
+                  placeholder="170cm"
+                  required
+                />
+              </div>
+              <div class="field">
+                <label for="detailEducation">최종학력</label>
+                <select id="detailEducation" required>
+                  <option value="">선택</option>
+                  <optgroup label="고등교육 이전">
+                    <option>고등학교 재학</option>
+                    <option>고등학교 졸업(검정고시 포함)</option>
+                  </optgroup>
+                  <optgroup label="전문대(2·3년)">
+                    <option>전문대 재학</option>
+                    <option>전문학사 졸업</option>
+                  </optgroup>
+                  <optgroup label="대학교(4년)">
+                    <option>대학교 재학(4년)</option>
+                    <option>학사 졸업</option>
+                  </optgroup>
+                  <optgroup label="대학원">
+                    <option>석사 과정 재학</option>
+                    <option>석사 졸업</option>
+                    <option>박사 과정 재학</option>
+                    <option>박사 졸업</option>
+                  </optgroup>
+                  <optgroup label="기타">
+                    <option>해외 대학 재학/졸업</option>
+                    <option>기타</option>
+                  </optgroup>
+                </select>
+              </div>
+              <div class="field">
+                <label for="detailJob">직업</label>
+                <input
+                  id="detailJob"
+                  type="text"
+                  placeholder="삼성전자"
+                  autocomplete="organization"
+                  required
+                />
+              </div>
+              <div class="field">
+                <label for="detailDistrict">거주 구</label>
+                <input id="detailDistrict" type="text" placeholder="서울특별시 강남구" required />
+              </div>
+            </div>
+          </div>
           <div>
             <label for="detailPhoneStatus">전화 상담 상태</label>
             <select id="detailPhoneStatus">
@@ -891,13 +984,20 @@
       const detailCancelBtn = document.getElementById('detailCancelBtn')
       const detailTitleEl = document.getElementById('detailTitle')
       const detailSubtitleEl = document.getElementById('detailSubtitle')
+      const detailNameInput = document.getElementById('detailName')
+      const detailPhoneInput = document.getElementById('detailPhone')
+      const detailGenderSelect = document.getElementById('detailGender')
+      const detailBirthInput = document.getElementById('detailBirth')
+      const detailHeightInput = document.getElementById('detailHeight')
+      const detailEducationSelect = document.getElementById('detailEducation')
+      const detailJobInput = document.getElementById('detailJob')
+      const detailDistrictInput = document.getElementById('detailDistrict')
       const detailPhoneStatusEl = document.getElementById('detailPhoneStatus')
       const detailDateInput = document.getElementById('detailDate')
       const detailTimeSelect = document.getElementById('detailTime')
       const detailClearScheduleBtn = document.getElementById('detailClearSchedule')
       const detailNotesInput = document.getElementById('detailNotes')
       const detailScheduleInfo = document.getElementById('detailScheduleInfo')
-      const detailInfoList = document.getElementById('detailInfoList')
       const calendarScrollBtn = document.getElementById('calendarScrollBtn')
       const calendarModal = document.getElementById('calendarModal')
       const calendarCloseBtn = document.getElementById('calendarCloseBtn')
@@ -963,6 +1063,52 @@
           closeDetailModal()
         }
       })
+      if (detailBirthInput) {
+        detailBirthInput.addEventListener('input', () => {
+          detailBirthInput.value = detailBirthInput.value.replace(/[^0-9년]/g, '')
+        })
+      }
+      if (detailPhoneInput) {
+        detailPhoneInput.addEventListener('input', () => {
+          let v = detailPhoneInput.value.replace(/[^0-9]/g, '')
+          if (v.length < 4) {
+            detailPhoneInput.value = v
+            return
+          }
+          if (v.length < 8) {
+            detailPhoneInput.value = v.replace(/(\d{3})(\d+)/, '$1-$2')
+            return
+          }
+          detailPhoneInput.value = v.replace(/(\d{3})(\d{3,4})(\d{0,4}).*/, '$1-$2-$3')
+        })
+      }
+      if (detailHeightInput) {
+        const formatDetailHeight = () => {
+          const digits = detailHeightInput.value.replace(/[^0-9]/g, '').slice(0, 3)
+          if (!digits) {
+            detailHeightInput.value = ''
+            return
+          }
+          const formatted = `${digits}cm`
+          detailHeightInput.value = formatted
+          if (document.activeElement === detailHeightInput) {
+            const caretPos = digits.length
+            requestAnimationFrame(() => {
+              detailHeightInput.setSelectionRange(caretPos, caretPos)
+            })
+          }
+        }
+        detailHeightInput.addEventListener('focus', () => {
+          const digits = detailHeightInput.value.replace(/[^0-9]/g, '').slice(0, 3)
+          detailHeightInput.value = digits
+          requestAnimationFrame(() => {
+            const pos = detailHeightInput.value.length
+            detailHeightInput.setSelectionRange(pos, pos)
+          })
+        })
+        detailHeightInput.addEventListener('input', formatDetailHeight)
+        detailHeightInput.addEventListener('blur', formatDetailHeight)
+      }
       if (calendarScrollBtn) {
         calendarScrollBtn.addEventListener('click', () => openCalendarModal(true))
       }
@@ -1119,7 +1265,14 @@
           : 'pending'
         detailPhoneStatusEl.value = status
 
-        setDetailInfo(record)
+        if (detailNameInput) detailNameInput.value = record.name || ''
+        if (detailPhoneInput) detailPhoneInput.value = formatPhoneNumber(record.phone)
+        setSelectValue(detailGenderSelect, record.gender || '')
+        if (detailBirthInput) detailBirthInput.value = record.birth || ''
+        if (detailHeightInput) detailHeightInput.value = normalizeHeightValue(record.height || record.region)
+        setSelectValue(detailEducationSelect, record.education || '')
+        if (detailJobInput) detailJobInput.value = record.job || ''
+        if (detailDistrictInput) detailDistrictInput.value = record.district || ''
 
         const { date: scheduledDate, time: scheduledTime } = splitLocalDateTime(
           record.meetingSchedule,
@@ -1143,9 +1296,8 @@
         detailTimeSelect.innerHTML = '<option value="">시간 선택</option>'
         detailTimeSelect.disabled = true
         detailScheduleInfo.textContent = ''
-        if (detailInfoList) {
-          detailInfoList.innerHTML = ''
-        }
+        if (detailHeightInput) detailHeightInput.value = ''
+        if (detailPhoneInput) detailPhoneInput.value = ''
       }
 
       function renderEntry(label, value) {
@@ -1157,19 +1309,23 @@
         `
       }
 
-      function setDetailInfo(record) {
-        if (!detailInfoList) return
-        const infoItems = [
-          ['연락처', record.phone],
-          ['성별', record.gender],
-          ['생년', record.birth],
-          ['최종학력', record.education],
-          ['직업', record.job],
-          ['신장', record.height],
-          ['거주 구', record.district],
-          ['신청 시각', formatDate(record.createdAt)],
-        ]
-        detailInfoList.innerHTML = infoItems.map(([label, value]) => renderEntry(label, value)).join('')
+      function normalizeHeightValue(raw) {
+        const digits = String(raw || '').replace(/[^0-9]/g, '').slice(0, 3)
+        return digits ? `${digits}cm` : ''
+      }
+
+      function formatPhoneNumber(raw) {
+        const digits = String(raw || '').replace(/[^0-9]/g, '')
+        if (!digits) return ''
+        if (digits.length < 4) return digits
+        if (digits.length < 8) return digits.replace(/(\d{3})(\d+)/, '$1-$2')
+        return digits.replace(/(\d{3})(\d{3,4})(\d{0,4}).*/, '$1-$2-$3')
+      }
+
+      function setSelectValue(selectEl, value) {
+        if (!selectEl) return
+        const options = Array.from(selectEl.options || []).map((opt) => opt.value)
+        selectEl.value = options.includes(value) ? value : ''
       }
 
       function formatPhoneStatus(status) {
@@ -1216,6 +1372,25 @@
           return
         }
 
+        if (!detailForm.reportValidity()) {
+          return
+        }
+
+        const nameValue = (detailNameInput?.value || '').trim()
+        if (detailNameInput) detailNameInput.value = nameValue
+        const phoneValue = formatPhoneNumber(detailPhoneInput?.value)
+        if (detailPhoneInput) detailPhoneInput.value = phoneValue
+        const genderValue = detailGenderSelect?.value || ''
+        const birthValue = (detailBirthInput?.value || '').trim()
+        if (detailBirthInput) detailBirthInput.value = birthValue
+        const educationValue = detailEducationSelect?.value || ''
+        const jobValue = (detailJobInput?.value || '').trim()
+        if (detailJobInput) detailJobInput.value = jobValue
+        const districtValue = (detailDistrictInput?.value || '').trim()
+        if (detailDistrictInput) detailDistrictInput.value = districtValue
+        const heightValue = normalizeHeightValue(detailHeightInput?.value)
+        if (detailHeightInput) detailHeightInput.value = heightValue
+
         const dateValue = detailDateInput.value
         const timeValue = detailTimeSelect.disabled ? '' : detailTimeSelect.value
 
@@ -1239,6 +1414,14 @@
         }
 
         const payload = {
+          name: nameValue,
+          gender: genderValue,
+          phone: phoneValue,
+          birth: birthValue,
+          education: educationValue,
+          job: jobValue,
+          height: heightValue,
+          district: districtValue,
           phoneConsultStatus: phoneStatus,
           meetingSchedule,
           notes: detailNotesInput.value?.trim() || '',
@@ -1619,6 +1802,7 @@
         if (typeof normalized.height !== 'string') {
           normalized.height = normalized.height != null ? String(normalized.height) : ''
         }
+        normalized.height = normalizeHeightValue(normalized.height)
         if (typeof normalized.district !== 'string') {
           normalized.district = normalized.district != null ? String(normalized.district) : ''
         }
