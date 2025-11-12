@@ -874,6 +874,7 @@
       const submissionModalCloseBtn = document.getElementById('submissionModalClose')
 
       let selectedValues = []
+      const multiFileSelections = new Map()
 
       if (phoneInput) {
         const applyPhoneFormatting = () => {
@@ -979,6 +980,45 @@
         return list.find((file) => Number(file?.size) > MAX_UPLOAD_SIZE_BYTES) || null
       }
 
+      function getStoredFiles(inputEl) {
+        if (!inputEl || !inputEl.id) return []
+        return multiFileSelections.get(inputEl.id) || []
+      }
+
+      function mergeFileArrays(existing, incoming) {
+        if (!Array.isArray(existing) || !Array.isArray(incoming)) {
+          return Array.from(existing || []).concat(Array.from(incoming || []))
+        }
+        const merged = [...existing, ...incoming]
+        const seen = new Map()
+        merged.forEach((file) => {
+          if (!file) return
+          const key = `${file.name || ''}__${file.lastModified || file.size || Math.random()}`
+          seen.set(key, file)
+        })
+        return Array.from(seen.values())
+      }
+
+      function syncInputFiles(inputEl, files, zone) {
+        if (!inputEl) return
+        const list = inputEl.multiple ? Array.from(files || []) : Array.from(files || []).slice(0, 1)
+        if (typeof DataTransfer === 'function') {
+          const dataTransfer = new DataTransfer()
+          list.forEach((file) => {
+            if (file) dataTransfer.items.add(file)
+          })
+          inputEl.files = dataTransfer.files
+        }
+        if (inputEl.multiple) {
+          if (inputEl.id && list.length) {
+            multiFileSelections.set(inputEl.id, list)
+          } else if (inputEl.id) {
+            multiFileSelections.delete(inputEl.id)
+          }
+        }
+        updateFileDropSummary(zone, inputEl)
+      }
+
       async function uploadAttachment(file, options = {}) {
         if (!file) return null
         if (!UPLOAD_API_URL) {
@@ -1076,9 +1116,10 @@
           zone.classList.remove('is-dragover')
           const incomingFiles = Array.from(event.dataTransfer?.files || [])
           if (!incomingFiles.length) return
-          if (typeof DataTransfer === 'undefined') return
-
-          const filesToUse = inputEl.multiple ? incomingFiles : [incomingFiles[0]].filter(Boolean)
+          const existingFiles = inputEl.multiple ? getStoredFiles(inputEl) : []
+          const filesToUse = inputEl.multiple
+            ? mergeFileArrays(existingFiles, incomingFiles)
+            : [incomingFiles[0]].filter(Boolean)
           const oversized = findOversizedFile(filesToUse)
           if (oversized) {
             showMessage(
@@ -1089,16 +1130,14 @@
             )
             return
           }
-          const dataTransfer = new DataTransfer()
-          filesToUse.forEach((file) => dataTransfer.items.add(file))
-          inputEl.files = dataTransfer.files
-
-          updateFileDropSummary(zone, inputEl)
-          inputEl.dispatchEvent(new Event('change', { bubbles: true }))
+          syncInputFiles(inputEl, filesToUse, zone)
         })
 
         inputEl.addEventListener('change', () => {
-          const oversized = findOversizedFile(inputEl.files)
+          const newFiles = Array.from(inputEl.files || [])
+          const existingFiles = inputEl.multiple ? getStoredFiles(inputEl) : []
+          const combinedFiles = inputEl.multiple ? mergeFileArrays(existingFiles, newFiles) : newFiles
+          const oversized = findOversizedFile(combinedFiles)
           if (oversized) {
             showMessage(
               `'${oversized.name}' 파일이 ${MAX_UPLOAD_SIZE_LABEL} 용량 제한을 초과했습니다. (${formatBytes(
@@ -1106,12 +1145,16 @@
               )})`,
               'error'
             )
-            inputEl.value = ''
-            zone.classList.remove('has-files')
-            updateFileDropSummary(zone, inputEl)
+            if (inputEl.multiple) {
+              syncInputFiles(inputEl, existingFiles, zone)
+            } else {
+              inputEl.value = ''
+              zone.classList.remove('has-files')
+              updateFileDropSummary(zone, inputEl)
+            }
             return
           }
-          updateFileDropSummary(zone, inputEl)
+          syncInputFiles(inputEl, combinedFiles, zone)
         })
       })
 
@@ -1440,6 +1483,9 @@
             const inputEl = targetId ? document.getElementById(targetId) : null
             if (inputEl) {
               inputEl.value = ''
+              if (inputEl.id) {
+                multiFileSelections.delete(inputEl.id)
+              }
             }
             updateFileDropSummary(zone, inputEl)
           })
