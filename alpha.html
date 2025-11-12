@@ -803,7 +803,11 @@
       const BACKEND_ORIGIN = (BACKEND_ORIGIN_RAW || DEFAULT_BACKEND_ORIGIN).replace(/\/$/, '')
       const API_BASE_URL = BACKEND_ORIGIN
       const PROFILE_API_URL = `${API_BASE_URL}/api/consult/profile`
+      const UPLOAD_API_URL = `${API_BASE_URL}/api/uploads`
+      const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024
+      const MAX_UPLOAD_SIZE_LABEL = '10MB'
       const DRAFT_STORAGE_KEY = 'alphaProfileDraft_v1'
+      const DRAFT_STORAGE_PREFIX = `${DRAFT_STORAGE_KEY}:`
 
       const formEl = document.getElementById('profileForm')
       const submitBtn = document.getElementById('submitButton')
@@ -876,10 +880,14 @@
         const digits = String(raw || '').replace(/[^0-9]/g, '')
         if (!digits) return ''
         if (digits.length <= 3) return digits
-        if (digits.length <= 7) return digits.replace(/(\\d{3})(\\d+)/, '$1-$2')
-        return digits.replace(/(\\d{3})(\\d{3,4})(\\d{0,4}).*/, (_, a, b, c) =>
+        if (digits.length <= 7) return digits.replace(/(\d{3})(\d+)/, '$1-$2')
+        return digits.replace(/(\d{3})(\d{3,4})(\d{0,4}).*/, (_, a, b, c) =>
           c ? `${a}-${b}-${c}` : `${a}-${b}`
         )
+      }
+
+      function normalizePhoneKey(raw) {
+        return String(raw || '').replace(/[^0-9]/g, '')
       }
 
       function getMultiSelectValues(selectEl) {
@@ -923,23 +931,51 @@
         }
       }
 
-      function readFileAsDataUrl(file) {
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader()
-          reader.onload = () => resolve(reader.result)
-          reader.onerror = () => reject(reader.error || new Error('파일을 읽지 못했습니다.'))
-          reader.readAsDataURL(file)
-        })
+      function formatBytes(bytes) {
+        if (!Number.isFinite(bytes)) return ''
+        if (bytes >= 1024 * 1024) {
+          return `${(bytes / (1024 * 1024)).toFixed(1)}MB`
+        }
+        if (bytes >= 1024) {
+          return `${(bytes / 1024).toFixed(1)}KB`
+        }
+        return `${bytes}B`
       }
 
-      async function serializeFile(file) {
+      function findOversizedFile(files) {
+        const list = Array.isArray(files) ? files : Array.from(files || [])
+        return list.find((file) => Number(file?.size) > MAX_UPLOAD_SIZE_BYTES) || null
+      }
+
+      async function uploadAttachment(file, options = {}) {
         if (!file) return null
-        const dataUrl = await readFileAsDataUrl(file)
+        if (!UPLOAD_API_URL) {
+          throw new Error('파일 업로드 서버 주소가 설정되지 않았습니다.')
+        }
+        const formData = new FormData()
+        formData.append('file', file)
+        if (options.category) {
+          formData.append('category', options.category)
+        }
+        if (options.meta && typeof options.meta === 'object') {
+          Object.entries(options.meta).forEach(([key, value]) => {
+            formData.append(`meta[${key}]`, String(value ?? ''))
+          })
+        }
+        const res = await fetch(UPLOAD_API_URL, {
+          method: 'POST',
+          body: formData,
+        })
+        const body = await res.json().catch(() => ({}))
+        if (!res.ok || !body?.ok || !body?.url) {
+          throw new Error(body?.message || '파일 업로드에 실패했습니다.')
+        }
         return {
-          name: file.name || '',
-          size: Number(file.size) || 0,
-          type: file.type || '',
-          dataUrl: typeof dataUrl === 'string' ? dataUrl : '',
+          name: body.filename || file.name || '',
+          size: Number(body.size ?? file.size ?? 0),
+          type: body.mimeType || file.type || '',
+          url: String(body.url),
+          uploadId: body.id || body.uploadId || '',
         }
       }
 
@@ -1011,6 +1047,16 @@
           if (typeof DataTransfer === 'undefined') return
 
           const filesToUse = inputEl.multiple ? incomingFiles : [incomingFiles[0]].filter(Boolean)
+          const oversized = findOversizedFile(filesToUse)
+          if (oversized) {
+            showMessage(
+              `'${oversized.name}' 파일이 ${MAX_UPLOAD_SIZE_LABEL} 용량 제한을 초과했습니다. (${formatBytes(
+                oversized.size,
+              )})`,
+              'error'
+            )
+            return
+          }
           const dataTransfer = new DataTransfer()
           filesToUse.forEach((file) => dataTransfer.items.add(file))
           inputEl.files = dataTransfer.files
@@ -1019,13 +1065,31 @@
           inputEl.dispatchEvent(new Event('change', { bubbles: true }))
         })
 
-        inputEl.addEventListener('change', () => updateFileDropSummary(zone, inputEl))
+        inputEl.addEventListener('change', () => {
+          const oversized = findOversizedFile(inputEl.files)
+          if (oversized) {
+            showMessage(
+              `'${oversized.name}' 파일이 ${MAX_UPLOAD_SIZE_LABEL} 용량 제한을 초과했습니다. (${formatBytes(
+                oversized.size,
+              )})`,
+              'error'
+            )
+            inputEl.value = ''
+            zone.classList.remove('has-files')
+            updateFileDropSummary(zone, inputEl)
+            return
+          }
+          updateFileDropSummary(zone, inputEl)
+        })
       })
 
       function collectDraftData() {
         const values = valuesSelect ? getMultiSelectValues(valuesSelect) : []
+        const phoneRaw = phoneInput?.value || ''
+        const phoneKey = normalizePhoneKey(phoneRaw)
         return {
-          phone: phoneInput?.value || '',
+          phone: phoneRaw,
+          phoneKey,
           mbti: mbtiInput?.value || '',
           job: jobInput?.value || '',
           jobDetail: jobDetailInput?.value || '',
@@ -1092,7 +1156,12 @@
       draftSaveButton?.addEventListener('click', () => {
         try {
           const draft = collectDraftData()
-          localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft))
+          const phoneKey = draft.phoneKey
+          if (!phoneKey) {
+            alert('임시 저장을 위해 연락처를 먼저 입력해주세요.')
+            return
+          }
+          localStorage.setItem(`${DRAFT_STORAGE_PREFIX}${phoneKey}`, JSON.stringify(draft))
           alert('입력한 내용을 임시 저장했습니다.')
         } catch (error) {
           console.error('[draft] save failed', error)
@@ -1102,7 +1171,12 @@
 
       draftLoadButton?.addEventListener('click', () => {
         try {
-          const raw = localStorage.getItem(DRAFT_STORAGE_KEY)
+          const phoneKey = normalizePhoneKey(phoneInput?.value || '')
+          if (!phoneKey) {
+            alert('임시 저장 불러오기를 위해 연락처를 입력해주세요.')
+            return
+          }
+          const raw = localStorage.getItem(`${DRAFT_STORAGE_PREFIX}${phoneKey}`)
           if (!raw) {
             alert('저장된 임시 데이터가 없습니다.')
             return
@@ -1194,26 +1268,54 @@
           return
         }
 
+        const fileSizeChecks = [
+          { input: idCardInput, label: '신분증' },
+          { input: employmentProofInput, label: '재직 증빙' },
+          { input: photosInput, label: '프로필 사진' },
+        ]
+        for (const { input, label } of fileSizeChecks) {
+          if (!input || !input.files) continue
+          const oversized = findOversizedFile(input.files)
+          if (oversized) {
+            showMessage(
+              `${label} 파일 '${oversized.name}'이 ${MAX_UPLOAD_SIZE_LABEL} 제한을 초과했습니다. (${formatBytes(
+                oversized.size,
+              )})`,
+              'error'
+            )
+            return
+          }
+        }
+
         let idCardUpload = null
         let employmentUpload = null
         let photosUpload = []
         try {
-          idCardUpload =
-            idCardInput?.files && idCardInput.files[0] ? await serializeFile(idCardInput.files[0]) : null
-          employmentUpload =
-            employmentProofInput?.files && employmentProofInput.files[0]
-              ? await serializeFile(employmentProofInput.files[0])
-              : null
+          if (idCardInput?.files && idCardInput.files[0]) {
+            showMessage('신분증 파일을 업로드하고 있습니다…', '')
+            idCardUpload = await uploadAttachment(idCardInput.files[0], { category: 'idCard' })
+          }
+          if (employmentProofInput?.files && employmentProofInput.files[0]) {
+            showMessage('재직 증빙 파일을 업로드하고 있습니다…', '')
+            employmentUpload = await uploadAttachment(employmentProofInput.files[0], {
+              category: 'employmentProof',
+            })
+          }
           const photoFiles = photosInput?.files ? Array.from(photosInput.files) : []
           if (photoFiles.length) {
-            const serializedPhotos = await Promise.all(photoFiles.map((file) => serializeFile(file)))
-            photosUpload = serializedPhotos.filter(Boolean)
+            showMessage('프로필 사진을 업로드하고 있습니다…', '')
+            const uploadedPhotos = await Promise.all(
+              photoFiles.map((file) => uploadAttachment(file, { category: 'profilePhoto' }))
+            )
+            photosUpload = uploadedPhotos.filter(Boolean)
           }
         } catch (error) {
-          console.error('[attachments] serialize failed', error)
-          showMessage('첨부 파일을 읽어오지 못했습니다. 다시 시도해주세요.', 'error')
+          console.error('[attachments] upload failed', error)
+          showMessage(error?.message || '첨부 파일 업로드에 실패했습니다. 다시 시도해주세요.', 'error')
           return
         }
+
+        showMessage('', '')
 
         const documentsPayload = {}
         if (idCardUpload) documentsPayload.idCard = idCardUpload

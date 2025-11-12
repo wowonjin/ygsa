@@ -1207,6 +1207,7 @@
               <p class="modal-subtitle" id="detailSubtitle"></p>
             </div>
             <div class="modal-actions">
+              <button type="button" class="secondary" id="detailDraftLoadBtn" hidden>임시 데이터 불러오기</button>
               <button type="button" class="ghost" id="detailExportBtn">PDF 내보내기</button>
               <button type="button" class="secondary" id="detailCancelBtn">취소</button>
               <button type="submit" class="primary">저장</button>
@@ -1691,6 +1692,7 @@
       const detailEmploymentLink = document.getElementById('detailEmploymentLink')
       const detailPhotosItem = document.getElementById('detailPhotosItem')
       const detailPhotosGrid = document.getElementById('detailPhotosGrid')
+      const detailDraftLoadBtn = document.getElementById('detailDraftLoadBtn')
       const pdfRoot = document.getElementById('pdfExportRoot')
       const pdfPage = document.getElementById('pdfProfilePage')
       const pdfPhoto = document.getElementById('pdfPhoto')
@@ -1716,6 +1718,9 @@
           console.warn('[pdf] crossOrigin 설정 실패', error)
         }
       }
+      const DRAFT_STORAGE_KEY = 'alphaProfileDraft_v1'
+      const DRAFT_STORAGE_PREFIX = `${DRAFT_STORAGE_KEY}:`
+      let currentDraftData = null
       const calendarScrollBtn = document.getElementById('calendarScrollBtn')
       const calendarModal = document.getElementById('calendarModal')
       const calendarCloseBtn = document.getElementById('calendarCloseBtn')
@@ -1792,6 +1797,13 @@
           enforceMultiSelectLimit(detailValuesSelect, 1),
         )
       }
+      detailDraftLoadBtn?.addEventListener('click', () => {
+        if (!currentDraftData) {
+          showToast('불러올 임시 데이터가 없습니다.')
+          return
+        }
+        applyDraftToDetailForm(currentDraftData)
+      })
       document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && !detailModal.hidden) {
           closeDetailModal()
@@ -2043,6 +2055,20 @@
           ? `현재 예약: ${formatDate(record.meetingSchedule)}`
           : '대면 상담 일정이 아직 없습니다.'
 
+        currentDraftData = getDraftForPhone(record.phone)
+        if (detailDraftLoadBtn) {
+          if (currentDraftData) {
+            detailDraftLoadBtn.hidden = false
+            const savedAt = currentDraftData.savedAt
+            detailDraftLoadBtn.title = savedAt
+              ? `저장 시각: ${new Date(savedAt).toLocaleString('ko-KR')}`
+              : ''
+          } else {
+            detailDraftLoadBtn.hidden = true
+            detailDraftLoadBtn.title = ''
+          }
+        }
+
         updateDetailAttachments(record)
 
         detailModal.hidden = false
@@ -2055,6 +2081,11 @@
         document.body.classList.remove('modal-open')
         if (detailForm) detailForm.scrollTop = 0
         detailRecordId = null
+        currentDraftData = null
+        if (detailDraftLoadBtn) {
+          detailDraftLoadBtn.hidden = true
+          detailDraftLoadBtn.title = ''
+        }
         detailForm.reset()
         detailTimeSelect.innerHTML = '<option value="">시간 선택</option>'
         detailTimeSelect.disabled = true
@@ -2104,6 +2135,10 @@
         if (digits.length < 4) return digits
         if (digits.length < 8) return digits.replace(/(\d{3})(\d+)/, '$1-$2')
         return digits.replace(/(\d{3})(\d{3,4})(\d{0,4}).*/, '$1-$2-$3')
+      }
+
+      function normalizePhoneKey(raw) {
+        return String(raw || '').replace(/[^0-9]/g, '')
       }
 
       function setSelectValue(selectEl, value) {
@@ -2158,6 +2193,8 @@
         linkEl.href = source
         linkEl.download = name
         linkEl.textContent = `${name} 다운로드`
+        linkEl.target = '_blank'
+        linkEl.rel = 'noopener noreferrer'
         return true
       }
 
@@ -2177,6 +2214,8 @@
             const label = photo.name || `사진 ${index + 1}`
             link.download = label
             link.title = `${label} 다운로드`
+            link.target = '_blank'
+            link.rel = 'noopener noreferrer'
             const img = document.createElement('img')
             img.src = source
             img.alt = label
@@ -2206,6 +2245,56 @@
 
         const hasAny = hasIdCard || hasEmployment || photoCount > 0
         detailAttachmentsSection.hidden = !hasAny
+      }
+
+      function getDraftForPhone(phone) {
+        const key = normalizePhoneKey(phone)
+        if (!key) return null
+        const raw = localStorage.getItem(`${DRAFT_STORAGE_PREFIX}${key}`)
+        if (!raw) return null
+        try {
+          const draft = JSON.parse(raw)
+          return draft && typeof draft === 'object' ? draft : null
+        } catch (error) {
+          console.warn('[draft] parse failed', error)
+          return null
+        }
+      }
+
+      function applyDraftToDetailForm(draft) {
+        if (!draft || typeof draft !== 'object') return
+        if (detailPhoneInput && draft.phone) detailPhoneInput.value = formatPhoneNumber(draft.phone)
+        if (detailMbtiInput && draft.mbti !== undefined) detailMbtiInput.value = draft.mbti || ''
+        if (detailJobInput && draft.job !== undefined) detailJobInput.value = draft.job || ''
+        if (detailJobDetailInput && draft.jobDetail !== undefined)
+          detailJobDetailInput.value = draft.jobDetail || ''
+        if (detailUniversityInput && draft.university !== undefined)
+          detailUniversityInput.value = draft.university || ''
+        if (detailSalaryRangeSelect && draft.salaryRange !== undefined)
+          setSelectValue(detailSalaryRangeSelect, draft.salaryRange || '')
+        if (detailSmokingSelect && draft.smoking !== undefined)
+          setSelectValue(detailSmokingSelect, draft.smoking || '')
+        if (detailReligionSelect && draft.religion !== undefined)
+          setSelectValue(detailReligionSelect, draft.religion || '')
+        if (detailProfileAppealInput && draft.profileAppeal !== undefined)
+          detailProfileAppealInput.value = draft.profileAppeal || ''
+        if (detailLikesDislikesInput && draft.likesDislikes !== undefined)
+          detailLikesDislikesInput.value = draft.likesDislikes || ''
+        if (detailSufficientConditionInput && draft.sufficientCondition !== undefined)
+          detailSufficientConditionInput.value = draft.sufficientCondition || ''
+        if (detailNecessaryConditionInput && draft.necessaryCondition !== undefined)
+          detailNecessaryConditionInput.value = draft.necessaryCondition || ''
+        if (detailAboutMeInput && draft.aboutMe !== undefined) detailAboutMeInput.value = draft.aboutMe || ''
+        if (detailPreferredHeightsSelect && draft.preferredHeights !== undefined)
+          setSelectValue(detailPreferredHeightsSelect, draft.preferredHeights || '')
+        if (detailPreferredAgesSelect && draft.preferredAges !== undefined)
+          setSelectValue(detailPreferredAgesSelect, draft.preferredAges || '')
+        const draftValues = Array.isArray(draft.values) ? draft.values.slice(0, 1) : []
+        if (detailValuesSelect) {
+          setMultiSelectValues(detailValuesSelect, draftValues)
+        }
+        detailValuesSelection = draftValues
+        showToast('임시 저장된 데이터를 적용했습니다.')
       }
 
       function getMultiSelectValues(selectEl) {
@@ -3028,6 +3117,7 @@
             size: Number(entry.size) || 0,
             type: entry.type != null ? String(entry.type) : '',
             dataUrl: source,
+            url: source,
           }
         }
         const documentsRaw =
