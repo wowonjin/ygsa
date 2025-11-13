@@ -1020,6 +1020,45 @@
         font-size: 20px;
         color: #f0f6fc;
       }
+      .card-attachments {
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px solid #30363d;
+        display: grid;
+        gap: 10px;
+      }
+      .card-attachments-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: #9da4b0;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .card-attachments-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 8px;
+      }
+      .card-attachments-list li {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        font-size: 13px;
+        color: #c9d1d9;
+      }
+      .card-attachments-list span.label {
+        color: #8b949e;
+        min-width: 88px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .card-attachments-list a {
+        color: #58a6ff;
+        text-decoration: underline;
+        word-break: break-all;
+      }
       .meta {
         font-size: 13px;
         color: #8b949e;
@@ -2159,6 +2198,7 @@
                 ${renderEntry('연봉', formatSalaryRange(item.salaryRange))}
                 ${renderEntry('거주 구', item.district)}
               </dl>
+              ${renderCardAttachments(item)}
             `
           fragment.appendChild(card)
         })
@@ -2302,6 +2342,56 @@
         `
       }
 
+      function renderCardAttachments(item) {
+        if (!item) return ''
+        const attachments = []
+        const documents = item.documents || {}
+        if (documents.idCard) {
+          const rendered = renderAttachmentListItem('신분증', documents.idCard, '신분증')
+          if (rendered) attachments.push(rendered)
+        }
+        if (documents.employmentProof) {
+          const rendered = renderAttachmentListItem('재직 증빙', documents.employmentProof, '재직 증빙')
+          if (rendered) attachments.push(rendered)
+        }
+        const photos = Array.isArray(item.photos) ? item.photos : []
+        const facePhotos = photos.filter((photo) => (photo.role || photo.meta?.type) === 'face')
+        const fullPhotos = photos.filter((photo) => (photo.role || photo.meta?.type) === 'full')
+        facePhotos.forEach((photo, index) => {
+          const rendered = renderAttachmentListItem(`얼굴 사진 ${index + 1}`, photo, '얼굴 사진')
+          if (rendered) attachments.push(rendered)
+        })
+        fullPhotos.forEach((photo, index) => {
+          const rendered = renderAttachmentListItem(`전신 사진 ${index + 1}`, photo, '전신 사진')
+          if (rendered) attachments.push(rendered)
+        })
+        if (!attachments.length) return ''
+        return `
+          <div class="card-attachments">
+            <div class="card-attachments-title">업로드 자료</div>
+            <ul class="card-attachments-list">
+              ${attachments.join('')}
+            </ul>
+          </div>
+        `
+      }
+
+      function renderAttachmentListItem(label, file, fallbackName) {
+        const source = getFileSource(file)
+        if (!source) return ''
+        const displayName = escapeHtml(file?.name || fallbackName || label)
+        const safeLabel = escapeHtml(label || '첨부파일')
+        const safeUrl = escapeHtml(source)
+        return `
+          <li>
+            <span class="label">${safeLabel}</span>
+            <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" download="${displayName}">
+              ${displayName}
+            </a>
+          </li>
+        `
+      }
+
       function normalizeHeightValue(raw) {
         const digits = String(raw || '').replace(/[^0-9]/g, '').slice(0, 3)
         return digits ? `${digits}cm` : ''
@@ -2344,6 +2434,8 @@
         if (!fileData) return ''
         if (typeof fileData === 'string') return fileData
         if (typeof fileData.dataUrl === 'string' && fileData.dataUrl.trim()) return fileData.dataUrl.trim()
+        if (typeof fileData.downloadURL === 'string' && fileData.downloadURL.trim())
+          return fileData.downloadURL.trim()
         if (typeof fileData.url === 'string' && fileData.url.trim()) return fileData.url.trim()
         if (typeof fileData.src === 'string' && fileData.src.trim()) return fileData.src.trim()
         if (typeof fileData.data === 'string' && fileData.data.trim()) {
@@ -3334,6 +3426,10 @@
               size: 0,
               type: '',
               dataUrl: source,
+              url: source,
+              downloadURL: source,
+              storagePath: '',
+              role: '',
             }
           }
           if (typeof entry !== 'object') return null
@@ -3345,6 +3441,20 @@
             type: entry.type != null ? String(entry.type) : '',
             dataUrl: source,
             url: source,
+            downloadURL:
+              typeof entry.downloadURL === 'string' && entry.downloadURL.trim()
+                ? entry.downloadURL.trim()
+                : source,
+            storagePath:
+              typeof entry.storagePath === 'string' && entry.storagePath.trim()
+                ? entry.storagePath.trim()
+                : '',
+            role:
+              typeof entry.role === 'string' && entry.role
+                ? entry.role
+                : typeof entry.meta?.type === 'string'
+                ? entry.meta.type
+                : '',
           }
         }
         const documentsRaw =

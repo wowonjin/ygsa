@@ -203,15 +203,60 @@
         outline-offset: 2px;
       }
       #alpha-profile-root .file-drop-zone .file-drop-selected {
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        display: grid;
         gap: 10px;
         font-size: 15px;
         font-weight: 600;
         color: #4f4f4f;
       }
-      #alpha-profile-root .file-drop-zone .file-drop-check {
+      #alpha-profile-root .file-drop-zone:not(.has-files) .file-drop-selected {
+        display: none;
+      }
+      #alpha-profile-root .file-drop-zone.has-files .file-drop-default {
+        display: none;
+      }
+      #alpha-profile-root .file-drop-files {
+        display: grid;
+        gap: 8px;
+        font-weight: 500;
+      }
+      #alpha-profile-root .file-drop-zone:not(.has-files) .file-drop-files {
+        font-weight: 600;
+      }
+      #alpha-profile-root .file-drop-file {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0;
+        font-size: 14px;
+        font-weight: 500;
+        color: #4f4f4f;
+      }
+      #alpha-profile-root .file-drop-file-progress {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: conic-gradient(#5377f6 calc(var(--progress, 0) * 1deg), #e2e8f6 0deg);
+        display: grid;
+        place-items: center;
+        color: #4f4f4f;
+        font-size: 12px;
+        font-weight: 700;
+        flex-shrink: 0;
+        position: relative;
+      }
+      #alpha-profile-root .file-drop-file-progress::after {
+        content: '';
+        position: absolute;
+        inset: 4px;
+        border-radius: 50%;
+        background: #ffffff;
+      }
+      #alpha-profile-root .file-drop-file-progress span {
+        position: relative;
+        z-index: 1;
+      }
+      #alpha-profile-root .file-drop-file-status {
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -220,44 +265,29 @@
         border-radius: 50%;
         background: #e4ecff;
         color: #2f49c8;
+        font-size: 16px;
         font-weight: 700;
-        font-size: 18px;
+        flex-shrink: 0;
       }
-      #alpha-profile-root .file-drop-zone:not(.has-files) .file-drop-selected {
-        display: none;
-      }
-      #alpha-profile-root .file-drop-zone.has-files .file-drop-default {
-        display: none;
-      }
-      #alpha-profile-root .file-drop-list {
-        margin: 12px 0 0;
-        padding: 0;
-        list-style: none;
-        display: grid;
-        gap: 8px;
-      }
-      #alpha-profile-root .file-drop-list[hidden] {
-        display: none;
-      }
-      #alpha-profile-root .file-drop-list li {
-        display: flex;
+      #alpha-profile-root .file-drop-file-check {
+        display: inline-flex;
         align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        padding: 10px 14px;
-        border: 1px solid #d5dbea;
-        border-radius: 10px;
-        background: #eef3ff;
-        font-size: 15px;
-        color: #4f4f4f;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: #e4ecff;
+        color: #2f49c8;
+        font-weight: 700;
+        font-size: 16px;
+        flex-shrink: 0;
       }
-      #alpha-profile-root .file-drop-list li span {
-        flex: 1;
+      #alpha-profile-root .file-drop-file-name {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
-      #alpha-profile-root .file-drop-list li button {
+      #alpha-profile-root .file-remove-btn {
         border: none;
         background: #f87171;
         color: #ffffff;
@@ -267,7 +297,7 @@
         font-weight: 600;
         cursor: pointer;
       }
-      #alpha-profile-root .file-drop-list li button:hover {
+      #alpha-profile-root .file-remove-btn:hover {
         background: #dc2626;
       }
       #alpha-profile-root label span.helper {
@@ -830,11 +860,9 @@
                   <span class="file-drop-hint">신분증 이미지 또는 PDF 파일을 첨부해주세요.</span>
                 </div>
                 <div class="file-drop-selected">
-                  <span class="file-drop-check" aria-hidden="true">✔</span>
-                  <span class="file-drop-files">선택된 파일 없음</span>
+                  <div class="file-drop-files">선택된 파일 없음</div>
                 </div>
               </div>
-              <ul class="file-drop-list" data-target="profileIdCard" hidden></ul>
             </div>
             <div class="field">
               <label for="profileEmploymentProof">
@@ -864,15 +892,13 @@
                   <span class="file-drop-hint">건강보험 자격득실·4대보험·사업자등록증 등 증빙 자료를 첨부해주세요.</span>
                 </div>
                 <div class="file-drop-selected">
-                  <span class="file-drop-check" aria-hidden="true">✔</span>
-                  <span class="file-drop-files">선택된 파일 없음</span>
+                  <div class="file-drop-files">선택된 파일 없음</div>
                 </div>
               </div>
               <div class="field-note" id="employmentProofNote">
                 <p>건강보험 자격득실, 4대보험 가입증명서, 사업자등록증, 급여명세서도 가능합니다.</p>
                 <p>프리랜서는 매니저에게 별도 문의해 주시면 방법을 안내합니다.</p>
               </div>
-              <ul class="file-drop-list" data-target="profileEmploymentProof" hidden></ul>
             </div>
             <div class="field">
               <label for="profilePhotosFace">
@@ -902,14 +928,12 @@
                   <span class="file-drop-hint">최근 6개월 내 얼굴이 선명하게 나온 사진을 첨부해주세요.</span>
                 </div>
                 <div class="file-drop-selected">
-                  <span class="file-drop-check" aria-hidden="true">✔</span>
-                  <span class="file-drop-files">선택된 얼굴 사진 없음</span>
+                  <div class="file-drop-files">선택된 얼굴 사진 없음</div>
                 </div>
               </div>
               <div class="field-note" id="profilePhotosFaceNote">
                 <p>얼굴 사진은 최소 1장 이상 첨부해주세요. (마스크·선글라스 착용 불가)</p>
               </div>
-              <ul class="file-drop-list" data-target="profilePhotosFace" hidden></ul>
             </div>
             <div class="field">
               <label for="profilePhotosFull">
@@ -939,15 +963,13 @@
                   <span class="file-drop-hint">얼굴이 보이는 전신 사진을 첨부해주세요.</span>
                 </div>
                 <div class="file-drop-selected">
-                  <span class="file-drop-check" aria-hidden="true">✔</span>
-                  <span class="file-drop-files">선택된 전신 사진 없음</span>
+                  <div class="file-drop-files">선택된 전신 사진 없음</div>
                 </div>
               </div>
               <div class="field-note" id="profilePhotosFullNote">
                 <p>전신이 보이는 사진은 최소 1장 이상 첨부해주세요.</p>
                 <p>1:1 매칭 시 상대에게 공개될 수 있으니 현재 모습과 가까운 사진을 사용해주세요.</p>
               </div>
-              <ul class="file-drop-list" data-target="profilePhotosFull" hidden></ul>
             </div>
           </div>
         </fieldset>
@@ -1024,6 +1046,9 @@
       </form>
     </div>
 
+    <script src="firebase-config.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
     <script src="backend-config.js"></script>
     <script>
       const HOSTNAME = window.location && window.location.hostname
@@ -1035,7 +1060,6 @@
       const BACKEND_ORIGIN = (BACKEND_ORIGIN_RAW || DEFAULT_BACKEND_ORIGIN).replace(/\/$/, '')
       const API_BASE_URL = BACKEND_ORIGIN
       const PROFILE_API_URL = `${API_BASE_URL}/api/consult/profile`
-      const UPLOAD_API_URL = `${API_BASE_URL}/api/uploads`
       const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024
       const MAX_UPLOAD_SIZE_LABEL = '10MB'
       const DRAFT_STORAGE_KEY = 'alphaProfileDraft_v1'
@@ -1073,10 +1097,44 @@
       const fileDropZones = Array.from(document.querySelectorAll('.file-drop-zone'))
       const submissionModal = document.getElementById('submissionModal')
       const submissionModalCloseBtn = document.getElementById('submissionModalClose')
-      const zoneUploadCounters = new Map()
 
       let selectedValues = []
-      const multiFileSelections = new Map()
+      const uploadSessionId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+      const uploadStateByInput = new Map()
+      const pendingTempUploads = new Set()
+      const PENDING_UPLOADS_STORAGE_KEY = 'alphaProfilePendingUploads'
+      const UPLOAD_INPUT_CONFIG = {
+        profileIdCard: {
+          group: 'documents',
+          key: 'idCard',
+          storageFolder: 'id-card',
+          label: '신분증',
+          allowMultiple: true,
+        },
+        profileEmploymentProof: {
+          group: 'documents',
+          key: 'employmentProof',
+          storageFolder: 'employment-proof',
+          label: '재직 증빙',
+          allowMultiple: true,
+        },
+        profilePhotosFace: {
+          group: 'photos',
+          key: 'face',
+          storageFolder: 'photos/face',
+          label: '프로필 얼굴 사진',
+          allowMultiple: true,
+        },
+        profilePhotosFull: {
+          group: 'photos',
+          key: 'full',
+          storageFolder: 'photos/full',
+          label: '프로필 전신 사진',
+          allowMultiple: true,
+        },
+      }
+      let firebaseStorageInstance = null
+      let firebaseInitError = null
       function syncCheckboxGroupFromSelect(selectEl) {
         if (!selectEl || !selectEl.id) return
         const group = document.querySelector(`[data-multi-select="${selectEl.id}"]`)
@@ -1117,6 +1175,199 @@
           syncCheckboxGroupFromSelect(selectEl)
         }
       })
+
+      function ensureFirebaseStorage() {
+        if (firebaseStorageInstance) return firebaseStorageInstance
+        if (firebaseInitError) throw firebaseInitError
+        if (typeof firebase === 'undefined' || typeof firebase.initializeApp !== 'function') {
+          firebaseInitError = new Error('Firebase SDK가 로드되지 않았습니다.')
+          throw firebaseInitError
+        }
+        const config = window.FIREBASE_CONFIG
+        if (!config || !config.apiKey) {
+          firebaseInitError = new Error('Firebase 설정(FIREBASE_CONFIG)이 필요합니다.')
+          throw firebaseInitError
+        }
+        if (!firebase.apps || !firebase.apps.length) {
+          try {
+            firebase.initializeApp(config)
+          } catch (error) {
+            if (!/already exists/i.test(error.message)) {
+              firebaseInitError = error
+              throw error
+            }
+          }
+        }
+        try {
+          firebaseStorageInstance = firebase.storage()
+        } catch (error) {
+          firebaseInitError = error
+          throw error
+        }
+        return firebaseStorageInstance
+      }
+
+      function sanitizeFileName(name) {
+        return String(name || 'file')
+          .replace(/[^0-9a-zA-Z._-]/g, '_')
+          .replace(/_+/g, '_')
+          .slice(-120)
+      }
+
+      function getUploadEntries(inputId) {
+        if (!inputId) return []
+        return uploadStateByInput.get(inputId) || []
+      }
+
+      function setUploadEntries(inputId, entries) {
+        if (!inputId) return
+        uploadStateByInput.set(inputId, Array.isArray(entries) ? entries : [])
+      }
+
+      function upsertUploadEntry(inputId, uploadRecord) {
+        if (!inputId || !uploadRecord) return
+        const list = getUploadEntries(inputId)
+        const index = list.findIndex((item) => item.id === uploadRecord.id)
+        if (index >= 0) {
+          list[index] = { ...list[index], ...uploadRecord }
+        } else {
+          list.push(uploadRecord)
+        }
+        setUploadEntries(inputId, list)
+        return list
+      }
+
+      function removeUploadEntry(inputId, uploadId) {
+        if (!inputId || !uploadId) return
+        const list = getUploadEntries(inputId)
+        const nextList = list.filter((item) => item.id !== uploadId)
+        setUploadEntries(inputId, nextList)
+        return nextList
+      }
+
+      function buildStoragePath({ target, folder, fileName, phoneKey }) {
+        const safeFolder = folder || 'misc'
+        const base =
+          target === 'draft'
+            ? `drafts/${phoneKey || 'unknown'}/${safeFolder}`
+            : target === 'profile'
+            ? `profiles/${phoneKey || 'unknown'}/${safeFolder}`
+            : `temp/${uploadSessionId}/${safeFolder}`
+        const name = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${sanitizeFileName(
+          fileName,
+        )}`
+        return `${base}/${name}`
+      }
+
+      async function uploadFileToFirebase({
+        inputId,
+        file,
+        folder,
+        onProgress,
+        metadata = {},
+        target = 'temp',
+        phoneKey = '',
+      }) {
+        const storage = ensureFirebaseStorage()
+        const storagePath = buildStoragePath({
+          target,
+          folder,
+          fileName: file.name,
+          phoneKey,
+        })
+        const storageRef = storage.ref().child(storagePath)
+        const uploadTask = storageRef.put(file, metadata)
+        return await new Promise((resolve, reject) => {
+          uploadTask.on(
+            'state_changed',
+            (snapshot) => {
+              if (typeof onProgress === 'function') {
+                const progress = snapshot.totalBytes
+                  ? snapshot.bytesTransferred / snapshot.totalBytes
+                  : snapshot.bytesTransferred
+                  ? 1
+                  : 0
+                onProgress(progress, snapshot)
+              }
+            },
+            (error) => {
+              reject(error)
+            },
+            async () => {
+              try {
+                const downloadURL = await storageRef.getDownloadURL()
+                resolve({
+                  storagePath,
+                  downloadURL,
+                  fullPath: storagePath,
+                  bucket: storageRef.bucket || storage?.app?.options?.storageBucket || '',
+                  contentType: file.type || metadata.contentType || '',
+                  size: file.size || 0,
+                  name: file.name || storageRef.name,
+                  uploadedAt: Date.now(),
+                  target,
+                })
+              } catch (error) {
+                reject(error)
+              }
+            },
+          )
+        })
+      }
+
+      async function deleteFromFirebase(storagePath) {
+        if (!storagePath) return
+        try {
+          const storage = ensureFirebaseStorage()
+          const ref = storage.ref().child(storagePath)
+          await ref.delete()
+        } catch (error) {
+          console.warn('[firebase] 삭제 실패', error)
+        }
+      }
+
+      function loadPendingUploadPaths() {
+        try {
+          const raw = localStorage.getItem(PENDING_UPLOADS_STORAGE_KEY)
+          if (!raw) return new Set()
+          const parsed = JSON.parse(raw)
+          if (!Array.isArray(parsed)) return new Set()
+          return new Set(parsed.filter((value) => typeof value === 'string' && value))
+        } catch (error) {
+          console.warn('[firebase] 임시 업로드 정보 로드 실패', error)
+          return new Set()
+        }
+      }
+
+      function persistPendingUploadPaths() {
+        try {
+          localStorage.setItem(
+            PENDING_UPLOADS_STORAGE_KEY,
+            JSON.stringify(Array.from(pendingTempUploads)),
+          )
+        } catch (error) {
+          console.warn('[firebase] 임시 업로드 정보 저장 실패', error)
+        }
+      }
+
+      async function cleanupStoredPendingUploads() {
+        const stored = loadPendingUploadPaths()
+        if (!stored.size) return
+        try {
+          ensureFirebaseStorage()
+        } catch (error) {
+          return
+        }
+        pendingTempUploads.clear()
+        stored.forEach((path) => pendingTempUploads.add(path))
+        await Promise.all(
+          Array.from(stored).map(async (path) => {
+            await deleteFromFirebase(path)
+          }),
+        )
+        pendingTempUploads.clear()
+        persistPendingUploadPaths()
+      }
       const ensureArray = (value) => {
         if (Array.isArray(value)) {
           return value
@@ -1131,6 +1382,10 @@
       }
       if (preferredHeightsSelect) setMultiSelectValues(preferredHeightsSelect, [])
       if (preferredAgesSelect) setMultiSelectValues(preferredAgesSelect, [])
+
+      cleanupStoredPendingUploads().catch((error) => {
+        console.warn('[firebase] 임시 업로드 정리 실패', error)
+      })
 
       if (phoneInput) {
         const applyPhoneFormatting = () => {
@@ -1238,146 +1493,393 @@
         return list.find((file) => Number(file?.size) > MAX_UPLOAD_SIZE_BYTES) || null
       }
 
-      function getFileListContainer(inputEl) {
-        if (!inputEl || !inputEl.id) return null
-        return document.querySelector(`.file-drop-list[data-target="${inputEl.id}"]`)
+      function createUploadRecord({ inputId, file, config }) {
+        return {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          inputId,
+          name: file?.name || '파일',
+          size: Number(file?.size) || 0,
+          type: file?.type || '',
+          file,
+          status: 'uploading',
+          progress: 0,
+          storagePath: '',
+          downloadURL: '',
+          uploadedAt: null,
+          group: config?.group || 'documents',
+          category: config?.key || 'general',
+          storageFolder: config?.storageFolder || 'general',
+          persistLevel: 'temp',
+          fromDraft: false,
+        }
       }
 
-      function renderFileList(inputEl) {
-        const container = getFileListContainer(inputEl)
-        if (!container) return
-        const files = Array.from(inputEl?.files || [])
-        container.innerHTML = ''
-        if (!files.length) {
-          container.hidden = true
-          return
+      function serializeUploadRecord(record) {
+        if (!record) return null
+        const {
+          id,
+          name,
+          size,
+          type,
+          storagePath,
+          downloadURL,
+          uploadedAt,
+          group,
+          category,
+          storageFolder,
+          persistLevel,
+        } = record
+        if (!downloadURL) return null
+        return {
+          id,
+          name,
+          size,
+          type,
+          storagePath,
+          downloadURL,
+          url: downloadURL,
+          uploadedAt,
+          group,
+          category,
+          storageFolder,
+          persistLevel,
         }
-        container.hidden = false
-        files.forEach((file, index) => {
-          const item = document.createElement('li')
-          const nameSpan = document.createElement('span')
-          nameSpan.textContent = file.name || `파일 ${index + 1}`
-          const removeBtn = document.createElement('button')
-          removeBtn.type = 'button'
-          removeBtn.className = 'file-remove-btn'
-          removeBtn.dataset.target = inputEl.id
-          removeBtn.dataset.index = String(index)
-          removeBtn.textContent = '삭제'
-          item.appendChild(nameSpan)
-          item.appendChild(removeBtn)
-          container.appendChild(item)
-        })
       }
 
-      function getStoredFiles(inputEl) {
-        if (!inputEl || !inputEl.id) return []
-        return multiFileSelections.get(inputEl.id) || []
-      }
-
-      function mergeFileArrays(existing, incoming) {
-        if (!Array.isArray(existing) || !Array.isArray(incoming)) {
-          return Array.from(existing || []).concat(Array.from(incoming || []))
-        }
-        const merged = [...existing, ...incoming]
-        const seen = new Map()
-        merged.forEach((file) => {
-          if (!file) return
-          const key = `${file.name || ''}__${file.lastModified || file.size || Math.random()}`
-          seen.set(key, file)
-        })
-        return Array.from(seen.values())
-      }
-
-      function syncInputFiles(inputEl, files, zone) {
-        if (!inputEl) return
-        const list = inputEl.multiple ? Array.from(files || []) : Array.from(files || []).slice(0, 1)
-        if (typeof DataTransfer === 'function') {
-          const dataTransfer = new DataTransfer()
-          list.forEach((file) => {
-            if (file) dataTransfer.items.add(file)
-          })
-          inputEl.files = dataTransfer.files
-        }
-        if (!list.length) {
-          inputEl.value = ''
-        }
-        if (inputEl.multiple) {
-          if (inputEl.id && list.length) {
-            multiFileSelections.set(inputEl.id, list)
-          } else if (inputEl.id) {
-            multiFileSelections.delete(inputEl.id)
-          }
-        }
+      function refreshDropZone(zone, inputEl) {
         updateFileDropSummary(zone, inputEl)
       }
 
-      async function uploadAttachment(file, options = {}) {
-        if (!file) return null
-        if (!UPLOAD_API_URL) {
-          throw new Error('파일 업로드 서버 주소가 설정되지 않았습니다.')
+      function getDropZoneByInputId(inputId) {
+        if (!inputId) return null
+        return document.querySelector(`.file-drop-zone[data-target="${inputId}"]`)
+      }
+
+      async function deleteUploadRecord(record, { removeRemote = true } = {}) {
+        if (!record) return
+        removeUploadEntry(record.inputId, record.id)
+        if (removeRemote && record.storagePath) {
+          await deleteFromFirebase(record.storagePath)
+          pendingTempUploads.delete(record.storagePath)
+          persistPendingUploadPaths()
         }
-        const formData = new FormData()
-        formData.append('file', file)
-        if (options.category) {
-          formData.append('category', options.category)
+        const zone = getDropZoneByInputId(record.inputId)
+        const inputEl = record.inputId ? document.getElementById(record.inputId) : null
+        if (zone) {
+          updateFileDropSummary(zone, inputEl)
         }
-        if (options.meta && typeof options.meta === 'object') {
-          Object.entries(options.meta).forEach(([key, value]) => {
-            formData.append(`meta[${key}]`, String(value ?? ''))
-          })
+      }
+
+      async function removeUploadById(inputId, uploadId, options = {}) {
+        if (!inputId || !uploadId) return
+        const entries = getUploadEntries(inputId)
+        const record = entries.find((item) => item.id === uploadId)
+        if (!record) return
+        await deleteUploadRecord(record, options)
+      }
+
+      async function handleSelectedFiles({ inputEl, zone, config, files }) {
+        const inputId = inputEl?.id
+        if (!inputId || !zone || !files?.length) return
+        const allowMultiple = Boolean(config?.allowMultiple || inputEl.multiple)
+        const oversized = findOversizedFile(files)
+        if (oversized) {
+          showMessage(
+            `'${oversized.name}' 파일이 ${MAX_UPLOAD_SIZE_LABEL} 용량 제한을 초과했습니다. (${formatBytes(
+              oversized.size,
+            )})`,
+            'error',
+          )
+          return
         }
-        const res = await fetch(UPLOAD_API_URL, {
-          method: 'POST',
-          body: formData,
-        })
-        const body = await res.json().catch(() => ({}))
-        if (!res.ok || !body?.ok || !body?.url) {
-          throw new Error(body?.message || '파일 업로드에 실패했습니다.')
+        try {
+          ensureFirebaseStorage()
+        } catch (error) {
+          console.error('[firebase] init failed', error)
+          showMessage(error.message || '파일 업로드 환경 설정이 필요합니다.', 'error')
+          return
         }
-        return {
-          name: body.filename || file.name || '',
-          size: Number(body.size ?? file.size ?? 0),
-          type: body.mimeType || file.type || '',
-          url: String(body.url),
-          uploadId: body.id || body.uploadId || '',
+
+        if (!allowMultiple) {
+          const existingEntries = getUploadEntries(inputId)
+          await Promise.all(existingEntries.map((entry) => deleteUploadRecord(entry)))
+        }
+
+        for (const file of files) {
+          const record = createUploadRecord({ inputId, file, config })
+          upsertUploadEntry(inputId, record)
+          updateFileDropSummary(zone, inputEl)
+          try {
+            const uploadResult = await uploadFileToFirebase({
+              inputId,
+              file,
+              folder: record.storageFolder,
+              metadata: { contentType: file.type || undefined },
+              target: 'temp',
+              onProgress: (progress) => {
+                upsertUploadEntry(inputId, {
+                  ...record,
+                  progress: Math.max(0, Math.min(1, progress || 0)),
+                  status: 'uploading',
+                })
+                updateFileDropSummary(zone, inputEl)
+              },
+            })
+            pendingTempUploads.add(uploadResult.storagePath)
+            persistPendingUploadPaths()
+            upsertUploadEntry(inputId, {
+              ...record,
+              ...uploadResult,
+              status: 'uploaded',
+              progress: 1,
+              persistLevel: 'temp',
+            })
+          } catch (error) {
+            console.error('[firebase] upload failed', error)
+            upsertUploadEntry(inputId, {
+              ...record,
+              status: 'error',
+              progress: 0,
+              error: error?.message || '업로드 실패',
+            })
+            showMessage(`'${file.name}' 업로드에 실패했습니다.`, 'error')
+          } finally {
+            updateFileDropSummary(zone, inputEl)
+          }
         }
       }
 
       function updateFileDropSummary(zone, inputEl) {
         if (!zone) return
+        const inputId = inputEl?.id || zone.dataset.target || ''
         const summaryEl = zone.querySelector('.file-drop-files')
         const placeholder = zone.dataset.placeholder || '선택된 파일 없음'
-        if (!summaryEl || !inputEl) {
-          if (summaryEl) summaryEl.textContent = placeholder
-          renderFileList(inputEl)
+        if (!summaryEl) return
+        const entries = getUploadEntries(inputId)
+        const hasFiles = entries.length > 0
+        zone.classList.toggle('has-files', hasFiles)
+        if (!hasFiles) {
+          summaryEl.textContent = placeholder
           return
         }
-        const files = Array.from(inputEl.files || [])
-        const hasFiles = files.length > 0
-        zone.classList.toggle('has-files', hasFiles)
-        let summaryText = placeholder
-        if (hasFiles) {
-          if (!inputEl.multiple) {
-            summaryText = files[0].name
+        summaryEl.innerHTML = ''
+        entries.forEach((entry, index) => {
+          const item = document.createElement('div')
+          item.className = 'file-drop-file'
+          item.dataset.uploadId = entry.id
+
+          if (entry.status === 'uploading') {
+            const progress = Math.max(0, Math.min(1, entry.progress || 0))
+            const progressDeg = Math.round(progress * 360)
+            const progressWrap = document.createElement('div')
+            progressWrap.className = 'file-drop-file-progress'
+            progressWrap.style.setProperty('--progress', String(progressDeg))
+            const progressText = document.createElement('span')
+            progressText.textContent = `${Math.round(progress * 100)}%`
+            progressWrap.appendChild(progressText)
+            item.appendChild(progressWrap)
           } else {
-            const names = files.map((file) => file.name)
-            summaryText =
-              names.length <= 3
-                ? names.join(', ')
-                : `${names.slice(0, 3).join(', ')} 외 ${names.length - 3}개`
+            const status = document.createElement('div')
+            status.className = 'file-drop-file-status'
+            if (entry.status === 'error') {
+              status.style.background = '#fee2e2'
+              status.style.color = '#b91c1c'
+              status.textContent = '!'
+            } else {
+              status.textContent = '✔'
+            }
+            item.appendChild(status)
           }
+
+          const textWrap = document.createElement('div')
+          textWrap.style.display = 'grid'
+          textWrap.style.gap = '4px'
+          textWrap.style.flex = '1'
+
+          const nameSpan = document.createElement('span')
+          nameSpan.className = 'file-drop-file-name'
+          nameSpan.textContent = entry.name || `파일 ${index + 1}`
+          textWrap.appendChild(nameSpan)
+
+          const metaSpan = document.createElement('span')
+          metaSpan.style.fontSize = '12px'
+          metaSpan.style.color = '#6b7280'
+          metaSpan.textContent = formatBytes(entry.size || 0)
+          if (entry.persistLevel && entry.persistLevel !== 'temp') {
+            metaSpan.textContent += ` · ${entry.persistLevel === 'draft' ? '임시 저장됨' : '제출됨'}`
+          }
+          textWrap.appendChild(metaSpan)
+
+          if (entry.downloadURL) {
+            const link = document.createElement('a')
+            link.href = entry.downloadURL
+            link.target = '_blank'
+            link.rel = 'noopener noreferrer'
+            link.style.fontSize = '12px'
+            link.style.color = '#2f49c8'
+            link.style.textDecoration = 'underline'
+            link.textContent = '링크 열기'
+            textWrap.appendChild(link)
+          }
+
+          if (entry.status === 'error' && entry.error) {
+            const errorText = document.createElement('span')
+            errorText.style.fontSize = '12px'
+            errorText.style.color = '#d64545'
+            errorText.textContent = entry.error
+            textWrap.appendChild(errorText)
+          }
+
+          item.appendChild(textWrap)
+
+          const removeBtn = document.createElement('button')
+          removeBtn.type = 'button'
+          removeBtn.className = 'file-remove-btn'
+          removeBtn.dataset.target = inputId
+          removeBtn.dataset.uploadId = entry.id
+          removeBtn.textContent = '삭제'
+          removeBtn.disabled = entry.status === 'uploading'
+          item.appendChild(removeBtn)
+
+          summaryEl.appendChild(item)
+        })
+      }
+
+      async function promoteUploadsToTarget(target, { phoneKey } = {}) {
+        const tasks = []
+        uploadStateByInput.forEach((entries, inputId) => {
+          entries.forEach((entry) => {
+            if (entry.status === 'error') return
+            if (entry.persistLevel === target) return
+            if (!entry.file) {
+              upsertUploadEntry(inputId, {
+                ...entry,
+                persistLevel: target,
+                status: 'persisted',
+                progress: 1,
+              })
+              return
+            }
+            tasks.push(
+              (async () => {
+                const uploadResult = await uploadFileToFirebase({
+                  inputId,
+                  file: entry.file,
+                  folder: entry.storageFolder,
+                  metadata: { contentType: entry.type || undefined },
+                  target,
+                  phoneKey,
+                })
+                if (entry.storagePath && entry.storagePath !== uploadResult.storagePath) {
+                  await deleteFromFirebase(entry.storagePath)
+                  pendingTempUploads.delete(entry.storagePath)
+                  persistPendingUploadPaths()
+                }
+                upsertUploadEntry(inputId, {
+                  ...entry,
+                  ...uploadResult,
+                  status: 'persisted',
+                  progress: 1,
+                  persistLevel: target,
+                })
+                const zone = getDropZoneByInputId(inputId)
+                const inputEl = inputId ? document.getElementById(inputId) : null
+                if (zone) updateFileDropSummary(zone, inputEl)
+              })().catch((error) => {
+                console.error('[firebase] promote failed', error)
+                throw error
+              }),
+            )
+          })
+        })
+        if (tasks.length) {
+          await Promise.all(tasks)
         }
-        const zoneKey = zone.dataset.target || inputEl.id || zone.id || ''
-        if ((zoneUploadCounters.get(zoneKey) || 0) > 0) {
-          summaryText = `${summaryText} (업로드 중...)`
-        }
-        summaryEl.textContent = summaryText
-        renderFileList(inputEl)
+        persistPendingUploadPaths()
+      }
+
+      async function persistUploadsForDraft(phoneKey) {
+        await promoteUploadsToTarget('draft', { phoneKey })
+      }
+
+      async function persistUploadsForSubmit(phoneKey) {
+        await promoteUploadsToTarget('profile', { phoneKey })
+      }
+
+      function serializeUploadsForDraft() {
+        const result = {}
+        uploadStateByInput.forEach((entries, inputId) => {
+          result[inputId] = entries
+            .map((entry) => {
+              const serialized = serializeUploadRecord(entry)
+              if (!serialized) return null
+              return {
+                ...serialized,
+                group: entry.group,
+                category: entry.category,
+                storageFolder: entry.storageFolder,
+                persistLevel: entry.persistLevel || 'draft',
+              }
+            })
+            .filter(Boolean)
+        })
+        return result
+      }
+
+      function hydrateUploadsFromDraft(uploadData) {
+        if (!uploadData || typeof uploadData !== 'object') return
+        Object.entries(uploadData).forEach(([inputId, list]) => {
+          if (!Array.isArray(list)) return
+          const entries = list.map((item) => ({
+            id: item.id || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            inputId,
+            name: item.name || '파일',
+            size: Number(item.size) || 0,
+            type: item.type || '',
+            file: null,
+            status: 'persisted',
+            progress: 1,
+            storagePath: item.storagePath || '',
+            downloadURL: item.downloadURL || '',
+            uploadedAt: item.uploadedAt || Date.now(),
+            group: item.group || (UPLOAD_INPUT_CONFIG[inputId]?.group || 'documents'),
+            category: item.category || (UPLOAD_INPUT_CONFIG[inputId]?.key || 'general'),
+            storageFolder: item.storageFolder || (UPLOAD_INPUT_CONFIG[inputId]?.storageFolder || 'general'),
+            persistLevel: item.persistLevel || 'draft',
+            fromDraft: true,
+          }))
+          setUploadEntries(inputId, entries)
+          const zone = getDropZoneByInputId(inputId)
+          const inputEl = document.getElementById(inputId)
+          if (zone) updateFileDropSummary(zone, inputEl)
+        })
+      }
+
+      function buildAttachmentPayload() {
+        const documentsPayload = {}
+        const photosPayload = []
+        uploadStateByInput.forEach((entries) => {
+          entries.forEach((entry) => {
+            if (!entry.downloadURL || entry.status === 'error') return
+            const serialized = serializeUploadRecord(entry)
+            if (!serialized) return
+            if (entry.group === 'documents') {
+              documentsPayload[entry.category] = serialized
+            } else if (entry.group === 'photos') {
+              photosPayload.push({
+                ...serialized,
+                role: entry.category,
+              })
+            }
+          })
+        })
+        return { documentsPayload, photosPayload }
       }
 
       fileDropZones.forEach((zone) => {
         const targetId = zone.dataset.target
-        const inputEl = document.getElementById(targetId)
+        const inputEl = targetId ? document.getElementById(targetId) : null
+        const config = targetId ? UPLOAD_INPUT_CONFIG[targetId] : null
         if (!inputEl) return
 
         updateFileDropSummary(zone, inputEl)
@@ -1411,50 +1913,19 @@
           zone.classList.remove('is-dragover')
         })
 
-        zone.addEventListener('drop', (event) => {
+        zone.addEventListener('drop', async (event) => {
           event.preventDefault()
           zone.classList.remove('is-dragover')
-          const incomingFiles = Array.from(event.dataTransfer?.files || [])
-          if (!incomingFiles.length) return
-          const existingFiles = inputEl.multiple ? getStoredFiles(inputEl) : []
-          const filesToUse = inputEl.multiple
-            ? mergeFileArrays(existingFiles, incomingFiles)
-            : [incomingFiles[0]].filter(Boolean)
-          const oversized = findOversizedFile(filesToUse)
-          if (oversized) {
-            showMessage(
-              `'${oversized.name}' 파일이 ${MAX_UPLOAD_SIZE_LABEL} 용량 제한을 초과했습니다. (${formatBytes(
-                oversized.size,
-              )})`,
-              'error'
-            )
-            return
-          }
-          syncInputFiles(inputEl, filesToUse, zone)
+          const files = Array.from(event.dataTransfer?.files || [])
+          if (!files.length) return
+          await handleSelectedFiles({ inputEl, zone, config, files })
         })
 
-        inputEl.addEventListener('change', () => {
-          const newFiles = Array.from(inputEl.files || [])
-          const existingFiles = inputEl.multiple ? getStoredFiles(inputEl) : []
-          const combinedFiles = inputEl.multiple ? mergeFileArrays(existingFiles, newFiles) : newFiles
-          const oversized = findOversizedFile(combinedFiles)
-          if (oversized) {
-            showMessage(
-              `'${oversized.name}' 파일이 ${MAX_UPLOAD_SIZE_LABEL} 용량 제한을 초과했습니다. (${formatBytes(
-                oversized.size,
-              )})`,
-              'error'
-            )
-            if (inputEl.multiple) {
-              syncInputFiles(inputEl, existingFiles, zone)
-            } else {
-              inputEl.value = ''
-              zone.classList.remove('has-files')
-              updateFileDropSummary(zone, inputEl)
-            }
-            return
-          }
-          syncInputFiles(inputEl, combinedFiles, zone)
+        inputEl.addEventListener('change', async () => {
+          const files = Array.from(inputEl.files || [])
+          if (!files.length) return
+          await handleSelectedFiles({ inputEl, zone, config, files })
+          inputEl.value = ''
         })
       })
 
@@ -1462,15 +1933,9 @@
         const button = event.target.closest('.file-remove-btn')
         if (!button) return
         const targetId = button.dataset.target
-        const index = Number(button.dataset.index)
-        if (!targetId || Number.isNaN(index)) return
-        const inputEl = document.getElementById(targetId)
-        const zone = document.querySelector(`.file-drop-zone[data-target="${targetId}"]`)
-        if (!inputEl || !zone) return
-        const files = Array.from(inputEl.files || [])
-        if (index < 0 || index >= files.length) return
-        files.splice(index, 1)
-        syncInputFiles(inputEl, files, zone)
+        const uploadId = button.dataset.uploadId
+        if (!targetId || !uploadId) return
+        removeUploadById(targetId, uploadId)
       })
 
       function collectDraftData() {
@@ -1499,12 +1964,16 @@
             info: agreementInfo?.checked || false,
             manners: agreementManners?.checked || false,
           },
+          uploads: serializeUploadsForDraft(),
           savedAt: Date.now(),
         }
       }
 
       function applyDraftData(draft) {
         if (!draft || typeof draft !== 'object') return
+        uploadStateByInput.clear()
+        pendingTempUploads.clear()
+        persistPendingUploadPaths()
         if (phoneInput) {
           phoneInput.value = draft.phone || ''
           phoneInput.dispatchEvent(new Event('input'))
@@ -1540,20 +2009,21 @@
           const inputEl = targetId ? document.getElementById(targetId) : null
           if (inputEl) {
             inputEl.value = ''
-            queueFirebaseSync(inputEl)
           }
           updateFileDropSummary(zone, inputEl)
         })
+        hydrateUploadsFromDraft(draft.uploads)
       }
 
-      draftSaveButton?.addEventListener('click', () => {
+      draftSaveButton?.addEventListener('click', async () => {
         try {
-          const draft = collectDraftData()
-          const phoneKey = draft.phoneKey
+          const phoneKey = normalizePhoneKey(phoneInput?.value || '')
           if (!phoneKey) {
             alert('임시 저장을 위해 연락처를 먼저 입력해주세요.')
             return
           }
+          await persistUploadsForDraft(phoneKey)
+          const draft = collectDraftData()
           localStorage.setItem(`${DRAFT_STORAGE_PREFIX}${phoneKey}`, JSON.stringify(draft))
           alert('입력한 내용을 임시 저장했습니다.')
         } catch (error) {
@@ -1640,6 +2110,14 @@
         }
       }
 
+      window.addEventListener('beforeunload', () => {
+        try {
+          persistPendingUploadPaths()
+        } catch (error) {
+          /* noop */
+        }
+      })
+
       formEl?.addEventListener('submit', async (event) => {
         event.preventDefault()
         showMessage('', '')
@@ -1661,68 +2139,33 @@
           return
         }
 
-        const fileSizeChecks = [
-          { input: idCardInput, label: '신분증' },
-          { input: employmentProofInput, label: '재직 증빙' },
-          { input: photosFaceInput, label: '프로필 얼굴 사진' },
-          { input: photosFullInput, label: '프로필 전신 사진' },
-        ]
-        for (const { input, label } of fileSizeChecks) {
-          if (!input || !input.files) continue
-          const oversized = findOversizedFile(input.files)
-          if (oversized) {
-            showMessage(
-              `${label} 파일 '${oversized.name}'이 ${MAX_UPLOAD_SIZE_LABEL} 제한을 초과했습니다. (${formatBytes(
-                oversized.size,
-              )})`,
-              'error'
-            )
-            return
-          }
-        }
-
-        if (hasPendingFirebaseUploads()) {
-          showMessage('사진 업로드가 완료될 때까지 잠시만 기다려주세요.', 'error')
+        const hasPendingUploads = Array.from(uploadStateByInput.values()).some((entries) =>
+          entries.some((entry) => entry.status === 'uploading'),
+        )
+        if (hasPendingUploads) {
+          showMessage('파일 업로드가 끝날 때까지 기다려주세요.', 'error')
           return
         }
 
-        const photosFaceUpload = buildPhotoPayload('profilePhotosFace')
-        const photosFullUpload = buildPhotoPayload('profilePhotosFull')
-        if (!photosFaceUpload.length) {
-          showMessage('얼굴 사진을 최소 1장 이상 업로드해주세요.', 'error')
-          return
-        }
-        if (!photosFullUpload.length) {
-          showMessage('전신 사진을 최소 1장 이상 업로드해주세요.', 'error')
+        const phoneKey = normalizePhoneKey(phoneInput?.value || '')
+        if (!phoneKey) {
+          showMessage('연락처를 입력해주세요.', 'error')
           return
         }
 
-        let idCardUpload = null
-        let employmentUpload = null
         try {
-          if (idCardInput?.files && idCardInput.files[0]) {
-            showMessage('신분증 파일을 업로드하고 있습니다…', '')
-            idCardUpload = await uploadAttachment(idCardInput.files[0], { category: 'idCard' })
-          }
-          if (employmentProofInput?.files && employmentProofInput.files[0]) {
-            showMessage('재직 증빙 파일을 업로드하고 있습니다…', '')
-            employmentUpload = await uploadAttachment(employmentProofInput.files[0], {
-              category: 'employmentProof',
-            })
-          }
+          showMessage('첨부 파일을 정리하고 있습니다…', '')
+          await persistUploadsForSubmit(phoneKey)
+          showMessage('', '')
         } catch (error) {
-          console.error('[attachments] upload failed', error)
-          showMessage(error?.message || '첨부 파일 업로드에 실패했습니다. 다시 시도해주세요.', 'error')
+          console.error('[firebase] finalize uploads failed', error)
+          showMessage('첨부 파일을 저장하지 못했습니다. 다시 시도해주세요.', 'error')
           return
         }
 
-        showMessage('', '')
-
-        const photosPayload = [...photosFaceUpload, ...photosFullUpload]
-
-        const documentsPayload = {}
-        if (idCardUpload) documentsPayload.idCard = idCardUpload
-        if (employmentUpload) documentsPayload.employmentProof = employmentUpload
+        const { documentsPayload, photosPayload } = buildAttachmentPayload()
+        const photosFaceUpload = photosPayload.filter((photo) => photo.role === 'face')
+        const photosFullUpload = photosPayload.filter((photo) => photo.role === 'full')
 
         const payload = {
           phone: formatPhoneNumber(phoneInput?.value || ''),
@@ -1773,21 +2216,20 @@
             throw new Error(message)
           }
           openSubmissionModal()
-          resetFirebaseUploadsAfterSubmit()
+          showMessage('', '')
           formEl.reset()
           selectedValues = []
           setMultiSelectValues(valuesSelect, [])
           setMultiSelectValues(preferredHeightsSelect, [])
           setMultiSelectValues(preferredAgesSelect, [])
+          uploadStateByInput.clear()
+          pendingTempUploads.clear()
+          persistPendingUploadPaths()
           fileDropZones.forEach((zone) => {
             const targetId = zone.dataset.target
             const inputEl = targetId ? document.getElementById(targetId) : null
             if (inputEl) {
               inputEl.value = ''
-              if (inputEl.id) {
-                multiFileSelections.delete(inputEl.id)
-              }
-              queueFirebaseSync(inputEl)
             }
             updateFileDropSummary(zone, inputEl)
           })

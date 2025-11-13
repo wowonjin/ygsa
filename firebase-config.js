@@ -1,4 +1,48 @@
 ;(function () {
+  if (typeof window === 'undefined') return
+
+  if (window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.apiKey) {
+    return
+  }
+
+  let resolvedConfig = null
+
+  const globalConfig =
+    typeof window !== 'undefined' && typeof window.__FIREBASE_CONFIG__ !== 'undefined'
+      ? window.__FIREBASE_CONFIG__
+      : null
+
+  if (globalConfig && typeof globalConfig === 'object') {
+    resolvedConfig = globalConfig
+  }
+
+  if (!resolvedConfig) {
+    const metaEl = document.querySelector('meta[name="firebase-config"]')
+    if (metaEl) {
+      try {
+        const parsed = JSON.parse(metaEl.getAttribute('content') || '{}')
+        if (parsed && typeof parsed === 'object' && parsed.apiKey) {
+          resolvedConfig = parsed
+        }
+      } catch (error) {
+        console.warn('[firebase-config] meta firebase-config 파싱 실패', error)
+      }
+    }
+  }
+
+  if (!resolvedConfig) {
+    resolvedConfig = window.FIREBASE_CONFIG || {}
+  }
+
+  if (!resolvedConfig.apiKey) {
+    console.warn(
+      '[firebase-config] Firebase 설정(FIREBASE_CONFIG)이 제공되지 않았습니다. firebase-config.js 또는 meta 태그를 통해 설정을 주입하세요.',
+    )
+  }
+
+  window.FIREBASE_CONFIG = resolvedConfig
+})()
+;(function () {
   const globalScope = typeof window !== 'undefined' ? window : globalThis
 
   function parseMetaContent(metaName) {
