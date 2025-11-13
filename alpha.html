@@ -203,25 +203,11 @@
         outline-offset: 2px;
       }
       #alpha-profile-root .file-drop-zone .file-drop-selected {
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        display: grid;
         gap: 10px;
         font-size: 15px;
         font-weight: 600;
         color: #4f4f4f;
-      }
-      #alpha-profile-root .file-drop-zone .file-drop-check {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 28px;
-        height: 28px;
-        border-radius: 50%;
-        background: #e4ecff;
-        color: #2f49c8;
-        font-weight: 700;
-        font-size: 18px;
       }
       #alpha-profile-root .file-drop-zone:not(.has-files) .file-drop-selected {
         display: none;
@@ -229,35 +215,42 @@
       #alpha-profile-root .file-drop-zone.has-files .file-drop-default {
         display: none;
       }
-      #alpha-profile-root .file-drop-list {
-        margin: 12px 0 0;
-        padding: 0;
-        list-style: none;
+      #alpha-profile-root .file-drop-files {
         display: grid;
         gap: 8px;
+        font-weight: 500;
       }
-      #alpha-profile-root .file-drop-list[hidden] {
-        display: none;
+      #alpha-profile-root .file-drop-zone:not(.has-files) .file-drop-files {
+        font-weight: 600;
       }
-      #alpha-profile-root .file-drop-list li {
+      #alpha-profile-root .file-drop-file {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        padding: 10px 14px;
-        border: 1px solid #d5dbea;
-        border-radius: 10px;
-        background: #eef3ff;
-        font-size: 15px;
+        gap: 10px;
+        padding: 0;
+        font-size: 14px;
+        font-weight: 500;
         color: #4f4f4f;
       }
-      #alpha-profile-root .file-drop-list li span {
-        flex: 1;
+      #alpha-profile-root .file-drop-file-check {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: #e4ecff;
+        color: #2f49c8;
+        font-weight: 700;
+        font-size: 16px;
+        flex-shrink: 0;
+      }
+      #alpha-profile-root .file-drop-file-name {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
-      #alpha-profile-root .file-drop-list li button {
+      #alpha-profile-root .file-remove-btn {
         border: none;
         background: #f87171;
         color: #ffffff;
@@ -267,7 +260,7 @@
         font-weight: 600;
         cursor: pointer;
       }
-      #alpha-profile-root .file-drop-list li button:hover {
+      #alpha-profile-root .file-remove-btn:hover {
         background: #dc2626;
       }
       #alpha-profile-root label span.helper {
@@ -830,11 +823,9 @@
                   <span class="file-drop-hint">신분증 이미지 또는 PDF 파일을 첨부해주세요.</span>
                 </div>
                 <div class="file-drop-selected">
-                  <span class="file-drop-check" aria-hidden="true">✔</span>
-                  <span class="file-drop-files">선택된 파일 없음</span>
+                  <div class="file-drop-files">선택된 파일 없음</div>
                 </div>
               </div>
-              <ul class="file-drop-list" data-target="profileIdCard" hidden></ul>
             </div>
             <div class="field">
               <label for="profileEmploymentProof">
@@ -864,15 +855,13 @@
                   <span class="file-drop-hint">건강보험 자격득실·4대보험·사업자등록증 등 증빙 자료를 첨부해주세요.</span>
                 </div>
                 <div class="file-drop-selected">
-                  <span class="file-drop-check" aria-hidden="true">✔</span>
-                  <span class="file-drop-files">선택된 파일 없음</span>
+                  <div class="file-drop-files">선택된 파일 없음</div>
                 </div>
               </div>
               <div class="field-note" id="employmentProofNote">
                 <p>건강보험 자격득실, 4대보험 가입증명서, 사업자등록증, 급여명세서도 가능합니다.</p>
                 <p>프리랜서는 매니저에게 별도 문의해 주시면 방법을 안내합니다.</p>
               </div>
-              <ul class="file-drop-list" data-target="profileEmploymentProof" hidden></ul>
             </div>
             <div class="field">
               <label for="profilePhotosFace">
@@ -902,14 +891,12 @@
                   <span class="file-drop-hint">최근 6개월 내 얼굴이 선명하게 나온 사진을 첨부해주세요.</span>
                 </div>
                 <div class="file-drop-selected">
-                  <span class="file-drop-check" aria-hidden="true">✔</span>
-                  <span class="file-drop-files">선택된 얼굴 사진 없음</span>
+                  <div class="file-drop-files">선택된 얼굴 사진 없음</div>
                 </div>
               </div>
               <div class="field-note" id="profilePhotosFaceNote">
                 <p>얼굴 사진은 최소 1장 이상 첨부해주세요. (마스크·선글라스 착용 불가)</p>
               </div>
-              <ul class="file-drop-list" data-target="profilePhotosFace" hidden></ul>
             </div>
             <div class="field">
               <label for="profilePhotosFull">
@@ -939,15 +926,13 @@
                   <span class="file-drop-hint">얼굴이 보이는 전신 사진을 첨부해주세요.</span>
                 </div>
                 <div class="file-drop-selected">
-                  <span class="file-drop-check" aria-hidden="true">✔</span>
-                  <span class="file-drop-files">선택된 전신 사진 없음</span>
+                  <div class="file-drop-files">선택된 전신 사진 없음</div>
                 </div>
               </div>
               <div class="field-note" id="profilePhotosFullNote">
                 <p>전신이 보이는 사진은 최소 1장 이상 첨부해주세요.</p>
                 <p>1:1 매칭 시 상대에게 공개될 수 있으니 현재 모습과 가까운 사진을 사용해주세요.</p>
               </div>
-              <ul class="file-drop-list" data-target="profilePhotosFull" hidden></ul>
             </div>
           </div>
         </fieldset>
@@ -1073,7 +1058,6 @@
       const fileDropZones = Array.from(document.querySelectorAll('.file-drop-zone'))
       const submissionModal = document.getElementById('submissionModal')
       const submissionModalCloseBtn = document.getElementById('submissionModalClose')
-      const zoneUploadCounters = new Map()
 
       let selectedValues = []
       const multiFileSelections = new Map()
@@ -1238,37 +1222,6 @@
         return list.find((file) => Number(file?.size) > MAX_UPLOAD_SIZE_BYTES) || null
       }
 
-      function getFileListContainer(inputEl) {
-        if (!inputEl || !inputEl.id) return null
-        return document.querySelector(`.file-drop-list[data-target="${inputEl.id}"]`)
-      }
-
-      function renderFileList(inputEl) {
-        const container = getFileListContainer(inputEl)
-        if (!container) return
-        const files = Array.from(inputEl?.files || [])
-        container.innerHTML = ''
-        if (!files.length) {
-          container.hidden = true
-          return
-        }
-        container.hidden = false
-        files.forEach((file, index) => {
-          const item = document.createElement('li')
-          const nameSpan = document.createElement('span')
-          nameSpan.textContent = file.name || `파일 ${index + 1}`
-          const removeBtn = document.createElement('button')
-          removeBtn.type = 'button'
-          removeBtn.className = 'file-remove-btn'
-          removeBtn.dataset.target = inputEl.id
-          removeBtn.dataset.index = String(index)
-          removeBtn.textContent = '삭제'
-          item.appendChild(nameSpan)
-          item.appendChild(removeBtn)
-          container.appendChild(item)
-        })
-      }
-
       function getStoredFiles(inputEl) {
         if (!inputEl || !inputEl.id) return []
         return multiFileSelections.get(inputEl.id) || []
@@ -1347,32 +1300,40 @@
         if (!zone) return
         const summaryEl = zone.querySelector('.file-drop-files')
         const placeholder = zone.dataset.placeholder || '선택된 파일 없음'
-        if (!summaryEl || !inputEl) {
-          if (summaryEl) summaryEl.textContent = placeholder
-          renderFileList(inputEl)
+        if (!summaryEl) return
+        if (!inputEl) {
+          zone.classList.remove('has-files')
+          summaryEl.textContent = placeholder
           return
         }
         const files = Array.from(inputEl.files || [])
         const hasFiles = files.length > 0
         zone.classList.toggle('has-files', hasFiles)
-        let summaryText = placeholder
-        if (hasFiles) {
-          if (!inputEl.multiple) {
-            summaryText = files[0].name
-          } else {
-            const names = files.map((file) => file.name)
-            summaryText =
-              names.length <= 3
-                ? names.join(', ')
-                : `${names.slice(0, 3).join(', ')} 외 ${names.length - 3}개`
+        if (!hasFiles) {
+          summaryEl.textContent = placeholder
+          return
+        }
+        summaryEl.innerHTML = ''
+        files.forEach((file, index) => {
+          const item = document.createElement('div')
+          item.className = 'file-drop-file'
+          const checkSpan = document.createElement('span')
+          checkSpan.className = 'file-drop-file-check'
+          checkSpan.textContent = '✔'
+          const nameSpan = document.createElement('span')
+          nameSpan.className = 'file-drop-file-name'
+          nameSpan.textContent = file.name || `파일 ${index + 1}`
+          const removeBtn = document.createElement('button')
+          removeBtn.type = 'button'
+          removeBtn.className = 'file-remove-btn'
+          if (inputEl.id) {
+            removeBtn.dataset.target = inputEl.id
           }
-        }
-        const zoneKey = zone.dataset.target || inputEl.id || zone.id || ''
-        if ((zoneUploadCounters.get(zoneKey) || 0) > 0) {
-          summaryText = `${summaryText} (업로드 중...)`
-        }
-        summaryEl.textContent = summaryText
-        renderFileList(inputEl)
+          removeBtn.dataset.index = String(index)
+          removeBtn.textContent = '삭제'
+          item.append(checkSpan, nameSpan, removeBtn)
+          summaryEl.appendChild(item)
+        })
       }
 
       fileDropZones.forEach((zone) => {
@@ -1540,7 +1501,6 @@
           const inputEl = targetId ? document.getElementById(targetId) : null
           if (inputEl) {
             inputEl.value = ''
-            queueFirebaseSync(inputEl)
           }
           updateFileDropSummary(zone, inputEl)
         })
@@ -1681,44 +1641,83 @@
           }
         }
 
-        if (hasPendingFirebaseUploads()) {
-          showMessage('사진 업로드가 완료될 때까지 잠시만 기다려주세요.', 'error')
-          return
-        }
-
-        const photosFaceUpload = buildPhotoPayload('profilePhotosFace')
-        const photosFullUpload = buildPhotoPayload('profilePhotosFull')
-        if (!photosFaceUpload.length) {
-          showMessage('얼굴 사진을 최소 1장 이상 업로드해주세요.', 'error')
-          return
-        }
-        if (!photosFullUpload.length) {
-          showMessage('전신 사진을 최소 1장 이상 업로드해주세요.', 'error')
-          return
-        }
+        const faceFiles = photosFaceInput?.files ? Array.from(photosFaceInput.files) : []
+        const fullFiles = photosFullInput?.files ? Array.from(photosFullInput.files) : []
 
         let idCardUpload = null
         let employmentUpload = null
-        try {
-          if (idCardInput?.files && idCardInput.files[0]) {
-            showMessage('신분증 파일을 업로드하고 있습니다…', '')
+        let photosFaceUpload = []
+        let photosFullUpload = []
+        const uploadErrors = []
+
+        if (idCardInput?.files && idCardInput.files[0]) {
+          showMessage('신분증 파일을 업로드하고 있습니다…', '')
+          try {
             idCardUpload = await uploadAttachment(idCardInput.files[0], { category: 'idCard' })
+          } catch (error) {
+            console.error('[attachments] id card upload failed', error)
+            uploadErrors.push('idCard')
           }
-          if (employmentProofInput?.files && employmentProofInput.files[0]) {
-            showMessage('재직 증빙 파일을 업로드하고 있습니다…', '')
+        }
+
+        if (employmentProofInput?.files && employmentProofInput.files[0]) {
+          showMessage('재직 증빙 파일을 업로드하고 있습니다…', '')
+          try {
             employmentUpload = await uploadAttachment(employmentProofInput.files[0], {
               category: 'employmentProof',
             })
+          } catch (error) {
+            console.error('[attachments] employment proof upload failed', error)
+            uploadErrors.push('employmentProof')
           }
-        } catch (error) {
-          console.error('[attachments] upload failed', error)
-          showMessage(error?.message || '첨부 파일 업로드에 실패했습니다. 다시 시도해주세요.', 'error')
-          return
         }
 
-        showMessage('', '')
+        if (faceFiles.length) {
+          showMessage('얼굴 사진을 업로드하고 있습니다…', '')
+          const faceResults = await Promise.allSettled(
+            faceFiles.map((file) =>
+              uploadAttachment(file, { category: 'profilePhoto', meta: { type: 'face' } })
+            )
+          )
+          photosFaceUpload = faceResults
+            .filter((result) => result.status === 'fulfilled' && result.value)
+            .map((result) => result.value)
+          faceResults
+            .filter((result) => result.status === 'rejected')
+            .forEach((result) => {
+              console.error('[attachments] face photo upload failed', result.reason)
+              uploadErrors.push('facePhoto')
+            })
+        }
 
-        const photosPayload = [...photosFaceUpload, ...photosFullUpload]
+        if (fullFiles.length) {
+          showMessage('전신 사진을 업로드하고 있습니다…', '')
+          const fullResults = await Promise.allSettled(
+            fullFiles.map((file) =>
+              uploadAttachment(file, { category: 'profilePhoto', meta: { type: 'full' } })
+            )
+          )
+          photosFullUpload = fullResults
+            .filter((result) => result.status === 'fulfilled' && result.value)
+            .map((result) => result.value)
+          fullResults
+            .filter((result) => result.status === 'rejected')
+            .forEach((result) => {
+              console.error('[attachments] full body photo upload failed', result.reason)
+              uploadErrors.push('fullPhoto')
+            })
+        }
+
+        if (!uploadErrors.length) {
+          showMessage('', '')
+        } else {
+          showMessage('일부 첨부 파일 업로드에 실패했습니다. 사진 없이 계속 진행합니다.', 'error')
+        }
+
+        const photosPayload = [
+          ...photosFaceUpload.map((photo) => ({ ...photo, role: photo.role || 'face' })),
+          ...photosFullUpload.map((photo) => ({ ...photo, role: photo.role || 'full' })),
+        ]
 
         const documentsPayload = {}
         if (idCardUpload) documentsPayload.idCard = idCardUpload
@@ -1773,7 +1772,7 @@
             throw new Error(message)
           }
           openSubmissionModal()
-          resetFirebaseUploadsAfterSubmit()
+          showMessage('', '')
           formEl.reset()
           selectedValues = []
           setMultiSelectValues(valuesSelect, [])
@@ -1787,7 +1786,6 @@
               if (inputEl.id) {
                 multiFileSelections.delete(inputEl.id)
               }
-              queueFirebaseSync(inputEl)
             }
             updateFileDropSummary(zone, inputEl)
           })
