@@ -36,6 +36,17 @@ const SMS_RECIPIENTS = [
 ]
 
 const PHONE_STATUS_OPTIONS = ['pending', 'scheduled', 'done']
+const DEPOSIT_STATUS_VALUES = ['pending', 'completed']
+const PATCH_VALIDATION_FIELDS = [
+  'name',
+  'gender',
+  'phone',
+  'birth',
+  'height',
+  'job',
+  'district',
+  'education',
+]
 const PROFILE_SHARE_PAGE = 'profile-card.html'
 const PROFILE_SHARE_VIEW_DURATION_MS = 3 * 24 * 60 * 60 * 1000
 
@@ -87,6 +98,7 @@ app.post('/api/consult', async (req, res) => {
   const record = {
     id: nanoid(),
     ...payload,
+    depositStatus: payload.depositStatus || 'pending',
     phoneConsultStatus: normalizePhoneStatus(payload.phoneConsultStatus, 'pending'),
     meetingSchedule: '',
     notes: sanitizeNotes(payload.notes),
@@ -379,6 +391,14 @@ app.patch('/api/consult/:id', async (req, res) => {
     updates.height = normalizeHeight(req.body.region)
   }
 
+  if (Object.prototype.hasOwnProperty.call(req.body || {}, 'depositStatus')) {
+    const status = sanitizeDepositStatus(req.body.depositStatus, '')
+    if (!status) {
+      return res.status(400).json({ ok: false, message: '유효한 입금 상태가 아닙니다.' })
+    }
+    updates.depositStatus = status
+  }
+
   if (!Object.keys(updates).length) {
     return res.status(400).json({ ok: false, message: '변경할 항목이 없습니다.' })
   }
@@ -401,14 +421,19 @@ app.patch('/api/consult/:id', async (req, res) => {
     }
 
     const candidate = { ...list[index], ...updates }
-    const validationErrors = validatePayload(candidate)
-    if (validationErrors.length) {
-      const [firstError] = validationErrors
-      return res.status(400).json({
-        ok: false,
-        message: firstError?.message || '유효한 상담 정보가 아닙니다.',
-        errors: validationErrors,
-      })
+    const requiresValidation = PATCH_VALIDATION_FIELDS.some((field) =>
+      Object.prototype.hasOwnProperty.call(updates, field),
+    )
+    if (requiresValidation) {
+      const validationErrors = validatePayload(candidate)
+      if (validationErrors.length) {
+        const [firstError] = validationErrors
+        return res.status(400).json({
+          ok: false,
+          message: firstError?.message || '유효한 상담 정보가 아닙니다.',
+          errors: validationErrors,
+        })
+      }
     }
 
     const updatedAt = new Date().toISOString()
@@ -603,6 +628,12 @@ function sanitizeProfileUpdate(body) {
     preferredAges: sanitizeStringArray(body?.preferredAges),
     values: sanitizeStringArray(body?.values).slice(0, 2),
   }
+  if (Object.prototype.hasOwnProperty.call(body || {}, 'depositStatus')) {
+    const nextStatus = sanitizeDepositStatus(body?.depositStatus, '')
+    if (nextStatus) {
+      updates.depositStatus = nextStatus
+    }
+  }
 
   if (Object.prototype.hasOwnProperty.call(body || {}, 'job')) {
     updates.job = sanitizeText(body.job)
@@ -654,7 +685,9 @@ function normalizePhoneNumber(value) {
 }
 
 function sanitizePayload(body) {
-  return {
+  const agreementsSource =
+    body?.agreements && typeof body.agreements === 'object' ? body.agreements : {}
+  const payload = {
     name: sanitizeText(body?.name),
     gender: sanitizeText(body?.gender),
     phone: sanitizeText(body?.phone),
@@ -663,20 +696,53 @@ function sanitizePayload(body) {
     height: normalizeHeight(body?.height ?? body?.region),
     district: sanitizeText(body?.district),
     education: sanitizeText(body?.education),
-    formType: sanitizeFormType(body?.formType || body?.applicationType),
+    workStyle: sanitizeText(body?.workStyle),
+    relationshipStatus: sanitizeText(body?.relationshipStatus || body?.relationship),
+    participationGoal: sanitizeText(body?.participationGoal || body?.goal),
+    socialEnergy: sanitizeText(body?.socialEnergy),
+    weekendPreference: sanitizeText(body?.weekendPreference),
+    depositStatus: sanitizeDepositStatus(body?.depositStatus, 'pending'),
+    formType: sanitizeFormType(body?.formType || body?.applicationType, body),
   }
+
+  payload.agreements = {
+    info: Boolean(agreementsSource.info ?? body?.agree),
+    manners: Boolean(agreementsSource.manners ?? agreementsSource.rules ?? body?.rulesAgree),
+    refund: Boolean(agreementsSource.refund ?? body?.refundAgree),
+  }
+
+  return payload
 }
 
-function sanitizeFormType(value) {
+function hasMoimIndicators(source) {
+  if (!source || typeof source !== 'object') return false
+  const candidates = [
+    source.workStyle,
+    source.relationshipStatus || source.relationship,
+    source.participationGoal || source.goal,
+    source.socialEnergy,
+    source.weekendPreference,
+  ]
+  return candidates.some((value) => typeof value === 'string' && value.trim())
+}
+
+function sanitizeFormType(value, context) {
   const normalized = sanitizeText(value).toLowerCase()
   if (normalized === 'moim') return 'moim'
+  if (hasMoimIndicators(context)) return 'moim'
   return 'consult'
+}
+
+function sanitizeDepositStatus(value, fallback = 'pending') {
+  const normalized = sanitizeText(value).toLowerCase()
+  if (DEPOSIT_STATUS_VALUES.includes(normalized)) return normalized
+  return fallback
 }
 
 function normalizeStoredRecord(entry) {
   if (!entry || typeof entry !== 'object') return {}
   const record = { ...entry }
-  record.formType = sanitizeFormType(record.formType)
+  record.formType = sanitizeFormType(record.formType, record)
   record.id = sanitizeText(record.id) || nanoid()
   record.name = sanitizeText(record.name)
   record.gender = sanitizeText(record.gender)
@@ -711,6 +777,11 @@ function normalizeStoredRecord(entry) {
       record['거주 구'] ??
       '',
   )
+  record.workStyle = sanitizeText(record.workStyle)
+  record.relationshipStatus = sanitizeText(record.relationshipStatus || record.relationship)
+  record.participationGoal = sanitizeText(record.participationGoal)
+  record.socialEnergy = sanitizeText(record.socialEnergy)
+  record.weekendPreference = sanitizeText(record.weekendPreference)
   record.mbti = sanitizeText(record.mbti)
   record.university = sanitizeText(record.university)
   record.salaryRange = sanitizeText(record.salaryRange)
@@ -734,13 +805,14 @@ function normalizeStoredRecord(entry) {
   record.preferredHeights = sanitizeStringArray(record.preferredHeights)
   record.preferredAges = sanitizeStringArray(record.preferredAges)
   record.values = sanitizeStringArray(record.values)
-  record.agreements =
-    record.agreements && typeof record.agreements === 'object'
-      ? {
-          info: Boolean(record.agreements.info),
-          manners: Boolean(record.agreements.manners),
-        }
-      : { info: false, manners: false }
+  const agreementsRaw =
+    record.agreements && typeof record.agreements === 'object' ? record.agreements : {}
+  record.agreements = {
+    info: Boolean(agreementsRaw.info ?? record.agree),
+    manners: Boolean(agreementsRaw.manners ?? agreementsRaw.rules ?? record.rulesAgree),
+    refund: Boolean(agreementsRaw.refund ?? record.refundAgree),
+  }
+  record.depositStatus = sanitizeDepositStatus(record.depositStatus, 'pending')
   const documentsRaw =
     record.documents && typeof record.documents === 'object' ? record.documents : {}
   const normalizedDocuments = {
