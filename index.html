@@ -13,6 +13,11 @@
     <meta name="twitter:image" content="image2.png" />
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
         <link rel="stylesheet" href="dashboard.css" />
+    <style>
+      .detail-badge {
+        display: none !important;
+      }
+    </style>
 
     <script src="backend-config.js"></script>
   </head>
@@ -678,25 +683,6 @@
                       연애 시작 후 2년 이상에 결혼준비 시작
                     </option>
                   </select>
-                </div>
-                <div class="field">
-                  <label for="detailValues">
-                    인생의 주요 가치관 (한 개 선택)
-                    <span class="detail-badge detail-badge-preference" aria-hidden="true">매칭용</span>
-                  </label>
-                  <select id="detailValues">
-                    <option value="">선택</option>
-                    <option value="하루하루 최선을 다하는">하루하루 최선을 다하는</option>
-                    <option value="화목한 가족이 중심이 되는">화목한 가족이 중심이 되는</option>
-                    <option value="건강관리에 철저한">건강관리에 철저한</option>
-                    <option value="일과 사랑 모두 성공하는">일과 사랑 모두 성공하는</option>
-                    <option value="사랑하면 맞춰주는(이해하는)">사랑하면 맞춰주는(이해하는)</option>
-                  </select>
-                  <input
-                    id="detailValuesCustom"
-                    type="text"
-                    placeholder="기타 가치관 (직접 입력)"
-                  />
                 </div>
               </div>
             </fieldset>

@@ -989,6 +989,23 @@
               </select>
             </div>
             <div class="field">
+              <label for="profileLongDistance">장거리 연애 가능 여부</label>
+              <select id="profileLongDistance">
+                <option value="">선택</option>
+                <option value="가능">가능</option>
+                <option value="불가능">불가능</option>
+                <option value="상황에 따라">상황에 따라</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="profileDivorceStatus">돌싱 여부</label>
+              <select id="profileDivorceStatus">
+                <option value="">선택</option>
+                <option value="돌싱입니다(자녀o)">돌싱입니다(자녀o)</option>
+                <option value="돌싱입니다(자녀x)">돌싱입니다(자녀x)</option>
+                <option value="돌싱이 아닙니다">돌싱이 아닙니다</option>
+              </select>
+            </div>
           </div>
         </fieldset>
 
@@ -1517,6 +1534,8 @@
       const relationshipCountSelect = document.getElementById('profileRelationshipCount')
       const carOwnershipSelect = document.getElementById('profileCarOwnership')
       const tattooSelect = document.getElementById('profileTattoo')
+      const longDistanceSelect = document.getElementById('profileLongDistance')
+      const divorceStatusSelect = document.getElementById('profileDivorceStatus')
       const sufficientInput = document.getElementById('profileSufficientCondition')
       const necessaryInput = document.getElementById('profileNecessaryCondition')
       const likesDislikesInput = document.getElementById('profileLikesDislikes')
@@ -2687,6 +2706,8 @@
           relationshipCount: relationshipCountSelect?.value || '',
           carOwnership: carOwnershipSelect?.value || '',
           tattoo: tattooSelect?.value || '',
+          longDistance: longDistanceSelect?.value || '',
+          divorceStatus: divorceStatusSelect?.value || '',
           profileAppeal: appealInput?.value || '',
           likesDislikes: likesDislikesInput?.value || '',
           sufficientCondition: sufficientInput?.value || '',
@@ -2728,6 +2749,8 @@
         if (relationshipCountSelect) relationshipCountSelect.value = draft.relationshipCount || ''
         if (carOwnershipSelect) carOwnershipSelect.value = draft.carOwnership || ''
         if (tattooSelect) tattooSelect.value = draft.tattoo || ''
+        if (longDistanceSelect) longDistanceSelect.value = draft.longDistance || ''
+        if (divorceStatusSelect) divorceStatusSelect.value = draft.divorceStatus || ''
         if (appealInput) appealInput.value = draft.profileAppeal || ''
         if (likesDislikesInput) likesDislikesInput.value = draft.likesDislikes || ''
         if (sufficientInput) sufficientInput.value = draft.sufficientCondition || ''
@@ -2929,6 +2952,8 @@
           relationshipCount: relationshipCountSelect?.value || '',
           carOwnership: carOwnershipSelect?.value || '',
           tattoo: tattooSelect?.value || '',
+          longDistance: longDistanceSelect?.value || '',
+          divorceStatus: divorceStatusSelect?.value || '',
           sufficientCondition: sufficientInput?.value?.trim() || '',
           necessaryCondition: necessaryInput?.value?.trim() || '',
           likesDislikes: likesDislikesInput?.value?.trim() || '',
