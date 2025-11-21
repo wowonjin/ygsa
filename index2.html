@@ -64,7 +64,10 @@
         <div class="scheduler-title-group">
           <div class="scheduler-title-row">
             <h3 id="schedulerTitle">신청 스케줄러</h3>
-            <button type="button" id="calendarScrollBtn" class="scheduler-calendar-btn">캘린더 보기</button>
+            <div class="scheduler-title-actions">
+              <button type="button" id="calendarScrollBtn" class="scheduler-calendar-btn">캘린더 보기</button>
+              <button type="button" id="weeklySummaryBtn" class="scheduler-weekly-btn">주차별 예약</button>
+            </div>
           </div>
           <p id="schedulerSubtitle">최근 7일 신청 인원 흐름</p>
         </div>
@@ -73,6 +76,7 @@
       <div id="schedulerGrid" class="scheduler-grid"></div>
     </section>
     <section class="toolbar" aria-label="필터">
+      <p class="toolbar-title">신청 목록</p>
       <div class="toolbar-filters">
         <input type="search" id="searchInput" placeholder="이름, 연락처, 신장, 직업 검색" aria-label="검색" />
         <select id="genderFilter" aria-label="성별 필터">
@@ -97,7 +101,7 @@
     <div class="calendar-overlay" id="calendarModal" hidden>
       <div class="calendar-dialog">
         <header>
-          <h2>대면 상담 캘린더</h2>
+          <h2 id="calendarModalTitle">모임 캘린더</h2>
           <button type="button" class="close" id="calendarCloseBtn" aria-label="닫기">×</button>
         </header>
         <div class="calendar-controls">
@@ -114,6 +118,18 @@
             <h4 id="calendarSelectedTitle">선택된 일정</h4>
             <ul id="calendarAppointmentList" class="calendar-appointments"></ul>
           </aside>
+        </div>
+      </div>
+    </div>
+    <div class="weekly-overlay" id="weeklyModal" hidden>
+      <div class="weekly-dialog">
+        <header>
+          <h2>주차별 모임 신청 현황</h2>
+          <button type="button" class="close" id="weeklyCloseBtn" aria-label="닫기">×</button>
+        </header>
+        <div class="weekly-body">
+          <p class="weekly-desc">최근 8주 신청 인원을 확인하세요.</p>
+          <ul id="weeklySummaryList" class="weekly-list"></ul>
         </div>
       </div>
     </div>
@@ -153,6 +169,7 @@
               <p class="modal-subtitle" id="detailScheduleInfo"></p>
             </div>
           </div>
+        <div id="moimDetailView" class="moim-detail" hidden></div>
           <div class="detail-fields" aria-live="polite">
             <div class="field-grid">
               <div class="field">

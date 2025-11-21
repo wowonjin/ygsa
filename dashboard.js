@@ -95,6 +95,7 @@
         if (toastEl) toastEl.textContent = config.newToast
         if (schedulerTitleEl) schedulerTitleEl.textContent = config.schedulerTitle
         if (schedulerSubtitleEl) schedulerSubtitleEl.textContent = config.schedulerSubtitle
+        if (calendarModalTitle) calendarModalTitle.textContent = config.calendarTitle
         document.title = config.title
       }
 
@@ -156,6 +157,21 @@
       const noteToggleBtn = document.getElementById('noteToggleBtn')
       const stickyNoteEl = document.getElementById('stickyNote')
       const stickyNoteCloseBtn = document.getElementById('stickyNoteCloseBtn')
+      const calendarScrollBtn = document.getElementById('calendarScrollBtn')
+      const calendarModal = document.getElementById('calendarModal')
+      const calendarModalTitle = document.getElementById('calendarModalTitle')
+      const calendarCloseBtn = document.getElementById('calendarCloseBtn')
+      const calendarPrevBtn = document.getElementById('calendarPrevBtn')
+      const calendarNextBtn = document.getElementById('calendarNextBtn')
+      const calendarTodayBtn = document.getElementById('calendarTodayBtn')
+      const calendarCurrentMonthEl = document.getElementById('calendarCurrentMonth')
+      const calendarSelectedTitleEl = document.getElementById('calendarSelectedTitle')
+      const calendarAppointmentList = document.getElementById('calendarAppointmentList')
+      const calendarGrid = document.getElementById('calendarGrid')
+      const weeklySummaryBtn = document.getElementById('weeklySummaryBtn')
+      const weeklyModal = document.getElementById('weeklyModal')
+      const weeklyCloseBtn = document.getElementById('weeklyCloseBtn')
+      const weeklySummaryList = document.getElementById('weeklySummaryList')
       const APP_VARIANT = (document.body?.dataset?.appVariant || 'consult').toLowerCase()
       const IS_MOIM_VIEW = APP_VARIANT === 'moim'
       const FORM_TYPE_DEFAULT = 'consult'
@@ -177,12 +193,24 @@
           schedulerTitle: '상담 스케줄러',
           schedulerSubtitle: '최근 7일 상담 신청 흐름',
           counterUnit: '상담',
+          calendarTitle: '대면 상담 캘린더',
           stats: {
             total: '총 상담 인원',
             monthly: '월간 상담 인원',
             weekly: '주간 상담 인원',
             daily: '오늘 상담 인원',
           },
+          cardFields: [
+            { label: '연락처', key: 'phone', formatter: formatPhoneNumber },
+            { label: '성별', key: 'gender' },
+            { label: '생년(생일)', key: 'birth' },
+            { label: '최종학력', key: 'education' },
+            { label: '직업', key: 'job' },
+            { label: '신장', key: 'height' },
+            { label: 'MBTI', key: 'mbti' },
+            { label: '연봉', key: 'salaryRange', formatter: formatSalaryRange },
+            { label: '거주 구', key: 'district' },
+          ],
         },
         moim: {
           key: 'moim',
@@ -198,12 +226,27 @@
           schedulerTitle: '모임 스케줄러',
           schedulerSubtitle: '최근 7일 모임 신청 흐름',
           counterUnit: '모임',
+          calendarTitle: '모임 캘린더',
           stats: {
             total: '총 신청 인원',
             monthly: '월간 신청 인원',
             weekly: '주간 신청 인원',
             daily: '오늘 신청 인원',
           },
+          cardFields: [
+            { label: '연락처', key: 'phone', formatter: formatPhoneNumber },
+            { label: '성별', key: 'gender' },
+            { label: '출생년도', key: 'birth' },
+            { label: '최종학력', key: 'education' },
+            { label: '직업', key: 'job' },
+            { label: '신장', key: 'height' },
+            { label: '거주 구', key: 'district' },
+            { label: '근무 형태', key: 'workStyle' },
+            { label: '연애 상태', key: 'relationshipStatus' },
+            { label: '참여 목적', key: 'participationGoal' },
+            { label: '새 사람 만남', key: 'socialEnergy' },
+            { label: '주말 스타일', key: 'weekendPreference' },
+          ],
         },
       }
       const variantCopy = VARIANT_CONFIG[APP_VARIANT] || VARIANT_CONFIG.consult
@@ -254,6 +297,7 @@
       const detailTimeSelect = document.getElementById('detailTime')
       const detailClearScheduleBtn = document.getElementById('detailClearSchedule')
       const detailNotesInput = document.getElementById('detailNotes')
+      const moimDetailView = document.getElementById('moimDetailView')
       const detailScheduleInfo = document.getElementById('detailScheduleInfo')
       const detailAttachmentsSection = document.getElementById('detailAttachmentsSection')
       const detailIdCardItem = document.getElementById('detailIdCardItem')
@@ -291,16 +335,6 @@
       const DRAFT_STORAGE_KEY = 'alphaProfileDraft_v1'
       const DRAFT_STORAGE_PREFIX = `${DRAFT_STORAGE_KEY}:`
       let currentDraftData = null
-      const calendarScrollBtn = document.getElementById('calendarScrollBtn')
-      const calendarModal = document.getElementById('calendarModal')
-      const calendarCloseBtn = document.getElementById('calendarCloseBtn')
-      const calendarPrevBtn = document.getElementById('calendarPrevBtn')
-      const calendarNextBtn = document.getElementById('calendarNextBtn')
-      const calendarTodayBtn = document.getElementById('calendarTodayBtn')
-      const calendarCurrentMonthEl = document.getElementById('calendarCurrentMonth')
-      const calendarSelectedTitleEl = document.getElementById('calendarSelectedTitle')
-      const calendarAppointmentList = document.getElementById('calendarAppointmentList')
-      const calendarGrid = document.getElementById('calendarGrid')
       let stickyNoteHideTimer = null
       let items = []
       const selectedIds = new Set()
@@ -441,6 +475,10 @@
       stickyNoteCloseBtn?.addEventListener('click', closeStickyNote)
       document.addEventListener('keydown', (event) => {
         if (event.key !== 'Escape') return
+        if (weeklyModal && !weeklyModal.hidden) {
+          closeWeeklyModal()
+          return
+        }
         if (!detailModal.hidden) {
           closeDetailModal()
           return
@@ -507,6 +545,11 @@
       })
       calendarGrid.addEventListener('click', handleCalendarDayClick)
       calendarAppointmentList.addEventListener('click', handleCalendarAppointmentClick)
+      weeklySummaryBtn?.addEventListener('click', openWeeklyModal)
+      weeklyCloseBtn?.addEventListener('click', closeWeeklyModal)
+      weeklyModal?.addEventListener('click', (event) => {
+        if (event.target === weeklyModal) closeWeeklyModal()
+      })
       searchInput.addEventListener('input', (event) => {
         viewState.search = event.target.value.trim()
         render()
@@ -596,6 +639,111 @@
         })
       }
 
+      function renderWeeklySummary() {
+        if (!weeklySummaryList) return
+        const summary = buildWeeklySummary(items, 8)
+        if (!summary.length) {
+          weeklySummaryList.innerHTML = '<li class="weekly-empty">최근 주차별 신청 데이터가 없습니다.</li>'
+          return
+        }
+        const maxCount = Math.max(...summary.map((entry) => entry.count))
+        weeklySummaryList.innerHTML = summary
+          .map((entry) => {
+            const width = maxCount ? Math.round((entry.count / maxCount) * 100) : 0
+            return `
+              <li>
+                <div class="weekly-row">
+                  <div>
+                    <strong>${escapeHtml(entry.label)}</strong>
+                    <span>${escapeHtml(entry.rangeLabel)}</span>
+                  </div>
+                  <span class="weekly-count">${entry.count.toLocaleString('ko-KR')}명</span>
+                </div>
+                <div class="weekly-bar">
+                  <span style="width:${width}%"></span>
+                </div>
+              </li>
+            `
+          })
+          .join('')
+      }
+
+      function buildWeeklySummary(source, limit = 8) {
+        const list = Array.isArray(source) ? source : []
+        const map = new Map()
+        list.forEach((item) => {
+          if (!item?.createdAt) return
+          const date = new Date(item.createdAt)
+          if (Number.isNaN(date.getTime())) return
+          const info = getWeekInfo(date)
+          const key = `${info.year}-W${String(info.week).padStart(2, '0')}`
+          if (!map.has(key)) {
+            map.set(key, {
+              key,
+              year: info.year,
+              week: info.week,
+              label: info.label,
+              rangeLabel: formatWeekRange(info.start, info.end),
+              count: 0,
+            })
+          }
+          map.get(key).count += 1
+        })
+        const summary = Array.from(map.values()).sort((a, b) => {
+          if (a.year === b.year) return b.week - a.week
+          return b.year - a.year
+        })
+        return summary.slice(0, limit)
+      }
+
+      function getWeekInfo(date) {
+        const target = new Date(date)
+        const day = target.getDay() || 7
+        const start = new Date(target)
+        start.setHours(0, 0, 0, 0)
+        start.setDate(start.getDate() - (day - 1))
+        const end = new Date(start)
+        end.setDate(start.getDate() + 6)
+
+        const utcDate = new Date(Date.UTC(target.getFullYear(), target.getMonth(), target.getDate()))
+        const utcDay = utcDate.getUTCDay() || 7
+        utcDate.setUTCDate(utcDate.getUTCDate() + 4 - utcDay)
+        const isoYear = utcDate.getUTCFullYear()
+        const yearStart = new Date(Date.UTC(isoYear, 0, 1))
+        const weekNo = Math.ceil(((utcDate - yearStart) / 86400000 + 1) / 7)
+
+        return {
+          year: isoYear,
+          week: weekNo,
+          label: `${isoYear}년 ${String(weekNo).padStart(2, '0')}주차`,
+          start,
+          end,
+        }
+      }
+
+      function formatWeekRange(start, end) {
+        if (!start || !end) return ''
+        const format = (date) =>
+          `${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`
+        return `${format(start)} ~ ${format(end)}`
+      }
+
+      function openWeeklyModal() {
+        if (!weeklyModal) return
+        renderWeeklySummary()
+        weeklyModal.hidden = false
+      }
+
+      function closeWeeklyModal() {
+        if (!weeklyModal) return
+        weeklyModal.hidden = true
+      }
+
+      function refreshWeeklySummaryIfOpen() {
+        if (!weeklyModal || weeklyModal.hidden) return
+        renderWeeklySummary()
+      }
+
       function buildSchedulerBuckets(source, days) {
         const list = Array.isArray(source) ? source : []
         const safeDays = Number.isFinite(days) && days > 0 ? Math.floor(days) : SCHEDULER_DAY_WINDOW
@@ -638,6 +786,23 @@
         return `${label}: ${Number(value || 0).toLocaleString('ko-KR')}명`
       }
 
+      function getCardFieldDefs() {
+        if (Array.isArray(variantCopy.cardFields) && variantCopy.cardFields.length) {
+          return variantCopy.cardFields
+        }
+        return [
+          { label: '연락처', key: 'phone', formatter: formatPhoneNumber },
+          { label: '성별', key: 'gender' },
+          { label: '생년(생일)', key: 'birth' },
+          { label: '최종학력', key: 'education' },
+          { label: '직업', key: 'job' },
+          { label: '신장', key: 'height' },
+          { label: 'MBTI', key: 'mbti' },
+          { label: '연봉', key: 'salaryRange', formatter: formatSalaryRange },
+          { label: '거주 구', key: 'district' },
+        ]
+      }
+
       function render() {
         cardsEl.innerHTML = ''
         const prepared = getPreparedItems()
@@ -647,49 +812,184 @@
         }
         emptyEl.hidden = true
         const fragment = document.createDocumentFragment()
+        const cardFields = IS_MOIM_VIEW ? null : getCardFieldDefs()
         prepared.forEach((item) => {
-          const card = document.createElement('article')
-          card.className = 'card'
-          card.dataset.id = item.id || ''
-          const idAttr = escapeHtml(item.id || '')
-          const isSelected = selectedIds.has(item.id)
-          card.innerHTML = `
-              <div class="card-top">
-                <div>
-                  <div class="card-title">
-                    <h2>${escapeHtml(item.name || '익명')}</h2>
-                    <span class="status-chip ${escapeHtml(getStatusClass(item.phoneConsultStatus))}">
-                      ${escapeHtml(formatPhoneStatus(item.phoneConsultStatus))}
-                    </span>
-                  </div>
-                  <div class="meta">${formatDate(item.createdAt)} 접수</div>
-                </div>
-                <div class="card-controls">
-                  <input
-                    type="checkbox"
-                    class="select-checkbox"
-                    data-id="${idAttr}"
-                    ${isSelected ? 'checked' : ''}
-                    aria-label="상담 선택"
-                  />
-                </div>
-              </div>
-              <dl>
-                ${renderEntry('연락처', item.phone)}
-                ${renderEntry('성별', item.gender)}
-                ${renderEntry('생년(생일)', item.birth)}
-                ${renderEntry('최종학력', item.education)}
-                ${renderEntry('직업', item.job)}
-                ${renderEntry('신장', item.height)}
-                ${renderEntry('MBTI', item.mbti)}
-                ${renderEntry('연봉', formatSalaryRange(item.salaryRange))}
-                ${renderEntry('거주 구', item.district)}
-              </dl>
-              ${renderCardAttachments(item)}
-            `
+          const card = IS_MOIM_VIEW ? renderMoimCard(item) : renderConsultCard(item, cardFields)
           fragment.appendChild(card)
         })
         cardsEl.appendChild(fragment)
+        refreshWeeklySummaryIfOpen()
+      }
+
+      function renderConsultCard(item, cardFields = getCardFieldDefs()) {
+        const card = document.createElement('article')
+        card.className = 'card'
+        card.dataset.id = item.id || ''
+        const idAttr = escapeHtml(item.id || '')
+        const isSelected = selectedIds.has(item.id)
+        const entries = (cardFields || [])
+          .map(({ label, key, formatter }) => {
+            const value = formatter ? formatter(item[key], item) : item[key]
+            return renderEntry(label, value)
+          })
+          .join('')
+        card.innerHTML = `
+          <div class="card-top">
+            <div>
+              <div class="card-title">
+                <h2>${escapeHtml(item.name || '익명')}</h2>
+                <span class="status-chip ${escapeHtml(getStatusClass(item.phoneConsultStatus))}">
+                  ${escapeHtml(formatPhoneStatus(item.phoneConsultStatus))}
+                </span>
+              </div>
+              <div class="meta">${formatDate(item.createdAt)} 접수</div>
+            </div>
+            <div class="card-controls">
+              <input
+                type="checkbox"
+                class="select-checkbox"
+                data-id="${idAttr}"
+                ${isSelected ? 'checked' : ''}
+                aria-label="상담 선택"
+              />
+            </div>
+          </div>
+          <dl>
+            ${entries}
+          </dl>
+          ${renderCardAttachments(item)}
+        `
+        return card
+      }
+
+      function renderMoimCard(item) {
+        const card = document.createElement('article')
+        card.className = 'card moim-card'
+        card.dataset.id = item.id || ''
+        const idAttr = escapeHtml(item.id || '')
+        const isSelected = selectedIds.has(item.id)
+        const phoneLine = formatPhoneNumber(item.phone)
+        const basicSection = buildMoimSection('기본 정보', [
+          { label: '출생년도', value: item.birth },
+          { label: '성별', value: item.gender },
+          { label: '연락처', value: phoneLine },
+          { label: '거주 구', value: item.district },
+        ])
+        const profileSection = buildMoimSection('프로필', [
+          { label: '직업', value: item.job },
+          { label: '최종학력', value: item.education },
+        ])
+        card.innerHTML = `
+          <div class="moim-card-header">
+            <div>
+              <h2>${escapeHtml(item.name || '이름 미입력')}</h2>
+            </div>
+            <div class="card-controls">
+              <input
+                type="checkbox"
+                class="select-checkbox"
+                data-id="${idAttr}"
+                ${isSelected ? 'checked' : ''}
+                aria-label="회원 선택"
+              />
+            </div>
+          </div>
+          ${basicSection}
+          ${profileSection}
+        `
+        return card
+      }
+
+      function buildMoimSection(title, entries) {
+        if (!entries || !entries.length) return ''
+        return `
+          <div class="moim-card-section">
+            <h3>${escapeHtml(title)}</h3>
+            <dl class="moim-card-list">
+              ${entries.map(({ label, value }) => renderEntry(label, value)).join('')}
+            </dl>
+          </div>
+        `
+      }
+
+      function renderMoimHeaderLine(values, className) {
+        const text = (values || []).filter((value) => value && String(value).trim() !== '').join(' · ')
+        if (!text) return ''
+        return `<p class="${className}">${escapeHtml(text)}</p>`
+      }
+
+      function renderMoimConsents(item, options = {}) {
+        const sectionClass = options.sectionClass || 'moim-card-section'
+        const badgesClass = options.badgesClass || 'moim-card-badges'
+        const consentDefs = [
+          { key: 'rulesAgree', label: '모임 규칙' },
+          { key: 'agree', label: '개인정보' },
+          { key: 'refundAgree', label: '노쇼/환불' },
+        ]
+        const badges = consentDefs
+          .map(({ key, label }) => {
+            const isChecked = Boolean(item && item[key])
+            return `
+              <span class="consent-badge ${isChecked ? 'is-checked' : 'is-unchecked'}">
+                ${escapeHtml(label)}
+              </span>
+            `
+          })
+          .join('')
+        return `
+          <div class="${sectionClass}">
+            <h3>필수 동의</h3>
+            <div class="${badgesClass}">
+              ${badges}
+            </div>
+          </div>
+        `
+      }
+
+      function renderMoimDetailSection(title, entries) {
+        if (!entries || !entries.length) return ''
+        return `
+          <div class="moim-detail-section">
+            <h3>${escapeHtml(title)}</h3>
+            <dl class="moim-detail-list">
+              ${entries.map(({ label, value }) => renderEntry(label, value)).join('')}
+            </dl>
+          </div>
+        `
+      }
+
+      function renderMoimDetailView(item) {
+        if (!moimDetailView || !item) return
+        const sections = [
+          {
+            title: '기본 정보',
+            entries: [
+              { label: '연락처', value: formatPhoneNumber(item.phone) },
+              { label: '출생년도', value: item.birth },
+              { label: '성별', value: item.gender },
+              { label: '거주 구', value: item.district },
+            ],
+          },
+          {
+            title: '프로필',
+            entries: [
+              { label: '직업', value: item.job },
+              { label: '최종학력', value: item.education },
+            ],
+          },
+        ]
+        const content = sections.map(({ title, entries }) => renderMoimDetailSection(title, entries)).join('')
+        const consentBlock = renderMoimConsents(item, {
+          sectionClass: 'moim-detail-section',
+          badgesClass: 'moim-detail-badges',
+        })
+        const createdLine = item.createdAt ? `<p class="moim-detail-meta">신청 ${formatDate(item.createdAt)}</p>` : ''
+        moimDetailView.innerHTML = `
+          ${createdLine}
+          ${content}
+          ${consentBlock}
+        `
+        moimDetailView.hidden = false
       }
 
       function openDetailModal(id) {
@@ -714,6 +1014,14 @@
         ]
           .filter(Boolean)
           .join(' · ')
+
+        if (IS_MOIM_VIEW) {
+          renderMoimDetailView(record)
+          detailModal.hidden = false
+          document.body.classList.add('modal-open')
+          if (detailForm) detailForm.scrollTop = 0
+          return
+        }
 
         const status = PHONE_STATUS_VALUES.includes(record.phoneConsultStatus)
           ? record.phoneConsultStatus
@@ -835,6 +1143,10 @@
         if (detailEmploymentItem) detailEmploymentItem.hidden = true
         if (detailPhotosItem) detailPhotosItem.hidden = true
         if (detailPhotosGrid) detailPhotosGrid.innerHTML = ''
+        if (moimDetailView) {
+          moimDetailView.innerHTML = ''
+          moimDetailView.hidden = true
+        }
       }
 
       function renderEntry(label, value) {
@@ -1832,6 +2144,11 @@
           return
         }
 
+        if (IS_MOIM_VIEW) {
+          renderMoimCalendarAppointments(meetings)
+          return
+        }
+
         meetings
           .map((entry) => ({
             ...entry,
@@ -1871,6 +2188,47 @@
           })
       }
 
+      function renderMoimCalendarAppointments(entries) {
+        entries
+          .map((entry) => ({
+            ...entry,
+            displaySchedule: formatMoimCalendarSchedule(entry.createdAt),
+          }))
+          .forEach((entry) => {
+            const li = document.createElement('li')
+            li.dataset.id = entry.id
+            const record = entry.record || {}
+            const phoneLine = escapeHtml(formatPhoneNumber(record.phone) || '-')
+            const birthLine = record.birth
+              ? `<span class="meta-line">출생년도 ${escapeHtml(record.birth)}</span>`
+              : ''
+            const genderLine = record.gender
+              ? `<span class="meta-line">성별 ${escapeHtml(record.gender)}</span>`
+              : ''
+            const districtLine = record.district
+              ? `<span class="meta-line">거주 구 ${escapeHtml(record.district)}</span>`
+              : ''
+            const jobLine = record.job
+              ? `<span class="meta-line">직업 ${escapeHtml(record.job)}</span>`
+              : ''
+            const goalLine = record.participationGoal
+              ? `<span class="meta-line">목적 ${escapeHtml(record.participationGoal)}</span>`
+              : ''
+
+            li.innerHTML = `
+              <time>${entry.displaySchedule}</time>
+              <span>${escapeHtml(record.name || '익명')}</span>
+              <span class="meta-line">연락처 ${phoneLine}</span>
+              ${birthLine}
+              ${genderLine}
+              ${districtLine}
+              ${jobLine}
+              ${goalLine}
+            `
+            calendarAppointmentList.appendChild(li)
+          })
+      }
+
       function formatCalendarSchedule(schedule, fallbackTime, fallbackDateKey) {
         if (schedule) {
           const date = new Date(schedule)
@@ -1886,8 +2244,38 @@
         return `${fallbackDateKey} ${fallbackTime}`
       }
 
+      function formatMoimCalendarSchedule(createdAt) {
+        const date = new Date(createdAt)
+        if (!Number.isNaN(date.getTime())) {
+          return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(
+            2,
+            '0',
+          )} 접수`
+        }
+        return '접수 시간'
+      }
+
       function getMeetingsGroupedByDate() {
         const map = new Map()
+
+        if (IS_MOIM_VIEW) {
+          items.forEach((item) => {
+            if (!item?.createdAt) return
+            const created = new Date(item.createdAt)
+            if (Number.isNaN(created.getTime())) return
+            const dateKey = getDateKey(created)
+            if (!map.has(dateKey)) map.set(dateKey, [])
+            map.get(dateKey).push({
+              id: item.id,
+              name: item.name,
+              createdAt: created.getTime(),
+              record: item,
+            })
+          })
+          map.forEach((list) => list.sort((a, b) => a.createdAt - b.createdAt))
+          return map
+        }
+
         items.forEach((item) => {
           if (!item.meetingSchedule) return
           const { date, time } = splitLocalDateTime(item.meetingSchedule)
@@ -1903,7 +2291,7 @@
           })
         })
 
-        map.forEach((list, key) => list.sort((a, b) => a.time.localeCompare(b.time)))
+        map.forEach((list) => list.sort((a, b) => a.time.localeCompare(b.time)))
         return map
       }
 
@@ -1915,10 +2303,12 @@
       }
 
       function formatSelectedDateTitle(dateKey) {
-        if (!dateKey) return '선택된 일정'
+        const fallback = IS_MOIM_VIEW ? '선택된 모임' : '선택된 일정'
+        if (!dateKey) return fallback
         const [year, month, day] = dateKey.split('-').map((value) => Number(value))
-        if ([year, month, day].some((value) => Number.isNaN(value))) return '선택된 일정'
-        return `${year}년 ${month}월 ${day}일 일정`
+        if ([year, month, day].some((value) => Number.isNaN(value))) return fallback
+        const suffix = IS_MOIM_VIEW ? '모임' : '일정'
+        return `${year}년 ${month}월 ${day}일 ${suffix}`
       }
 
 
