@@ -115,6 +115,7 @@
   }
   .consult-form .policy-card ul{padding-left:20px;margin:8px 0 0 0}
   .consult-form .policy-card li{margin-bottom:4px}
+  .consult-form .policy-card[hidden]{display:none}
   .consult-form .checkbox-row{
     display:flex;
     align-items:center;
@@ -141,6 +142,68 @@
     line-height:1.5
   }
   .consult-form .textarea{font-size:16px;line-height:1.6;min-height:100px}
+  .consult-form .consent-all-row{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:14px 16px;
+    border:1px solid var(--line);
+    border-radius:14px;
+    background:#fff;
+  }
+  .consult-form .consent-all-row input[type="checkbox"]{
+    width:22px;
+    height:22px;
+    cursor:pointer;
+  }
+  .consult-form .consent-all-row label{
+    font-size:19px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .consult-form .policy-field{
+    border:1px solid rgba(0,0,0,0);
+    border-radius:18px;
+    padding:14px;
+    background:#fff;
+    box-shadow:0 2px 8px rgba(0,0,0,0.04);
+  }
+  .consult-form .policy-toggle-btn{
+    width:100%;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:14px 18px;
+    border:1px solid var(--line);
+    border-radius:14px;
+    background:#f8faf9;
+    font-size:18px;
+    font-weight:700;
+    text-align:left;
+    cursor:pointer;
+    transition:background 0.2s,border-color 0.2s;
+  }
+  .consult-form .policy-toggle-btn .policy-toggle-label{
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .consult-form .policy-toggle-btn .policy-toggle-icon{
+    margin-left:auto;
+    transition:transform 0.2s ease;
+  }
+  .consult-form .policy-toggle-btn.is-open{
+    background:#eef7f1;
+    border-color:#5377f6;
+  }
+  .consult-form .policy-toggle-btn.is-open .policy-toggle-icon{
+    transform:rotate(180deg);
+  }
+  .consult-form .policy-info-hint{
+    margin-top:8px;
+    color:#4a5c53;
+    font-size:14px;
+  }
   .reveal-on-scroll{
     opacity:0;
     transform:translate3d(0,28px,0);
@@ -201,6 +264,15 @@
     }
     .consult-form .account-box span{
       font-size:12px;
+    }
+    .consult-form .consent-all-row{
+      flex-direction:column;
+      align-items:flex-start;
+      gap:8px;
+    }
+    .consult-form .policy-toggle-btn{
+      font-size:15px;
+      padding:12px 14px;
     }
   }
   .reveal-on-scroll.is-visible{
@@ -303,33 +375,17 @@
       </div>
 
       <div class="field">
-        <label for="edu" class="label">최종학력<span class="required-mark">*</span></label>
-        <select id="edu" name="education" class="select" required>
-          <option value="" selected disabled>(선택)</option>
-          <optgroup label="고등교육 이전">
-            <option>고등학교 재학</option>
-            <option>고등학교 졸업(검정고시 포함)</option>
-          </optgroup>
-          <optgroup label="전문대(2·3년)">
-            <option>전문대 재학</option>
-            <option>전문학사 졸업</option>
-          </optgroup>
-          <optgroup label="대학교(4년)">
-            <option>대학교 재학(4년)</option>
-            <option>학사 졸업</option>
-          </optgroup>
-          <optgroup label="대학원">
-            <option>석사 과정 재학</option>
-            <option>석사 졸업</option>
-            <option>박사 과정 재학</option>
-            <option>박사 졸업</option>
-          </optgroup>
-          <optgroup label="기타">
-            <option>해외 대학 재학/졸업</option>
-            <option>기타</option>
-          </optgroup>
-        </select>
-        <div class="field-tooltip" data-field="edu">최종학력을 선택해주세요.</div>
+        <label for="edu" class="label">대학교 / 학과<span class="required-mark">*</span></label>
+        <input
+          id="edu"
+          name="education"
+          class="input"
+          type="text"
+          placeholder="예: 서울대학교 경영학과"
+          autocomplete="organization"
+          required
+        />
+        <div class="field-tooltip" data-field="edu">재학(졸업) 중인 대학교와 학과를 입력해주세요.</div>
       </div>
 
       <div class="field">
@@ -415,8 +471,21 @@
       <p class="notice">모임의 건전한 운영과 참가자 안전을 위해 필수로 확인해주세요.</p>
 
       <div class="field" style="grid-column:1/-1">
-        <label class="label">모임 규칙 동의<span class="required-mark">*</span></label>
-        <div class="policy-card">
+        <div class="consent-all-row">
+          <input type="checkbox" id="consentAll" />
+          <label for="consentAll">전부 동의합니다</label>
+        </div>
+        <p class="policy-info-hint">전체 동의를 선택하면 아래 필수 동의 항목이 모두 체크됩니다.</p>
+      </div>
+
+      <div class="field policy-field" style="grid-column:1/-1">
+        <button type="button" class="policy-toggle-btn" data-target="policyRules" aria-expanded="false">
+          <span class="policy-toggle-label">
+            모임 규칙 동의<span class="required-mark">*</span>
+          </span>
+          <span class="policy-toggle-icon" aria-hidden="true">▼</span>
+        </button>
+        <div id="policyRules" class="policy-card" hidden>
           <ul>
             <li>번호 직접 요구 금지</li>
             <li>상대방에게 불쾌/부담을 줄 수 있는 언행 시 퇴장 가능</li>
@@ -432,9 +501,14 @@
         </div>
       </div>
 
-      <div class="field" style="grid-column:1/-1">
-        <label class="label">개인정보 수집·이용 동의<span class="required-mark">*</span></label>
-        <div class="policy-card">
+      <div class="field policy-field" style="grid-column:1/-1">
+        <button type="button" class="policy-toggle-btn" data-target="policyInfo" aria-expanded="false">
+          <span class="policy-toggle-label">
+            개인정보 수집·이용 동의<span class="required-mark">*</span>
+          </span>
+          <span class="policy-toggle-icon" aria-hidden="true">▼</span>
+        </button>
+        <div id="policyInfo" class="policy-card" hidden>
           <p><strong>수집 항목</strong>: 이름, 연락처, 기본 프로필</p>
           <p><strong>이용 목적</strong>: 모임 운영·사후 매칭 안내 용도로만 사용</p>
           <p><strong>보유·파기</strong>: 일정 기간 후 안전하게 파기</p>
@@ -448,9 +522,14 @@
         </div>
       </div>
 
-      <div class="field" style="grid-column:1/-1">
-        <label class="label">노쇼/환불 정책 동의<span class="required-mark">*</span></label>
-        <div class="policy-card">
+      <div class="field policy-field" style="grid-column:1/-1">
+        <button type="button" class="policy-toggle-btn" data-target="policyRefund" aria-expanded="false">
+          <span class="policy-toggle-label">
+            노쇼/환불 정책 동의<span class="required-mark">*</span>
+          </span>
+          <span class="policy-toggle-icon" aria-hidden="true">▼</span>
+        </button>
+        <div id="policyRefund" class="policy-card" hidden>
           <p>전날 취소 시 전액 환불, 이후 환불 불가</p>
           <p>노쇼 시 향후 참가 제한 가능</p>
         </div>
@@ -520,6 +599,8 @@
   const birthEl   = form.querySelector('#birth');
   const heightEl  = form.querySelector('#height');
   const consentChecks = Array.from(form.querySelectorAll('.consent-check'));
+  const consentAllToggle = form.querySelector('#consentAll');
+  const policyToggleButtons = form.querySelectorAll('.policy-toggle-btn');
 
   // 출생년도 입력 안내 (숫자만 허용)
   if (birthEl) {
@@ -629,17 +710,69 @@
   };
 
   // 제출 버튼 활성화/비활성 초기 동기화 + 변경 시 동기화
+  const updateConsentAllState = () => {
+    if (!consentAllToggle || !consentChecks.length) return;
+    const requiredChecks = consentChecks.filter((check) => check.required !== false);
+    if (!requiredChecks.length) {
+      consentAllToggle.checked = false;
+      consentAllToggle.indeterminate = false;
+      return;
+    }
+    const checkedCount = requiredChecks.filter((check) => check.checked).length;
+    consentAllToggle.checked = checkedCount === requiredChecks.length;
+    consentAllToggle.indeterminate =
+      checkedCount > 0 && checkedCount < requiredChecks.length;
+  };
+
   const syncSubmitState = ()=>{
     if(!submitBtn) return;
     if(!consentChecks.length){
       submitBtn.disabled = false;
+      if (consentAllToggle) {
+        consentAllToggle.checked = false;
+        consentAllToggle.indeterminate = false;
+      }
       return;
     }
     const unchecked = consentChecks.some(check => check.required && !check.checked);
     submitBtn.disabled = unchecked;
+    updateConsentAllState();
   };
   syncSubmitState();
-  consentChecks.forEach(check => check.addEventListener('change', syncSubmitState));
+  consentChecks.forEach(check =>
+    check.addEventListener('change', ()=>{
+      syncSubmitState();
+    })
+  );
+
+  if (consentAllToggle) {
+    consentAllToggle.addEventListener('change', ()=>{
+      const isChecked = consentAllToggle.checked;
+      consentChecks.forEach(check => {
+        if (check.checked === isChecked) return;
+        check.checked = isChecked;
+        check.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+    });
+  }
+
+  if (policyToggleButtons.length) {
+    const togglePolicyCard = (button) => {
+      if (!button) return;
+      const targetId = button.getAttribute('data-target');
+      if (!targetId) return;
+      const card = form.querySelector(`#${targetId}`);
+      if (!card) return;
+      const isExpanded = button.getAttribute('aria-expanded') === 'true';
+      const nextState = !isExpanded;
+      button.setAttribute('aria-expanded', String(nextState));
+      button.classList.toggle('is-open', nextState);
+      card.hidden = !nextState;
+    };
+    policyToggleButtons.forEach(button => {
+      button.addEventListener('click', () => togglePolicyCard(button));
+    });
+  }
 
   // 필드 검증 설정
   setupFieldValidation();
@@ -699,6 +832,7 @@
 
     const data = {
       formType: 'moim',
+      applicationType: 'moim',
       name:  (form.querySelector('#name')   ?.value || '').trim(),
       gender:(form.querySelector('#gender') ?.value || ''),
       phone: (form.querySelector('#phone')  ?.value || ''),

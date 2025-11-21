@@ -154,398 +154,562 @@
               <p class="modal-subtitle" id="detailScheduleInfo"></p>
             </div>
           </div>
-          <div class="detail-fields" aria-live="polite">
-            <div class="field-grid">
-              <div class="field">
-                <label for="detailName">성명</label>
-                <input id="detailName" type="text" autocomplete="name" required />
+          <div class="detail-section-group" aria-live="polite">
+            <fieldset class="detail-section detail-section-basic">
+              <legend>기본 정보</legend>
+              <div class="detail-field-grid columns-3">
+                <div class="field">
+                  <label for="detailName">성명</label>
+                  <input id="detailName" type="text" autocomplete="name" required />
+                </div>
+                <div class="field">
+                  <label for="detailGender">성별</label>
+                  <select id="detailGender" required>
+                    <option value="">선택</option>
+                    <option value="남">남자</option>
+                    <option value="여">여자</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="detailBirth">생년</label>
+                  <input
+                    id="detailBirth"
+                    type="text"
+                    inputmode="numeric"
+                    maxlength="6"
+                    placeholder="1998년"
+                    required
+                  />
+                </div>
+                <div class="field">
+                  <label for="detailPhone">연락처</label>
+                  <input
+                    id="detailPhone"
+                    type="tel"
+                    inputmode="tel"
+                    autocomplete="tel-national"
+                    placeholder="010-1234-5678"
+                    required
+                  />
+                </div>
+                <div class="field">
+                  <label for="detailMbti">
+                    MBTI
+                    <span class="detail-badge detail-badge-public" aria-hidden="true">공개</span>
+                  </label>
+                  <input id="detailMbti" type="text" placeholder="예: ENFP" />
+                </div>
+                <div class="field">
+                  <label for="detailHeight">신장</label>
+                  <input
+                    id="detailHeight"
+                    type="text"
+                    inputmode="numeric"
+                    maxlength="5"
+                    placeholder="170cm"
+                    required
+                  />
+                </div>
+                <div class="field">
+                  <label for="detailEducation">최종학력</label>
+                  <select id="detailEducation" required>
+                    <option value="">선택</option>
+                    <optgroup label="고등교육 이전">
+                      <option>고등학교 재학</option>
+                      <option>고등학교 졸업(검정고시 포함)</option>
+                    </optgroup>
+                    <optgroup label="전문대(2·3년)">
+                      <option>전문대 재학</option>
+                      <option>전문학사 졸업</option>
+                    </optgroup>
+                    <optgroup label="대학교(4년)">
+                      <option>대학교 재학(4년)</option>
+                      <option>학사 졸업</option>
+                    </optgroup>
+                    <optgroup label="대학원">
+                      <option>석사 과정 재학</option>
+                      <option>석사 졸업</option>
+                      <option>박사 과정 재학</option>
+                      <option>박사 졸업</option>
+                    </optgroup>
+                    <optgroup label="기타">
+                      <option>해외 대학 재학/졸업</option>
+                      <option>기타</option>
+                    </optgroup>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="detailUniversity">
+                    대학교
+                    <span class="detail-badge detail-badge-match" aria-hidden="true">매칭 후 공개</span>
+                  </label>
+                  <input id="detailUniversity" type="text" placeholder="예: 서울대학교 (관악캠퍼스)" />
+                </div>
+                <div class="field">
+                  <label for="detailSalaryRange">
+                    연봉 (세전 기준)
+                    <span class="detail-badge detail-badge-match" aria-hidden="true">매칭 후 공개</span>
+                  </label>
+                  <select id="detailSalaryRange">
+                    <option value="">선택</option>
+                    <option value="1">1) 3000만원 미만</option>
+                    <option value="2">2) 3000-4000</option>
+                    <option value="3">3) 4000-6000</option>
+                    <option value="4">4) 6000-8000</option>
+                    <option value="5">5) 8000-1억</option>
+                    <option value="6">6) 1억-2억</option>
+                    <option value="7">7) 2억-3억</option>
+                    <option value="8">8) 3억 이상</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="detailJob">
+                    직업
+                    <span class="detail-badge detail-badge-public" aria-hidden="true">공개</span>
+                  </label>
+                  <input
+                    id="detailJob"
+                    type="text"
+                    placeholder="예: 중견 무역회사 해외영업"
+                    autocomplete="organization"
+                    required
+                  />
+                </div>
+                <div class="field">
+                  <label for="detailDistrict">거주 구</label>
+                  <input id="detailDistrict" type="text" placeholder="서울특별시 강남구" required />
+                </div>
+                <div class="field">
+                  <label for="detailSmoking">
+                    흡연
+                    <span class="detail-badge detail-badge-public" aria-hidden="true">공개</span>
+                  </label>
+                  <select id="detailSmoking">
+                    <option value="">선택</option>
+                    <option value="비흡연">비흡연</option>
+                    <option value="사회적 흡연">사회적 흡연</option>
+                    <option value="흡연">흡연</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="detailReligion">
+                    종교
+                    <span class="detail-badge detail-badge-match" aria-hidden="true">매칭 후 공개</span>
+                  </label>
+                  <select id="detailReligion">
+                    <option value="">선택</option>
+                    <option value="무교">무교</option>
+                    <option value="기독교">기독교</option>
+                    <option value="천주교">천주교</option>
+                    <option value="불교">불교</option>
+                    <option value="기타">기타</option>
+                  </select>
+                </div>
+                <div class="field full-width">
+                  <label for="detailJobDetail">
+                    직업/직무 상세
+                    <span class="detail-badge detail-badge-public" aria-hidden="true">공개</span>
+                  </label>
+                  <textarea
+                    id="detailJobDetail"
+                    placeholder="예: 중견 무역회사 해외영업팀에서 북미 시장 담당"
+                  ></textarea>
+                </div>
               </div>
-              <div class="field">
-                <label for="detailPhone">연락처</label>
-                <input
-                  id="detailPhone"
-                  type="tel"
-                  inputmode="tel"
-                  autocomplete="tel-national"
-                  placeholder="010-1234-5678"
-                  required
-                />
+            </fieldset>
+
+            <fieldset class="detail-section detail-section-profile">
+              <legend>세부 프로필</legend>
+              <div class="detail-field-grid columns-2">
+                <div class="field full-width">
+                  <label for="detailProfileAppeal">
+                    추가 어필
+                    <span class="detail-badge detail-badge-public" aria-hidden="true">공개</span>
+                  </label>
+                  <textarea
+                    id="detailProfileAppeal"
+                    placeholder="연봉, 자산, 학력 등 프로필에 강조하고 싶은 내용을 적어주세요."
+                  ></textarea>
+                </div>
+                <div class="field full-width">
+                  <label for="detailAboutMe">
+                    '저는 이런 사람입니다'
+                    <span class="detail-badge detail-badge-public" aria-hidden="true">공개</span>
+                  </label>
+                  <textarea
+                    id="detailAboutMe"
+                    placeholder="어필할 수 있는 매력포인트나 성격을 적어주세요."
+                  ></textarea>
+                </div>
+                <div class="field full-width">
+                  <label for="detailSufficientCondition">
+                    충분조건
+                    <span class="detail-badge detail-badge-public" aria-hidden="true">공개</span>
+                  </label>
+                  <textarea
+                    id="detailSufficientCondition"
+                    placeholder="충분조건을 입력해주세요."
+                  ></textarea>
+                </div>
+                <div class="field full-width">
+                  <label for="detailNecessaryCondition">
+                    필요조건
+                    <span class="detail-badge detail-badge-public" aria-hidden="true">공개</span>
+                  </label>
+                  <textarea
+                    id="detailNecessaryCondition"
+                    placeholder="필요조건을 입력해주세요."
+                  ></textarea>
+                </div>
+                <div class="field full-width">
+                  <label for="detailLikesDislikes">
+                    좋아하는 것 / 싫어하는 것
+                    <span class="detail-badge detail-badge-match" aria-hidden="true">매칭 후 공개</span>
+                  </label>
+                  <textarea
+                    id="detailLikesDislikes"
+                    placeholder="좋아하는 것과 싫어하는 것을 적어주세요."
+                  ></textarea>
+                </div>
               </div>
-              <div class="field">
-                <label for="detailMbti">MBTI</label>
-                <input id="detailMbti" type="text" placeholder="예: ENFP" />
+            </fieldset>
+
+            <fieldset class="detail-section detail-section-lifestyle">
+              <legend>관계 및 라이프스타일</legend>
+              <div class="detail-field-grid columns-3">
+                <div class="field">
+                  <label for="detailTattoo">
+                    문신 여부
+                    <span class="detail-badge detail-badge-public" aria-hidden="true">공개</span>
+                  </label>
+                  <select id="detailTattoo">
+                    <option value="">선택</option>
+                    <option value="문신 없음">문신 없음</option>
+                    <option value="문신 있음">문신 있음</option>
+                    <option value="비공개">비공개</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="detailCarOwnership">
+                    자차 유무
+                    <span class="detail-badge detail-badge-public" aria-hidden="true">공개</span>
+                  </label>
+                  <select id="detailCarOwnership">
+                    <option value="">선택</option>
+                    <option value="있음">있음</option>
+                    <option value="없음">없음</option>
+                    <option value="구입 계획 있음">구입 계획 있음</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="detailLongDistance">장거리 연애 가능 여부</label>
+                  <select id="detailLongDistance">
+                    <option value="">선택</option>
+                    <option value="가능">가능</option>
+                    <option value="불가능">불가능</option>
+                    <option value="상황에 따라">상황에 따라</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="detailLastRelationship">
+                    마지막 연애 시기
+                    <span class="detail-badge detail-badge-match" aria-hidden="true">매칭 후 공개</span>
+                  </label>
+                  <input
+                    id="detailLastRelationship"
+                    type="text"
+                    placeholder="예: 2024년 5쯤 이별"
+                  />
+                </div>
+                <div class="field">
+                  <label for="detailRelationshipCount">
+                    성인 후 연애 횟수
+                    <span class="detail-badge detail-badge-match" aria-hidden="true">매칭 후 공개</span>
+                  </label>
+                  <select id="detailRelationshipCount">
+                    <option value="">선택</option>
+                    <option value="0회">0회</option>
+                    <option value="1~3회">1~3회</option>
+                    <option value="4~6회">4~6회</option>
+                    <option value="7~9회">7~9회</option>
+                    <option value="10~12회">10~12회</option>
+                    <option value="13~15회">13~15회</option>
+                    <option value="16~19회">16~19회</option>
+                    <option value="20회 이상">20회 이상</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="detailDivorceStatus">돌싱 여부</label>
+                  <select id="detailDivorceStatus">
+                    <option value="">선택</option>
+                    <option value="돌싱입니다(자녀o)">돌싱입니다(자녀o)</option>
+                    <option value="돌싱입니다(자녀x)">돌싱입니다(자녀x)</option>
+                    <option value="돌싱이 아닙니다">돌싱이 아닙니다</option>
+                  </select>
+                </div>
               </div>
-              <div class="field">
-                <label for="detailGender">성별</label>
-                <select id="detailGender" required>
-                  <option value="">선택</option>
-                  <option value="남">남자</option>
-                  <option value="여">여자</option>
-                </select>
+            </fieldset>
+
+            <fieldset class="detail-section detail-section-preference">
+              <legend>선호 조건</legend>
+              <div class="detail-field-grid columns-3">
+                <div class="field">
+                  <label for="detailPreferredHeights" id="detailPreferredHeightsLabel">
+                    선호하는 키
+                    <span class="detail-badge detail-badge-preference" aria-hidden="true">매칭용</span>
+                    <span class="select-hint">여러 항목 선택 가능</span>
+                  </label>
+                  <div
+                    class="multi-checkbox-list"
+                    data-multi-select="detailPreferredHeights"
+                    role="group"
+                    aria-labelledby="detailPreferredHeightsLabel"
+                  >
+                    <label class="multi-checkbox-item">
+                      <input type="checkbox" value="160cm 이하" />
+                      <span>160cm 이하</span>
+                    </label>
+                    <label class="multi-checkbox-item">
+                      <input type="checkbox" value="161-165cm" />
+                      <span>161-165cm</span>
+                    </label>
+                    <label class="multi-checkbox-item">
+                      <input type="checkbox" value="166-170cm" />
+                      <span>166-170cm</span>
+                    </label>
+                    <label class="multi-checkbox-item">
+                      <input type="checkbox" value="171-175cm" />
+                      <span>171-175cm</span>
+                    </label>
+                    <label class="multi-checkbox-item">
+                      <input type="checkbox" value="176-180cm" />
+                      <span>176-180cm</span>
+                    </label>
+                    <label class="multi-checkbox-item">
+                      <input type="checkbox" value="181cm 이상" />
+                      <span>181cm 이상</span>
+                    </label>
+                  </div>
+                  <select
+                    id="detailPreferredHeights"
+                    multiple
+                    size="6"
+                    class="multi-select-hidden"
+                    aria-hidden="true"
+                    tabindex="-1"
+                  >
+                    <option value="160cm 이하">160cm 이하</option>
+                    <option value="161-165cm">161-165cm</option>
+                    <option value="166-170cm">166-170cm</option>
+                    <option value="171-175cm">171-175cm</option>
+                    <option value="176-180cm">176-180cm</option>
+                    <option value="181cm 이상">181cm 이상</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="detailPreferredAges" id="detailPreferredAgesLabel">
+                    선호 나이
+                    <span class="detail-badge detail-badge-preference" aria-hidden="true">매칭용</span>
+                    <span class="select-hint">여러 항목 선택 가능</span>
+                  </label>
+                  <div
+                    class="multi-checkbox-list"
+                    data-multi-select="detailPreferredAges"
+                    role="group"
+                    aria-labelledby="detailPreferredAgesLabel"
+                  >
+                    <label class="multi-checkbox-item">
+                      <input type="checkbox" value="20대 초반" />
+                      <span>20대 초반</span>
+                    </label>
+                    <label class="multi-checkbox-item">
+                      <input type="checkbox" value="20대 중반" />
+                      <span>20대 중반</span>
+                    </label>
+                    <label class="multi-checkbox-item">
+                      <input type="checkbox" value="20대 후반" />
+                      <span>20대 후반</span>
+                    </label>
+                    <label class="multi-checkbox-item">
+                      <input type="checkbox" value="30대 초반" />
+                      <span>30대 초반</span>
+                    </label>
+                    <label class="multi-checkbox-item">
+                      <input type="checkbox" value="30대 중반" />
+                      <span>30대 중반</span>
+                    </label>
+                    <label class="multi-checkbox-item">
+                      <input type="checkbox" value="30대 후반 이상" />
+                      <span>30대 후반 이상</span>
+                    </label>
+                  </div>
+                  <select
+                    id="detailPreferredAges"
+                    multiple
+                    size="6"
+                    class="multi-select-hidden"
+                    aria-hidden="true"
+                    tabindex="-1"
+                  >
+                    <option value="20대 초반">20대 초반</option>
+                    <option value="20대 중반">20대 중반</option>
+                    <option value="20대 후반">20대 후반</option>
+                    <option value="30대 초반">30대 초반</option>
+                    <option value="30대 중반">30대 중반</option>
+                    <option value="30대 후반 이상">30대 후반 이상</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="detailPreferredLifestyle" id="detailPreferredLifestyleLabel">
+                    선호 라이프스타일
+                    <span class="detail-badge detail-badge-preference" aria-hidden="true">매칭용</span>
+                    <span class="select-hint">여러 항목 선택 가능</span>
+                  </label>
+                  <div
+                    class="multi-checkbox-list"
+                    data-multi-select="detailPreferredLifestyle"
+                    role="group"
+                    aria-labelledby="detailPreferredLifestyleLabel"
+                  >
+                    <label class="multi-checkbox-item">
+                      <input type="checkbox" value="활동적인 야외 취미" />
+                      <span>활동적인 야외 취미</span>
+                    </label>
+                    <label class="multi-checkbox-item">
+                      <input type="checkbox" value="집중적인 자기계발" />
+                      <span>집중적인 자기계발</span>
+                    </label>
+                    <label class="multi-checkbox-item">
+                      <input type="checkbox" value="집에서 휴식하기" />
+                      <span>집에서 휴식하기</span>
+                    </label>
+                    <label class="multi-checkbox-item">
+                      <input type="checkbox" value="여행과 새로운 경험" />
+                      <span>여행과 새로운 경험</span>
+                    </label>
+                    <label class="multi-checkbox-item">
+                      <input type="checkbox" value="문화·예술 감상" />
+                      <span>문화·예술 감상</span>
+                    </label>
+                    <label class="multi-checkbox-item">
+                      <input type="checkbox" value="운동·건강 관리" />
+                      <span>운동·건강 관리</span>
+                    </label>
+                    <label class="multi-checkbox-item">
+                      <input type="checkbox" value="미식·카페 탐방" />
+                      <span>미식·카페 탐방</span>
+                    </label>
+                    <label class="multi-checkbox-item">
+                      <input type="checkbox" value="반려동물과 함께" />
+                      <span>반려동물과 함께</span>
+                    </label>
+                  </div>
+                  <select
+                    id="detailPreferredLifestyle"
+                    multiple
+                    size="8"
+                    class="multi-select-hidden"
+                    aria-hidden="true"
+                    tabindex="-1"
+                  >
+                    <option value="활동적인 야외 취미">활동적인 야외 취미</option>
+                    <option value="집중적인 자기계발">집중적인 자기계발</option>
+                    <option value="집에서 휴식하기">집에서 휴식하기</option>
+                    <option value="여행과 새로운 경험">여행과 새로운 경험</option>
+                    <option value="문화·예술 감상">문화·예술 감상</option>
+                    <option value="운동·건강 관리">운동·건강 관리</option>
+                    <option value="미식·카페 탐방">미식·카페 탐방</option>
+                    <option value="반려동물과 함께">반려동물과 함께</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="detailPreferredAppearance">
+                    선호하는 외적 이상형
+                    <span class="detail-badge detail-badge-preference" aria-hidden="true">매칭용</span>
+                  </label>
+                  <select id="detailPreferredAppearance">
+                    <option value="">선택</option>
+                    <option value="깔끔하고 단정한 스타일">깔끔하고 단정한 스타일</option>
+                    <option value="세련된 도시 감성">세련된 도시 감성</option>
+                    <option value="스포티하고 건강한 스타일">스포티하고 건강한 스타일</option>
+                    <option value="캐주얼하고 편안한 분위기">캐주얼하고 편안한 분위기</option>
+                    <option value="러블리하고 부드러운 인상">러블리하고 부드러운 인상</option>
+                    <option value="개성 있는 패션 감각">개성 있는 패션 감각</option>
+                    <option value="상관없음">상관없음</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="detailDink">
+                    딩크 여부
+                    <span class="detail-badge detail-badge-preference" aria-hidden="true">매칭용</span>
+                  </label>
+                  <select id="detailDink">
+                    <option value="">선택</option>
+                    <option value="딩크를 원합니다">딩크를 원합니다</option>
+                    <option value="딩크를 고려 중입니다">딩크를 고려 중입니다</option>
+                    <option value="딩크를 원하지 않습니다">딩크를 원하지 않습니다</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="detailMarriageTiming">
+                    결혼을 생각하는 시기
+                    <span class="detail-badge detail-badge-preference" aria-hidden="true">매칭용</span>
+                  </label>
+                  <select id="detailMarriageTiming">
+                    <option value="">선택</option>
+                    <option value="상대방에 따라 다름">상대방에 따라 다름</option>
+                    <option value="결혼생각 없음">결혼생각 없음</option>
+                    <option value="연애 시작 후 3개월 안에 결혼준비 시작">
+                      연애 시작 후 3개월 안에 결혼준비 시작
+                    </option>
+                    <option value="연애 시작 후 6개월 안에 결혼준비 시작">
+                      연애 시작 후 6개월 안에 결혼준비 시작
+                    </option>
+                    <option value="연애 시작 후 1년 정도에 결혼준비 시작">
+                      연애 시작 후 1년 정도에 결혼준비 시작
+                    </option>
+                    <option value="연애 시작 후 1년 6개월 정도에 결혼준비 시작">
+                      연애 시작 후 1년 6개월 정도에 결혼준비 시작
+                    </option>
+                    <option value="연애 시작 후 2년정도에 결혼준비 시작">
+                      연애 시작 후 2년정도에 결혼준비 시작
+                    </option>
+                    <option value="연애 시작 후 2년 이상에 결혼준비 시작">
+                      연애 시작 후 2년 이상에 결혼준비 시작
+                    </option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="detailValues">
+                    인생의 주요 가치관 (한 개 선택)
+                    <span class="detail-badge detail-badge-preference" aria-hidden="true">매칭용</span>
+                  </label>
+                  <select id="detailValues">
+                    <option value="">선택</option>
+                    <option value="하루하루 최선을 다하는">하루하루 최선을 다하는</option>
+                    <option value="화목한 가족이 중심이 되는">화목한 가족이 중심이 되는</option>
+                    <option value="건강관리에 철저한">건강관리에 철저한</option>
+                    <option value="일과 사랑 모두 성공하는">일과 사랑 모두 성공하는</option>
+                    <option value="사랑하면 맞춰주는(이해하는)">사랑하면 맞춰주는(이해하는)</option>
+                  </select>
+                  <input
+                    id="detailValuesCustom"
+                    type="text"
+                    placeholder="기타 가치관 (직접 입력)"
+                  />
+                </div>
               </div>
-              <div class="field">
-                <label for="detailBirth">생년</label>
-                <input
-                  id="detailBirth"
-                  type="text"
-                  inputmode="numeric"
-                  maxlength="6"
-                  placeholder="1998년"
-                  required
-                />
+            </fieldset>
+
+            <fieldset class="detail-section detail-section-notes">
+              <legend>관리자 메모</legend>
+              <div class="detail-field-grid">
+                <div class="field full-width detail-notes">
+                  <label for="detailNotes">관리자 메모</label>
+                  <textarea id="detailNotes" placeholder="상담 기록이나 참고 사항을 입력하세요."></textarea>
+                </div>
               </div>
-              <div class="field">
-                <label for="detailHeight">신장</label>
-                <input
-                  id="detailHeight"
-                  type="text"
-                  inputmode="numeric"
-                  maxlength="5"
-                  placeholder="170cm"
-                  required
-                />
-              </div>
-              <div class="field">
-                <label for="detailEducation">최종학력</label>
-                <select id="detailEducation" required>
-                  <option value="">선택</option>
-                  <optgroup label="고등교육 이전">
-                    <option>고등학교 재학</option>
-                    <option>고등학교 졸업(검정고시 포함)</option>
-                  </optgroup>
-                  <optgroup label="전문대(2·3년)">
-                    <option>전문대 재학</option>
-                    <option>전문학사 졸업</option>
-                  </optgroup>
-                  <optgroup label="대학교(4년)">
-                    <option>대학교 재학(4년)</option>
-                    <option>학사 졸업</option>
-                  </optgroup>
-                  <optgroup label="대학원">
-                    <option>석사 과정 재학</option>
-                    <option>석사 졸업</option>
-                    <option>박사 과정 재학</option>
-                    <option>박사 졸업</option>
-                  </optgroup>
-                  <optgroup label="기타">
-                    <option>해외 대학 재학/졸업</option>
-                    <option>기타</option>
-                  </optgroup>
-                </select>
-              </div>
-              <div class="field">
-                <label for="detailUniversity">대학교</label>
-                <input id="detailUniversity" type="text" placeholder="예: 서울대학교 (관악캠퍼스)" />
-              </div>
-              <div class="field">
-                <label for="detailSalaryRange">연봉 (세전 기준)</label>
-                <select id="detailSalaryRange">
-                  <option value="">선택</option>
-                  <option value="1">1) 3000만원 미만</option>
-                  <option value="2">2) 3000-4000</option>
-                  <option value="3">3) 4000-6000</option>
-                  <option value="4">4) 6000-8000</option>
-                  <option value="5">5) 8000-1억</option>
-                  <option value="6">6) 1억-2억</option>
-                  <option value="7">7) 2억-3억</option>
-                  <option value="8">8) 3억 이상</option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="detailJob">직업</label>
-                <input
-                  id="detailJob"
-                  type="text"
-                  placeholder="예: 중견 무역회사 해외영업"
-                  autocomplete="organization"
-                  required
-                />
-              </div>
-              <div class="field">
-                <label for="detailDistrict">거주 구</label>
-                <input id="detailDistrict" type="text" placeholder="서울특별시 강남구" required />
-              </div>
-              <div class="field full-width">
-                <label for="detailJobDetail">직업/직무 상세</label>
-                <textarea
-                  id="detailJobDetail"
-                  placeholder="예: 중견 무역회사 해외영업팀에서 북미 시장 담당"
-                ></textarea>
-              </div>
-              <div class="field full-width">
-                <label for="detailProfileAppeal">추가 어필</label>
-                <textarea
-                  id="detailProfileAppeal"
-                  placeholder="연봉, 자산, 학력 등 프로필에 강조하고 싶은 내용을 적어주세요."
-                ></textarea>
-              </div>
-              <div class="field">
-                <label for="detailSmoking">흡연</label>
-                <select id="detailSmoking">
-                  <option value="">선택</option>
-                  <option value="비흡연">비흡연</option>
-                  <option value="사회적 흡연">사회적 흡연</option>
-                  <option value="흡연">흡연</option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="detailReligion">종교</label>
-                <select id="detailReligion">
-                  <option value="">선택</option>
-                  <option value="무교">무교</option>
-                  <option value="기독교">기독교</option>
-                  <option value="천주교">천주교</option>
-                  <option value="불교">불교</option>
-                  <option value="기타">기타</option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="detailLongDistance">장거리 연애 가능 여부</label>
-                <select id="detailLongDistance">
-                  <option value="">선택</option>
-                  <option value="가능">가능</option>
-                  <option value="불가능">불가능</option>
-                  <option value="상황에 따라">상황에 따라</option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="detailDink">딩크 여부</label>
-                <select id="detailDink">
-                  <option value="">선택</option>
-                  <option value="딩크를 원합니다">딩크를 원합니다</option>
-                  <option value="딩크를 고려 중입니다">딩크를 고려 중입니다</option>
-                  <option value="딩크를 원하지 않습니다">딩크를 원하지 않습니다</option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="detailLastRelationship">마지막 연애 시기</label>
-                <input
-                  id="detailLastRelationship"
-                  type="text"
-                  placeholder="예: 2024년 5쯤 이별"
-                />
-              </div>
-              <div class="field">
-                <label for="detailMarriageTiming">결혼을 생각하는 시기</label>
-                <select id="detailMarriageTiming">
-                  <option value="">선택</option>
-                  <option value="결혼생각 없음">결혼생각 없음</option>
-                  <option value="연애 시작 후 3개월 안에 결혼준비 시작">
-                    연애 시작 후 3개월 안에 결혼준비 시작
-                  </option>
-                  <option value="연애 시작 후 6개월 안에 결혼준비 시작">
-                    연애 시작 후 6개월 안에 결혼준비 시작
-                  </option>
-                  <option value="연애 시작 후 1년 정도에 결혼준비 시작">
-                    연애 시작 후 1년 정도에 결혼준비 시작
-                  </option>
-                  <option value="연애 시작 후 1년 6개월 정도에 결혼준비 시작">
-                    연애 시작 후 1년 6개월 정도에 결혼준비 시작
-                  </option>
-                  <option value="연애 시작 후 2년정도에 결혼준비 시작">
-                    연애 시작 후 2년정도에 결혼준비 시작
-                  </option>
-                  <option value="연애 시작 후 2년 이상에 결혼준비 시작">
-                    연애 시작 후 2년 이상에 결혼준비 시작
-                  </option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="detailRelationshipCount">성인 후 연애 횟수</label>
-                <select id="detailRelationshipCount">
-                  <option value="">선택</option>
-                  <option value="0회">0회</option>
-                  <option value="1~3회">1~3회</option>
-                  <option value="4~6회">4~6회</option>
-                  <option value="7~9회">7~9회</option>
-                  <option value="10~12회">10~12회</option>
-                  <option value="13~15회">13~15회</option>
-                  <option value="16~19회">16~19회</option>
-                  <option value="20회 이상">20회 이상</option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="detailCarOwnership">자차 유무</label>
-                <select id="detailCarOwnership">
-                  <option value="">선택</option>
-                  <option value="있음">있음</option>
-                  <option value="없음">없음</option>
-                  <option value="구입 계획 있음">구입 계획 있음</option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="detailTattoo">문신 여부</label>
-                <select id="detailTattoo">
-                  <option value="">선택</option>
-                  <option value="문신 없음">문신 없음</option>
-                  <option value="문신 있음">문신 있음</option>
-                  <option value="비공개">비공개</option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="detailDivorceStatus">돌싱 여부</label>
-                <select id="detailDivorceStatus">
-                  <option value="">선택</option>
-                  <option value="돌싱입니다(자녀o)">돌싱입니다(자녀o)</option>
-                  <option value="돌싱입니다(자녀x)">돌싱입니다(자녀x)</option>
-                  <option value="돌싱이 아닙니다">돌싱이 아닙니다</option>
-                </select>
-              </div>
-            </div>
-          </div>
-          <div class="detail-preferences-grid">
-            <div class="field">
-              <label for="detailPreferredHeights" id="detailPreferredHeightsLabel">
-                선호하는 키
-                <span class="select-hint">여러 항목 선택 가능</span>
-              </label>
-              <div
-                class="multi-checkbox-list"
-                data-multi-select="detailPreferredHeights"
-                role="group"
-                aria-labelledby="detailPreferredHeightsLabel"
-              >
-                <label class="multi-checkbox-item">
-                  <input type="checkbox" value="160cm 이하" />
-                  <span>160cm 이하</span>
-                </label>
-                <label class="multi-checkbox-item">
-                  <input type="checkbox" value="161-165cm" />
-                  <span>161-165cm</span>
-                </label>
-                <label class="multi-checkbox-item">
-                  <input type="checkbox" value="166-170cm" />
-                  <span>166-170cm</span>
-                </label>
-                <label class="multi-checkbox-item">
-                  <input type="checkbox" value="171-175cm" />
-                  <span>171-175cm</span>
-                </label>
-                <label class="multi-checkbox-item">
-                  <input type="checkbox" value="176-180cm" />
-                  <span>176-180cm</span>
-                </label>
-                <label class="multi-checkbox-item">
-                  <input type="checkbox" value="181cm 이상" />
-                  <span>181cm 이상</span>
-                </label>
-              </div>
-              <select
-                id="detailPreferredHeights"
-                multiple
-                size="6"
-                class="multi-select-hidden"
-                aria-hidden="true"
-                tabindex="-1"
-              >
-                <option value="160cm 이하">160cm 이하</option>
-                <option value="161-165cm">161-165cm</option>
-                <option value="166-170cm">166-170cm</option>
-                <option value="171-175cm">171-175cm</option>
-                <option value="176-180cm">176-180cm</option>
-                <option value="181cm 이상">181cm 이상</option>
-              </select>
-            </div>
-            <div class="field">
-              <label for="detailPreferredAges" id="detailPreferredAgesLabel">
-                선호 나이
-                <span class="select-hint">여러 항목 선택 가능</span>
-              </label>
-              <div
-                class="multi-checkbox-list"
-                data-multi-select="detailPreferredAges"
-                role="group"
-                aria-labelledby="detailPreferredAgesLabel"
-              >
-                <label class="multi-checkbox-item">
-                  <input type="checkbox" value="20대 초반" />
-                  <span>20대 초반</span>
-                </label>
-                <label class="multi-checkbox-item">
-                  <input type="checkbox" value="20대 중반" />
-                  <span>20대 중반</span>
-                </label>
-                <label class="multi-checkbox-item">
-                  <input type="checkbox" value="20대 후반" />
-                  <span>20대 후반</span>
-                </label>
-                <label class="multi-checkbox-item">
-                  <input type="checkbox" value="30대 초반" />
-                  <span>30대 초반</span>
-                </label>
-                <label class="multi-checkbox-item">
-                  <input type="checkbox" value="30대 중반" />
-                  <span>30대 중반</span>
-                </label>
-                <label class="multi-checkbox-item">
-                  <input type="checkbox" value="30대 후반 이상" />
-                  <span>30대 후반 이상</span>
-                </label>
-              </div>
-              <select
-                id="detailPreferredAges"
-                multiple
-                size="6"
-                class="multi-select-hidden"
-                aria-hidden="true"
-                tabindex="-1"
-              >
-                <option value="20대 초반">20대 초반</option>
-                <option value="20대 중반">20대 중반</option>
-                <option value="20대 후반">20대 후반</option>
-                <option value="30대 초반">30대 초반</option>
-                <option value="30대 중반">30대 중반</option>
-                <option value="30대 후반 이상">30대 후반 이상</option>
-              </select>
-            </div>
-            <div class="field">
-              <label for="detailValues">인생의 주요 가치관 (한 개 선택)</label>
-              <select id="detailValues">
-                <option value="">선택</option>
-                <option value="하루하루 최선을 다하는">하루하루 최선을 다하는</option>
-                <option value="화목한 가족이 중심이 되는">화목한 가족이 중심이 되는</option>
-                <option value="건강관리에 철저한">건강관리에 철저한</option>
-                <option value="일과 사랑 모두 성공하는">일과 사랑 모두 성공하는</option>
-                <option value="사랑하면 맞춰주는(이해하는)">사랑하면 맞춰주는(이해하는)</option>
-              </select>
-              <input
-                id="detailValuesCustom"
-                type="text"
-                placeholder="기타 가치관 (직접 입력)"
-              />
-            </div>
-            <div class="field full-width">
-              <label for="detailSufficientCondition">충분조건</label>
-              <textarea
-                id="detailSufficientCondition"
-                placeholder="충분조건을 입력해주세요."
-              ></textarea>
-            </div>
-            <div class="field full-width">
-              <label for="detailNecessaryCondition">필요조건</label>
-              <textarea
-                id="detailNecessaryCondition"
-                placeholder="필요조건을 입력해주세요."
-              ></textarea>
-            </div>
-            <div class="field full-width">
-              <label for="detailLikesDislikes">좋아하는 것 / 싫어하는 것</label>
-              <textarea
-                id="detailLikesDislikes"
-                placeholder="좋아하는 것과 싫어하는 것을 적어주세요."
-              ></textarea>
-            </div>
-            <div class="field full-width">
-              <label for="detailAboutMe">'저는 이런 사람입니다'</label>
-              <textarea
-                id="detailAboutMe"
-                placeholder="어필할 수 있는 매력포인트나 성격을 적어주세요."
-              ></textarea>
-            </div>
-            <div class="field full-width detail-notes">
-              <label for="detailNotes">관리자 메모</label>
-              <textarea id="detailNotes" placeholder="상담 기록이나 참고 사항을 입력하세요."></textarea>
-            </div>
+            </fieldset>
           </div>
           <section class="detail-attachments" id="detailAttachmentsSection" hidden>
             <h3>증빙 자료 및 사진</h3>

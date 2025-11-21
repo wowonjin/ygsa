@@ -395,6 +395,10 @@
       .toolbar select {
         min-width: 150px;
       }
+      .week-filter-label {
+        color: #8b949e;
+        font-size: 13px;
+      }
       .multi-checkbox-list {
         display: grid;
         gap: 8px;
@@ -705,6 +709,17 @@
         flex-direction: column;
         gap: 8px;
       }
+      .weekly-list li.is-selectable {
+        cursor: pointer;
+        border-color: #2a313d;
+      }
+      .weekly-list li.is-selectable:hover {
+        border-color: #3b82f6;
+      }
+      .weekly-list li.is-active {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.35);
+      }
       .weekly-row {
         display: flex;
         justify-content: space-between;
@@ -930,6 +945,61 @@
       .detail-priority .modal-subtitle {
         color: #d6e4ff;
         font-weight: 500;
+      }
+      .detail-section-group {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+      .detail-section {
+        border: 1px solid #252b36;
+        border-radius: 18px;
+        padding: 18px 20px 22px;
+        background: #0f131c;
+      }
+      .detail-section legend {
+        margin: 0 0 12px 0;
+        padding: 0 4px;
+        font-size: 16px;
+        font-weight: 700;
+        color: #f0f6fc;
+      }
+      .detail-field-grid {
+        display: grid;
+        gap: 18px;
+      }
+      .detail-field-grid.columns-3 {
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      }
+      .detail-field-grid.columns-2 {
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      }
+      .detail-field-grid .full-width {
+        grid-column: 1 / -1;
+      }
+      .detail-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-left: 8px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+      .detail-badge-public {
+        background: rgba(83, 119, 246, 0.18);
+        color: #9db8ff;
+      }
+      .detail-badge-match {
+        background: rgba(250, 214, 230, 0.25);
+        color: #f472b6;
+      }
+      .detail-badge-preference {
+        background: rgba(251, 191, 36, 0.2);
+        color: #facc15;
       }
       .modal-form {
         display: flex;
@@ -1380,6 +1450,35 @@
         align-items: flex-start;
         gap: 16px;
       }
+      .moim-card-meta-row {
+        margin-top: 6px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+      .deposit-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        border: 1px solid transparent;
+      }
+      .deposit-status-pending {
+        border-color: rgba(248, 196, 113, 0.4);
+        background: rgba(248, 196, 113, 0.12);
+        color: #f8c471;
+      }
+      .deposit-status-completed {
+        border-color: rgba(63, 185, 80, 0.55);
+        background: rgba(63, 185, 80, 0.18);
+        color: #3fb950;
+      }
       .moim-card-subtitle,
       .moim-card-meta {
         margin: 6px 0 0 0;
@@ -1434,6 +1533,52 @@
         border-color: rgba(248, 113, 113, 0.5);
         color: #f87171;
         background: rgba(248, 113, 113, 0.08);
+      }
+      .moim-deposit-section {
+        border: 1px solid #30363d;
+        border-radius: 16px;
+        padding: 18px;
+        background: #0f141c;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .moim-deposit-section h3 {
+        display: block;
+        margin: 0;
+        font-size: 15px;
+        color: #8b949e;
+        letter-spacing: 0.08em;
+      }
+      .moim-deposit-status-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        color: #c9d1d9;
+        font-size: 14px;
+      }
+      .moim-deposit-status-row p {
+        margin: 0;
+      }
+      .deposit-action-btn {
+        align-self: flex-start;
+        border: 1px solid #3b82f6;
+        color: #dbeafe;
+        background: rgba(59, 130, 246, 0.15);
+        padding: 8px 18px;
+        border-radius: 999px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+      }
+      .deposit-action-btn:hover:not(:disabled) {
+        background: rgba(59, 130, 246, 0.3);
+        transform: translateY(-1px);
+      }
+      .deposit-action-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
       }
       .card-attachments-list {
         list-style: none;

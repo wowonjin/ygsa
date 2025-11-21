@@ -626,6 +626,8 @@ function sanitizeProfileUpdate(body) {
     aboutMe: sanitizeNotes(body?.aboutMe),
     preferredHeights: sanitizeStringArray(body?.preferredHeights),
     preferredAges: sanitizeStringArray(body?.preferredAges),
+    preferredLifestyle: sanitizeStringArray(body?.preferredLifestyle),
+    preferredAppearance: sanitizeText(body?.preferredAppearance),
     values: sanitizeStringArray(body?.values).slice(0, 2),
   }
   if (Object.prototype.hasOwnProperty.call(body || {}, 'depositStatus')) {
@@ -804,6 +806,8 @@ function normalizeStoredRecord(entry) {
   record.aboutMe = sanitizeNotes(record.aboutMe)
   record.preferredHeights = sanitizeStringArray(record.preferredHeights)
   record.preferredAges = sanitizeStringArray(record.preferredAges)
+  record.preferredLifestyle = sanitizeStringArray(record.preferredLifestyle)
+  record.preferredAppearance = sanitizeText(record.preferredAppearance)
   record.values = sanitizeStringArray(record.values)
   const agreementsRaw =
     record.agreements && typeof record.agreements === 'object' ? record.agreements : {}
@@ -998,6 +1002,10 @@ function buildSharedProfilePayload(record) {
     preferredAges: Array.isArray(record.preferredAges)
       ? record.preferredAges
       : [],
+    preferredLifestyle: Array.isArray(record.preferredLifestyle)
+      ? record.preferredLifestyle
+      : [],
+    preferredAppearance: record.preferredAppearance || '',
     values: Array.isArray(record.values) ? record.values : [],
     valuesCustom: record.valuesCustom || '',
     photos: Array.isArray(record.photos) ? record.photos : [],

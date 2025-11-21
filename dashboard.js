@@ -172,12 +172,25 @@
       const weeklyModal = document.getElementById('weeklyModal')
       const weeklyCloseBtn = document.getElementById('weeklyCloseBtn')
       const weeklySummaryList = document.getElementById('weeklySummaryList')
+      const weekFilterBtn = document.getElementById('weekFilterBtn')
+      const weekFilterLabel = document.getElementById('weekFilterLabel')
+      const weeklyDesc = weeklyModal ? weeklyModal.querySelector('.weekly-desc') : null
       const APP_VARIANT = (document.body?.dataset?.appVariant || 'consult').toLowerCase()
       const IS_MOIM_VIEW = APP_VARIANT === 'moim'
       const FORM_TYPE_DEFAULT = 'consult'
       const FORM_TYPE_MOIM = 'moim'
+      const MOIM_INDICATOR_KEYS = [
+        'workStyle',
+        'relationshipStatus',
+        'participationGoal',
+        'socialEnergy',
+        'weekendPreference',
+      ]
       const SCHEDULER_DAY_WINDOW = 7
       const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
+      const DAY_MS = 24 * 60 * 60 * 1000
+      const WEEK_SUMMARY_DESC = '최근 8주 신청 인원을 확인하세요.'
+      const WEEK_PICKER_DESC = '주차를 선택하면 해당 주차 신청 목록이 표시됩니다.'
       const VARIANT_CONFIG = {
         consult: {
           key: 'consult',
@@ -286,6 +299,8 @@
       const detailDivorceStatusSelect = document.getElementById('detailDivorceStatus')
       const detailPreferredHeightsSelect = document.getElementById('detailPreferredHeights')
       const detailPreferredAgesSelect = document.getElementById('detailPreferredAges')
+      const detailPreferredLifestyleSelect = document.getElementById('detailPreferredLifestyle')
+      const detailPreferredAppearanceSelect = document.getElementById('detailPreferredAppearance')
       const detailSufficientConditionInput = document.getElementById('detailSufficientCondition')
       const detailNecessaryConditionInput = document.getElementById('detailNecessaryCondition')
       const detailLikesDislikesInput = document.getElementById('detailLikesDislikes')
@@ -341,11 +356,23 @@
       let suppressDeleteToast = false
       let suppressUpdateToast = false
       let detailRecordId = null
+      let depositStatusUpdating = false
       const viewState = {
         search: '',
         gender: 'all',
         height: 'all',
         sort: 'latest',
+        weekRange: IS_MOIM_VIEW ? getCurrentWeekRange() : null,
+      }
+      if (IS_MOIM_VIEW) {
+        updateWeekFilterLabel()
+      } else {
+        if (weekFilterBtn) {
+          weekFilterBtn.hidden = true
+        }
+        if (weekFilterLabel) {
+          weekFilterLabel.hidden = true
+        }
       }
       const calendarState = {
         current: new Date(),
@@ -362,6 +389,19 @@
         scheduled: 'status-scheduled',
         done: 'status-complete',
       }
+      const DEPOSIT_STATUS_VALUES = ['pending', 'completed']
+      const DEPOSIT_STATUS = {
+        pending: 'pending',
+        completed: 'completed',
+      }
+      const DEPOSIT_STATUS_LABELS = {
+        pending: '입금 전',
+        completed: '입금 완료',
+      }
+      const DEPOSIT_STATUS_CLASS_NAMES = {
+        pending: 'deposit-status-pending',
+        completed: 'deposit-status-completed',
+      }
       const TIME_SLOT_START_HOUR = 9
       const TIME_SLOT_END_HOUR = 21
       const TIME_SLOT_INTERVAL_MINUTES = 15
@@ -375,10 +415,19 @@
         '7': '2억-3억원',
         '8': '3억원 이상',
       }
+      function hasMoimIndicatorsLocal(record) {
+        if (!record || typeof record !== 'object') return false
+        return MOIM_INDICATOR_KEYS.some((key) => {
+          const value = record[key]
+          return typeof value === 'string' && value.trim()
+        })
+      }
+
       function getRecordFormType(record) {
         if (!record || typeof record !== 'object') return FORM_TYPE_DEFAULT
         const raw = typeof record.formType === 'string' ? record.formType.trim().toLowerCase() : ''
         if (raw === FORM_TYPE_MOIM) return FORM_TYPE_MOIM
+        if (hasMoimIndicatorsLocal(record)) return FORM_TYPE_MOIM
         return FORM_TYPE_DEFAULT
       }
 
@@ -438,6 +487,7 @@
       deleteSelectedBtn.addEventListener('click', handleDeleteSelected)
       cardsEl.addEventListener('change', handleCardChange)
       cardsEl.addEventListener('click', handleCardButtonClick)
+      moimDetailView?.addEventListener('click', handleDepositActionClick)
       detailCancelBtn.addEventListener('click', (event) => {
         event.preventDefault()
         closeDetailModal()
@@ -545,11 +595,16 @@
       })
       calendarGrid.addEventListener('click', handleCalendarDayClick)
       calendarAppointmentList.addEventListener('click', handleCalendarAppointmentClick)
-      weeklySummaryBtn?.addEventListener('click', openWeeklyModal)
+      weeklySummaryBtn?.addEventListener('click', () => openWeeklyModal('summary'))
       weeklyCloseBtn?.addEventListener('click', closeWeeklyModal)
       weeklyModal?.addEventListener('click', (event) => {
         if (event.target === weeklyModal) closeWeeklyModal()
       })
+      weekFilterBtn?.addEventListener('click', () => {
+        if (!IS_MOIM_VIEW) return
+        openWeeklyModal('picker')
+      })
+      weeklySummaryList?.addEventListener('click', handleWeeklySummaryClick)
       searchInput.addEventListener('input', (event) => {
         viewState.search = event.target.value.trim()
         render()
@@ -643,15 +698,27 @@
         if (!weeklySummaryList) return
         const summary = buildWeeklySummary(items, 8)
         if (!summary.length) {
-          weeklySummaryList.innerHTML = '<li class="weekly-empty">최근 주차별 신청 데이터가 없습니다.</li>'
+          weeklySummaryList.innerHTML =
+            '<li class="weekly-empty">최근 주차별 신청 데이터가 없습니다.</li>'
           return
         }
         const maxCount = Math.max(...summary.map((entry) => entry.count))
+        const isPickerMode = (weeklyModal?.dataset.mode || 'summary') === 'picker'
         weeklySummaryList.innerHTML = summary
           .map((entry) => {
             const width = maxCount ? Math.round((entry.count / maxCount) * 100) : 0
+            const isActive = isSameWeekRange(viewState.weekRange, entry.startTime, entry.endTime)
+            const classes = ['weekly-item']
+            if (isPickerMode) classes.push('is-selectable')
+            if (isActive) classes.push('is-active')
             return `
-              <li>
+              <li
+                class="${classes.join(' ')}"
+                data-week-start="${entry.startTime}"
+                data-week-end="${entry.endTime}"
+                data-week-label="${escapeHtml(entry.label)}"
+                data-week-range="${escapeHtml(entry.rangeLabel)}"
+              >
                 <div class="weekly-row">
                   <div>
                     <strong>${escapeHtml(entry.label)}</strong>
@@ -678,12 +745,18 @@
           const info = getWeekInfo(date)
           const key = `${info.year}-W${String(info.week).padStart(2, '0')}`
           if (!map.has(key)) {
+            const startClone = new Date(info.start)
+            startClone.setHours(0, 0, 0, 0)
+            const endExclusive = new Date(startClone)
+            endExclusive.setDate(startClone.getDate() + 7)
             map.set(key, {
               key,
               year: info.year,
               week: info.week,
               label: info.label,
               rangeLabel: formatWeekRange(info.start, info.end),
+              startTime: startClone.getTime(),
+              endTime: endExclusive.getTime(),
               count: 0,
             })
           }
@@ -728,8 +801,107 @@
         return `${format(start)} ~ ${format(end)}`
       }
 
-      function openWeeklyModal() {
+      function getCurrentWeekRange() {
+        return buildWeekRangeFromInfo(getWeekInfo(new Date()))
+      }
+
+      function buildWeekRangeFromInfo(info) {
+        if (!info) return null
+        const start = new Date(info.start)
+        start.setHours(0, 0, 0, 0)
+        const endExclusive = new Date(start)
+        endExclusive.setDate(start.getDate() + 7)
+        return {
+          start,
+          end: endExclusive,
+          label: info.label,
+          rangeLabel: formatWeekRange(info.start, info.end),
+        }
+      }
+
+      function setWeekRange(range, options = {}) {
+        if (!IS_MOIM_VIEW) return
+        if (!range) {
+          viewState.weekRange = null
+        } else {
+          const start = new Date(range.start)
+          start.setHours(0, 0, 0, 0)
+          const end = new Date(range.end)
+          end.setHours(0, 0, 0, 0)
+          viewState.weekRange = {
+            start,
+            end,
+            label: range.label || '',
+            rangeLabel: range.rangeLabel || '',
+          }
+        }
+        updateWeekFilterLabel()
+        render()
+        if (!calendarModal.hidden) {
+          refreshCalendar(true)
+        }
+        if (!options?.suppressClose) {
+          closeWeeklyModal()
+        }
+      }
+
+      function updateWeekFilterLabel() {
+        if (!weekFilterLabel) return
+        if (!IS_MOIM_VIEW) {
+          weekFilterLabel.textContent = ''
+          return
+        }
+        if (!viewState.weekRange) {
+          weekFilterLabel.textContent = '전체 기간'
+          return
+        }
+        const label = viewState.weekRange.label || '선택된 주차'
+        const rangeLabel =
+          viewState.weekRange.rangeLabel ||
+          formatWeekRange(
+            viewState.weekRange.start,
+            new Date(viewState.weekRange.end.getTime() - DAY_MS),
+          )
+        weekFilterLabel.textContent = `${label} · ${rangeLabel}`
+      }
+
+      function handleWeeklySummaryClick(event) {
+        if (!weeklyModal || weeklyModal.hidden) return
+        if ((weeklyModal.dataset.mode || 'summary') !== 'picker') return
+        const itemEl = event.target.closest('.weekly-list li.is-selectable')
+        if (!itemEl) return
+        const startTime = Number(itemEl.dataset.weekStart)
+        const endTime = Number(itemEl.dataset.weekEnd)
+        if (!Number.isFinite(startTime) || !Number.isFinite(endTime)) return
+        const label = itemEl.dataset.weekLabel || ''
+        const rangeLabel = itemEl.dataset.weekRange || ''
+        setWeekRange(
+          {
+            start: new Date(startTime),
+            end: new Date(endTime),
+            label,
+            rangeLabel,
+          },
+          { suppressClose: false },
+        )
+      }
+
+      function isSameWeekRange(range, startTime, endTime) {
+        if (!range) return false
+        if (!Number.isFinite(startTime) || !Number.isFinite(endTime)) return false
+        return (
+          range.start.getTime() === startTime &&
+          range.end.getTime() === endTime
+        )
+      }
+
+      function openWeeklyModal(mode = 'summary') {
         if (!weeklyModal) return
+        weeklyModal.dataset.mode = mode
+        if (weeklyDesc) {
+          weeklyDesc.textContent =
+            mode === 'picker' ? WEEK_PICKER_DESC : WEEK_SUMMARY_DESC
+        }
         renderWeeklySummary()
         weeklyModal.hidden = false
       }
@@ -737,6 +909,7 @@
       function closeWeeklyModal() {
         if (!weeklyModal) return
         weeklyModal.hidden = true
+        weeklyModal.dataset.mode = 'summary'
       }
 
       function refreshWeeklySummaryIfOpen() {
@@ -807,7 +980,13 @@
         cardsEl.innerHTML = ''
         const prepared = getPreparedItems()
         if (!prepared.length) {
-          emptyEl.hidden = false
+          if (emptyEl) {
+            emptyEl.textContent =
+              IS_MOIM_VIEW && viewState.weekRange
+                ? `${viewState.weekRange.label} 신청이 없습니다.`
+                : variantCopy.emptyState
+            emptyEl.hidden = false
+          }
           return
         }
         emptyEl.hidden = true
@@ -869,6 +1048,12 @@
         const idAttr = escapeHtml(item.id || '')
         const isSelected = selectedIds.has(item.id)
         const phoneLine = formatPhoneNumber(item.phone)
+        const depositStatus = normalizeDepositStatusValue(item.depositStatus)
+        const depositChip = `
+          <span class="deposit-chip ${getDepositStatusClass(depositStatus)}">
+            ${escapeHtml(formatDepositStatus(depositStatus))}
+          </span>
+        `
         const basicSection = buildMoimSection('기본 정보', [
           { label: '출생년도', value: item.birth },
           { label: '성별', value: item.gender },
@@ -877,12 +1062,16 @@
         ])
         const profileSection = buildMoimSection('프로필', [
           { label: '직업', value: item.job },
-          { label: '최종학력', value: item.education },
+          { label: '대학교 / 학과', value: item.education },
         ])
         card.innerHTML = `
           <div class="moim-card-header">
             <div>
               <h2>${escapeHtml(item.name || '이름 미입력')}</h2>
+              <div class="moim-card-meta-row">
+                <span class="meta">${formatDate(item.createdAt)} 접수</span>
+                ${depositChip}
+              </div>
             </div>
             <div class="card-controls">
               <input
@@ -946,6 +1135,37 @@
         `
       }
 
+      function renderMoimDepositControls(item) {
+        const status = normalizeDepositStatusValue(item.depositStatus)
+        const description =
+          status === DEPOSIT_STATUS.completed
+            ? '입금이 확인된 신청자입니다.'
+            : '입금 확인 전 상태입니다.'
+        const action = status === DEPOSIT_STATUS.completed ? DEPOSIT_STATUS.pending : DEPOSIT_STATUS.completed
+        const actionLabel =
+          status === DEPOSIT_STATUS.completed ? '입금 전으로 되돌리기' : '입금 완료 처리'
+        const recordId = escapeHtml(item.id || '')
+        return `
+          <div class="moim-detail-section moim-deposit-section">
+            <h3>입금 상태</h3>
+            <div class="moim-deposit-status-row">
+              <span class="deposit-chip ${getDepositStatusClass(status)}">
+                ${escapeHtml(formatDepositStatus(status))}
+              </span>
+              <p>${escapeHtml(description)}</p>
+            </div>
+            <button
+              type="button"
+              class="deposit-action-btn"
+              data-deposit-action="${action}"
+              data-record-id="${recordId}"
+            >
+              ${escapeHtml(actionLabel)}
+            </button>
+          </div>
+        `
+      }
+
       function renderMoimDetailSection(title, entries) {
         if (!entries || !entries.length) return ''
         return `
@@ -967,14 +1187,25 @@
               { label: '연락처', value: formatPhoneNumber(item.phone) },
               { label: '출생년도', value: item.birth },
               { label: '성별', value: item.gender },
+              { label: '신장', value: item.height },
               { label: '거주 구', value: item.district },
             ],
           },
           {
-            title: '프로필',
+            title: '학력 · 직업',
             entries: [
+              { label: '대학교 / 학과', value: item.education },
               { label: '직업', value: item.job },
-              { label: '최종학력', value: item.education },
+            ],
+          },
+          {
+            title: '라이프스타일 & 참여 목적',
+            entries: [
+              { label: '근무 분야/형태', value: item.workStyle },
+              { label: '현재 연애 상태', value: item.relationshipStatus },
+              { label: '참여 목적', value: item.participationGoal },
+              { label: '새로운 사람 만남', value: item.socialEnergy },
+              { label: '주말 스타일', value: item.weekendPreference },
             ],
           },
         ]
@@ -983,9 +1214,11 @@
           sectionClass: 'moim-detail-section',
           badgesClass: 'moim-detail-badges',
         })
+        const depositControls = renderMoimDepositControls(item)
         const createdLine = item.createdAt ? `<p class="moim-detail-meta">신청 ${formatDate(item.createdAt)}</p>` : ''
         moimDetailView.innerHTML = `
           ${createdLine}
+          ${depositControls}
           ${content}
           ${consentBlock}
         `
@@ -1056,6 +1289,8 @@
         setSelectValue(detailDivorceStatusSelect, record.divorceStatus || '')
         setMultiSelectValues(detailPreferredHeightsSelect, record.preferredHeights || [])
         setMultiSelectValues(detailPreferredAgesSelect, record.preferredAges || [])
+        setMultiSelectValues(detailPreferredLifestyleSelect, record.preferredLifestyle || [])
+        setSelectValue(detailPreferredAppearanceSelect, record.preferredAppearance || '')
         detailValuesSelection = Array.isArray(record.values) ? record.values.slice(0, 1) : []
         setMultiSelectValues(detailValuesSelect, detailValuesSelection)
         if (detailValuesCustomInput) detailValuesCustomInput.value = record.valuesCustom || ''
@@ -1131,6 +1366,8 @@
         setSelectValue(detailDivorceStatusSelect, '')
         setMultiSelectValues(detailPreferredHeightsSelect, [])
         setMultiSelectValues(detailPreferredAgesSelect, [])
+        setMultiSelectValues(detailPreferredLifestyleSelect, [])
+        setSelectValue(detailPreferredAppearanceSelect, '')
         setMultiSelectValues(detailValuesSelect, [])
         detailValuesSelection = []
         if (detailValuesCustomInput) detailValuesCustomInput.value = ''
@@ -1211,6 +1448,11 @@
       function normalizeHeightValue(raw) {
         const digits = String(raw || '').replace(/[^0-9]/g, '').slice(0, 3)
         return digits ? `${digits}cm` : ''
+      }
+
+      function normalizeDepositStatusValue(raw) {
+        const value = String(raw || '').toLowerCase().trim()
+        return DEPOSIT_STATUS_VALUES.includes(value) ? value : DEPOSIT_STATUS.pending
       }
 
       function formatPhoneNumber(raw) {
@@ -1440,6 +1682,13 @@
           setMultiSelectValues(detailPreferredHeightsSelect, toOptionArray(draft.preferredHeights))
         if (detailPreferredAgesSelect && draft.preferredAges !== undefined)
           setMultiSelectValues(detailPreferredAgesSelect, toOptionArray(draft.preferredAges))
+        if (detailPreferredLifestyleSelect && draft.preferredLifestyle !== undefined)
+          setMultiSelectValues(
+            detailPreferredLifestyleSelect,
+            toOptionArray(draft.preferredLifestyle),
+          )
+        if (detailPreferredAppearanceSelect && draft.preferredAppearance !== undefined)
+          setSelectValue(detailPreferredAppearanceSelect, draft.preferredAppearance || '')
         const draftValues = Array.isArray(draft.values) ? draft.values.slice(0, 1) : []
         if (detailValuesSelect) {
           setMultiSelectValues(detailValuesSelect, draftValues)
@@ -1484,6 +1733,14 @@
 
       function getStatusClass(status) {
         return STATUS_CLASS_NAMES[status] || STATUS_CLASS_NAMES.pending
+      }
+
+      function formatDepositStatus(status) {
+        return DEPOSIT_STATUS_LABELS[status] || DEPOSIT_STATUS_LABELS.pending
+      }
+
+      function getDepositStatusClass(status) {
+        return DEPOSIT_STATUS_CLASS_NAMES[status] || DEPOSIT_STATUS_CLASS_NAMES.pending
       }
 
       function handleDetailDateChange() {
@@ -1796,6 +2053,9 @@
         setSelectValue(detailDivorceStatusSelect, divorceStatusValue)
         const preferredHeights = getMultiSelectValues(detailPreferredHeightsSelect)
         const preferredAges = getMultiSelectValues(detailPreferredAgesSelect)
+        const preferredLifestyle = getMultiSelectValues(detailPreferredLifestyleSelect)
+        const preferredAppearanceValue = detailPreferredAppearanceSelect?.value || ''
+        setSelectValue(detailPreferredAppearanceSelect, preferredAppearanceValue)
         const valuesSelected = getMultiSelectValues(detailValuesSelect).slice(0, 1)
         if (valuesSelected.length > 1) {
           showToast('가치관은 한 개만 선택할 수 있습니다.')
@@ -1863,6 +2123,8 @@
           divorceStatus: divorceStatusValue,
           preferredHeights,
           preferredAges,
+          preferredLifestyle,
+          preferredAppearance: preferredAppearanceValue,
           sufficientCondition: sufficientConditionValue,
           necessaryCondition: necessaryConditionValue,
           likesDislikes: likesDislikesValue,
@@ -2260,6 +2522,7 @@
 
         if (IS_MOIM_VIEW) {
           items.forEach((item) => {
+            if (normalizeDepositStatusValue(item.depositStatus) !== DEPOSIT_STATUS.completed) return
             if (!item?.createdAt) return
             const created = new Date(item.createdAt)
             if (Number.isNaN(created.getTime())) return
@@ -2325,6 +2588,7 @@
         if (typeof normalized.notes !== 'string') {
           normalized.notes = ''
         }
+        normalized.depositStatus = normalizeDepositStatusValue(normalized.depositStatus)
         if (typeof normalized.job !== 'string') {
           normalized.job = normalized.job != null ? String(normalized.job) : ''
         }
@@ -2335,6 +2599,10 @@
         if (typeof normalized.district !== 'string') {
           normalized.district = normalized.district != null ? String(normalized.district) : ''
         }
+        MOIM_INDICATOR_KEYS.forEach((key) => {
+          const value = normalized[key]
+          normalized[key] = value != null ? String(value) : ''
+        })
         normalized.mbti = normalized.mbti != null ? String(normalized.mbti) : ''
         normalized.university = normalized.university != null ? String(normalized.university) : ''
         normalized.salaryRange = normalized.salaryRange != null ? String(normalized.salaryRange) : ''
@@ -2452,6 +2720,9 @@
         }
         normalized.preferredHeights = toStringArray(normalized.preferredHeights)
         normalized.preferredAges = toStringArray(normalized.preferredAges)
+        normalized.preferredLifestyle = toStringArray(normalized.preferredLifestyle)
+        normalized.preferredAppearance =
+          normalized.preferredAppearance != null ? String(normalized.preferredAppearance) : ''
         normalized.values = Array.isArray(normalized.values)
           ? normalized.values.map((value) => String(value)).slice(0, 1)
           : []
@@ -2507,6 +2778,8 @@
               'lastRelationship',
               'marriageTiming',
               'relationshipCount',
+              'preferredAppearance',
+              'preferredLifestyle',
               'carOwnership',
               'tattoo',
               'divorceStatus',
@@ -2520,6 +2793,19 @@
         }
         if (viewState.height !== 'all') {
           result = result.filter((item) => (item.height || '') === viewState.height)
+        }
+        if (
+          IS_MOIM_VIEW &&
+          viewState.weekRange &&
+          viewState.weekRange.start &&
+          viewState.weekRange.end
+        ) {
+          const startTime = viewState.weekRange.start.getTime()
+          const endTime = viewState.weekRange.end.getTime()
+          result = result.filter((item) => {
+            const created = item?.createdAt ? new Date(item.createdAt).getTime() : NaN
+            return Number.isFinite(created) && created >= startTime && created < endTime
+          })
         }
 
         switch (viewState.sort) {
@@ -2656,6 +2942,91 @@
         if (checkbox) return
         const { id } = card.dataset
         if (id) openDetailModal(id)
+      }
+
+      function handleDepositActionClick(event) {
+        if (!IS_MOIM_VIEW) return
+        const button = event.target.closest('[data-deposit-action]')
+        if (!button) return
+        event.preventDefault()
+        if (!detailRecordId) {
+          showToast('대상을 찾을 수 없습니다.')
+          return
+        }
+        const action = button.dataset.depositAction
+        if (!action) return
+        const record = items.find((item) => item.id === detailRecordId)
+        if (!record) {
+          showToast('대상을 찾을 수 없습니다.')
+          return
+        }
+        const nextStatus =
+          action === DEPOSIT_STATUS.completed ? DEPOSIT_STATUS.completed : DEPOSIT_STATUS.pending
+        if (normalizeDepositStatusValue(record.depositStatus) === nextStatus) {
+          showToast('이미 해당 상태입니다.')
+          return
+        }
+        updateDepositStatus(record, nextStatus, button)
+      }
+
+      async function updateDepositStatus(record, nextStatus, buttonEl) {
+        if (depositStatusUpdating) return
+        const targetId = record?.id
+        if (!targetId) {
+          showToast('대상 정보를 확인할 수 없습니다.')
+          return
+        }
+        depositStatusUpdating = true
+        const previousLabel = buttonEl?.textContent
+        if (buttonEl) {
+          buttonEl.disabled = true
+          buttonEl.textContent = '처리 중...'
+        }
+        try {
+          const res = await fetch(`${API_URL}/${encodeURIComponent(targetId)}`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              depositStatus: nextStatus,
+            }),
+          })
+          const body = await res.json().catch(() => ({}))
+          if (!res.ok || !body?.ok) {
+            throw new Error(body?.message || '입금 상태를 변경하지 못했습니다.')
+          }
+          const updated = normalizeRecord(body.data)
+          if (updated?.id) {
+            const index = items.findIndex((item) => item.id === updated.id)
+            if (index !== -1) {
+              items[index] = updated
+            } else if (matchesVariant(updated)) {
+              items.push(updated)
+            }
+          }
+          syncFilterOptions()
+          syncSelectionWithItems()
+          updateStats()
+          render()
+          if (!calendarModal.hidden) {
+            refreshCalendar(true)
+          }
+          if (updated && detailRecordId === updated.id && IS_MOIM_VIEW) {
+            renderMoimDetailView(updated)
+          }
+          const statusLabel = formatDepositStatus(updated?.depositStatus || nextStatus)
+          showToast(`입금 상태를 '${statusLabel}'(으)로 변경했습니다.`)
+        } catch (error) {
+          console.error(error)
+          showToast(error.message || '입금 상태를 변경하지 못했습니다.')
+        } finally {
+          depositStatusUpdating = false
+          if (buttonEl) {
+            buttonEl.disabled = false
+            buttonEl.textContent = previousLabel || buttonEl.textContent
+          }
+        }
       }
 
       function handleDeleteSelected() {
