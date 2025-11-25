@@ -19,6 +19,15 @@
       a {
         color: inherit;
       }
+      button {
+        background: transparent !important;
+        box-shadow: none !important;
+      }
+      section {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+      }
       .auth-overlay {
         position: fixed;
         inset: 0;
@@ -210,7 +219,7 @@
       }
       .quick-links a {
         border: 1px solid #2f353d;
-        background: #161b22;
+        background: transparent;
         color: #f0f6fc;
         padding: 8px 14px;
         border-radius: 10px;
@@ -221,7 +230,7 @@
         transition: transform 0.15s ease, background 0.2s ease, box-shadow 0.2s ease;
       }
       .quick-links a:hover {
-        background: #1f242d;
+        background: rgba(240, 246, 252, 0.08);
         transform: translateY(-1px);
         box-shadow: 0 10px 24px rgba(13, 17, 23, 0.35);
       }
@@ -232,7 +241,7 @@
         margin: 24px clamp(24px, 5vw, 72px) 16px;
         padding: 20px 24px;
         background: #111620;
-        border: 1px solid #1f242d;
+        border: 1px solid #30363d !important;
         border-radius: 18px;
         box-shadow: 0 20px 60px rgba(5, 8, 13, 0.4);
       }
@@ -311,7 +320,7 @@
         gap: 12px;
       }
       .scheduler-card {
-        border: 1px solid #1f242d;
+        border: 1px solid #30363d;
         border-radius: 16px;
         padding: 14px 16px;
         display: flex;
@@ -376,7 +385,7 @@
       .toolbar select,
       .toolbar input {
         border: 1px solid #30363d;
-        background: #21262d;
+        background: transparent;
         color: #f0f6fc;
         padding: 10px 14px;
         border-radius: 8px;
@@ -410,7 +419,7 @@
         padding: 10px 12px;
         border: 1px solid #30363d;
         border-radius: 10px;
-        background: #161b22;
+        background: transparent;
         transition: border-color 0.2s ease, background 0.2s ease;
       }
       .multi-checkbox-item:hover {
@@ -418,8 +427,8 @@
         background: #1b2432;
       }
       .multi-checkbox-item input[type='checkbox'] {
-        width: 18px;
-        height: 18px;
+        width: 16px;
+        height: 16px;
         accent-color: #1f6feb;
         flex-shrink: 0;
       }
@@ -869,18 +878,19 @@
         inset: 0;
         background: rgba(2, 6, 12, 0.65);
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: center;
         z-index: 110;
-        padding: 24px;
+        padding: 32px clamp(16px, 4vw, 48px) 24px;
       }
       .modal-overlay[hidden] {
         display: none;
       }
       .modal-content {
         width: min(1080px, 95vw);
-        max-height: min(92vh, 860px);
-        background: #0d1117;
+        min-height: calc(100vh - 72px);
+        max-height: calc(100vh - 72px);
+        background: #05070d;
         border: 1px solid #30363d;
         border-radius: 20px;
         box-shadow: 0 30px 80px rgba(1, 4, 9, 0.55);
@@ -928,11 +938,11 @@
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 20px;
-        padding: 18px 20px;
-        border-radius: 18px;
-        background: rgba(31, 110, 235, 0.12);
-        border: 1px solid rgba(56, 139, 253, 0.3);
-        box-shadow: 0 20px 50px rgba(12, 28, 64, 0.35);
+        padding: 18px 0;
+        border-radius: 0;
+        background: transparent;
+        border: none;
+        box-shadow: none;
       }
       .detail-priority .field {
         display: flex;
@@ -946,23 +956,56 @@
         color: #d6e4ff;
         font-weight: 500;
       }
+      .detail-section-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin: 4px 0 6px;
+      }
+      .detail-section-tab {
+        border: 1px solid rgba(240, 246, 252, 0.2);
+        border-radius: 999px;
+        background: rgba(240, 246, 252, 0.08);
+        color: #c9d1d9;
+        font-size: 13px;
+        font-weight: 600;
+        padding: 8px 16px;
+        cursor: pointer;
+        transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease,
+          transform 0.2s ease;
+      }
+      .detail-section-tab:not(:disabled):hover {
+        transform: translateY(-1px);
+      }
+      .detail-section-tab.is-active {
+        background: #1f6feb;
+        border-color: #1f6feb;
+        color: #ffffff;
+        box-shadow: 0 6px 18px rgba(31, 111, 235, 0.35);
+      }
+      .detail-section-tab:disabled,
+      .detail-section-tab[aria-disabled='true'] {
+        opacity: 0.35;
+        cursor: not-allowed;
+        box-shadow: none;
+      }
+      [data-detail-section][hidden] {
+        display: none !important;
+      }
       .detail-section-group {
         display: flex;
         flex-direction: column;
         gap: 20px;
       }
       .detail-section {
-        border: 1px solid #252b36;
-        border-radius: 18px;
-        padding: 18px 20px 22px;
-        background: #0f131c;
+        border: none;
+        border-radius: 0;
+        padding: 18px 0 22px;
+        background: transparent;
+        box-shadow: none;
       }
       .detail-section legend {
-        margin: 0 0 12px 0;
-        padding: 0 4px;
-        font-size: 16px;
-        font-weight: 700;
-        color: #f0f6fc;
+        display: none;
       }
       .detail-field-grid {
         display: grid;
@@ -1037,11 +1080,7 @@
         font-weight: 600;
       }
       .modal-form label .select-hint {
-        display: block;
-        margin-top: 4px;
-        font-size: 12px;
-        color: #8b949e;
-        font-weight: 500;
+        display: none;
       }
       .modal-form input[type='text'],
       .modal-form input[type='tel'],
@@ -1051,7 +1090,7 @@
       .modal-form .time-select {
         width: 100%;
         border: 1px solid #30363d;
-        background: #161b22;
+        background: transparent;
         color: #f0f6fc;
         border-radius: 10px;
         padding: 12px 14px;
@@ -1095,10 +1134,10 @@
       }
       .detail-attachments {
         margin-top: 24px;
-        padding: 18px 20px;
-        border-radius: 16px;
-        border: 1px solid #30363d;
-        background: #161b22;
+        padding: 18px 0;
+        border-radius: 0;
+        border: none;
+        background: transparent;
         display: grid;
         gap: 16px;
       }
@@ -1158,7 +1197,6 @@
         display: none;
       }
       body[data-app-variant='moim'] #detailDraftLoadBtn,
-      body[data-app-variant='moim'] #detailExportBtn,
       body[data-app-variant='moim'] #detailForm .modal-actions .primary {
         display: none;
       }
@@ -1229,194 +1267,25 @@
         font-size: 14px;
       }
       .modal-actions .secondary {
-        background: #21262d;
+        background: transparent;
         color: #c9d1d9;
+        border: 1px solid rgba(201, 209, 217, 0.35);
       }
       .modal-actions .secondary:hover {
-        background: #30363d;
+        border-color: rgba(201, 209, 217, 0.65);
       }
       .modal-actions .primary {
-        background: #1f6feb;
-        color: #ffffff;
-        box-shadow: 0 18px 36px rgba(31, 110, 235, 0.3);
+        background: transparent;
+        color: #1f6feb;
+        border: 1px solid #1f6feb;
+        box-shadow: none;
       }
       .modal-actions .primary:hover {
         transform: translateY(-1px);
-      }
-      .modal-actions .ghost {
-        background: transparent;
-        color: #8b949e;
-        border: 1px solid #30363d;
-      }
-      .modal-actions .ghost:hover {
-        background: #21262d;
-        color: #f0f6fc;
-      }
-      #pdfExportRoot {
-        position: fixed;
-        top: -12000px;
-        left: -12000px;
-        padding: 0;
-        margin: 0;
-        pointer-events: none;
-        z-index: -1;
-      }
-      #pdfExportRoot[hidden] {
-        display: none;
-      }
-      .pdf-page {
-        width: 1120px;
-        height: 720px;
-        background: #0a0d13;
-        color: #f4f7fb;
-        font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI",
-          "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
-        display: flex;
-        flex-direction: column;
-        gap: 32px;
-        padding: 48px 56px;
-        box-sizing: border-box;
-      }
-      .pdf-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        text-transform: uppercase;
-        letter-spacing: 0.18em;
-        font-size: 18px;
-        color: #d0d6e1;
-      }
-      .pdf-body {
-        display: grid;
-        grid-template-columns: 420px 1fr;
-        gap: 36px;
-        flex: 1;
-      }
-      .pdf-left {
-        display: flex;
-        flex-direction: column;
-        gap: 28px;
-      }
-      .pdf-photo-frame {
-        position: relative;
-        width: 100%;
-        padding-top: 120%;
-        background: #141922;
-        border: 1px solid #21293a;
-        border-radius: 18px;
-        overflow: hidden;
-        box-shadow: 0 18px 60px rgba(1, 4, 9, 0.45);
-      }
-      #pdfPhoto {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
-      #pdfPhotoFallback {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 42px;
-        font-weight: 700;
-        color: #9da7bb;
-        background: linear-gradient(145deg, rgba(31, 40, 55, 0.9), rgba(19, 25, 38, 0.9));
-      }
-      .pdf-contact-card {
-        background: #10141f;
-        border: 1px solid #21293a;
-        border-radius: 18px;
-        padding: 28px;
-        display: flex;
-        flex-direction: column;
-        gap: 18px;
-      }
-      .pdf-contact-name {
-        font-size: 24px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-      }
-      .pdf-contact-meta {
-        font-size: 14px;
-        color: #9ca6ba;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-      .pdf-contact-list {
-        margin: 0;
-        padding: 0;
-        list-style: none;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-      }
-      .pdf-contact-list li {
-        display: flex;
-        gap: 12px;
-        font-size: 15px;
-        color: #d5dbe8;
-      }
-      .pdf-contact-list span.label {
-        min-width: 80px;
-        color: #7c869a;
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-        font-size: 13px;
-      }
-      .pdf-right {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 24px;
-        align-content: start;
-      }
-      .pdf-card {
-        background: #10141f;
-        border: 1px solid #21293a;
-        border-radius: 18px;
-        padding: 26px;
-        display: flex;
-        flex-direction: column;
-        gap: 18px;
-        min-height: 0;
-      }
-      .pdf-card h3 {
-        margin: 0;
-        font-size: 18px;
-        letter-spacing: 0.24em;
-        text-transform: uppercase;
-        color: #f5f7fa;
-      }
-      .pdf-card p {
-        margin: 0;
-        font-size: 15px;
-        color: #d1d7e3;
-        line-height: 1.7;
-        white-space: pre-wrap;
-      }
-      .pdf-card ul {
-        margin: 0;
-        padding: 0;
-        list-style: none;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        font-size: 15px;
-        color: #d1d7e3;
-      }
-      .pdf-card ul li::before {
-        content: '•';
-        color: #6c7a94;
-        margin-right: 10px;
-      }
-      .pdf-card.span-2 {
-        grid-column: span 2;
+        border-color: #3b82f6;
       }
       .card {
-        background: linear-gradient(160deg, #161b22 0%, #0d1117 100%);
+        background: transparent;
         border: 1px solid #30363d;
         border-radius: 16px;
         padding: 20px;
@@ -1659,6 +1528,7 @@
         bottom: 40px;
         border: none;
         background: #1f6feb;
+        border: 1px solid #3b82f6;
         color: #fff;
         padding: 12px 18px;
         border-radius: 999px;
