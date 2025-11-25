@@ -1,0 +1,151 @@
+<!-- ✨ 하단 반투명 그라데이션(아래=연회색 → 위=투명) + 대형 상담 CTA -->
+<div id="cta-gradient-overlay" class="cta-gradient-overlay" aria-hidden="true">
+    <div class="cta-gradient-overlay__inner">
+      <a href="#s20251120382cd97cf0f6c" class="cta-gradient-overlay__button" role="button" aria-label="지금 바로 상담받기">
+        👍 지금 모임 신청하기
+      </a>
+    </div>
+  </div>
+  
+  <style>
+    :root{
+      --cta-bg: #5878ea;                 /* 버튼 배경색 */
+      --cta-gradient-height: 240px;      /* 그라데이션 높이 */
+      --cta-z: 99999;
+    }
+  
+    .cta-gradient-overlay{
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      height: var(--cta-gradient-height);
+      z-index: var(--cta-z);
+  
+      /* ✅ 반투명 그라데이션: 아래 연회색(0.85) → 중간 흰색(0.55) → 위 투명(0) */
+      background: linear-gradient(
+        to top,
+        rgba(242,242,242,0.85) 0%,
+        rgba(255,255,255,0.55) 55%,
+        rgba(255,255,255,0.00) 100%
+      );
+  
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity .35s ease, transform .35s ease;
+      pointer-events: none; /* 오버레이는 클릭 막지 않음 */
+    }
+    .cta-gradient-overlay.is-visible{
+      opacity: 1;
+      transform: translateY(0);
+    }
+  
+    .cta-gradient-overlay__inner{
+      height: 100%;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 24px 20px calc(env(safe-area-inset-bottom, 0px) + 24px);
+      box-sizing: border-box;
+    }
+  
+    /* 📦 큰 CTA 버튼 */
+    .cta-gradient-overlay__button{
+      pointer-events: auto; /* 버튼은 클릭 가능 */
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+  
+      padding: 22px 44px;
+      font-size: 22px;
+      line-height: 1.05;
+      font-weight: 800;
+  
+      color: #fff;                 /* 글자: 흰색 */
+      background: var(--cta-bg);   /* 박스: #5878ea */
+      border-radius: 18px;
+      text-decoration: none;
+      border: 0;
+  
+      box-shadow: 0 16px 36px rgba(88,120,234,0.38);
+      transition: transform .15s ease, box-shadow .15s ease, filter .2s ease;
+  
+      min-width: 360px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .cta-gradient-overlay__button:hover{
+      transform: translateY(-2px);
+      box-shadow: 0 20px 44px rgba(88,120,234,0.46);
+      filter: brightness(1.02);
+    }
+    .cta-gradient-overlay__button:active{
+      transform: translateY(0);
+    }
+  
+    /* 반응형: 모바일은 꽉 차게 */
+    @media (max-width: 480px){
+      .cta-gradient-overlay__button{
+        width: 100%;
+        max-width: 480px;
+        padding: 20px 24px;
+        font-size: 18px;
+        min-width: 0;
+      }
+    }
+  
+    /* ✅ 테마/상태와 무관하게 글자색을 흰색으로 고정 */
+    #cta-gradient-overlay .cta-gradient-overlay__button,
+    #cta-gradient-overlay .cta-gradient-overlay__button:link,
+    #cta-gradient-overlay .cta-gradient-overlay__button:visited,
+    #cta-gradient-overlay .cta-gradient-overlay__button:hover,
+    #cta-gradient-overlay .cta-gradient-overlay__button:active,
+    #cta-gradient-overlay .cta-gradient-overlay__button *{
+      color: #fff !important;
+      -webkit-text-fill-color: #fff;
+      text-decoration: none !important;
+    }
+  </style>
+  
+  <script>
+  (function(){
+    var overlay = document.getElementById('cta-gradient-overlay');
+    var target = document.getElementById('s20251120382cd97cf0f6c');
+    var threshold = 0.10; // 스크롤 진행률 10%에서 표시
+
+    function isTargetReached(){
+      if (!target){
+        return false;
+      }
+      var rect = target.getBoundingClientRect();
+      var viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+      return rect.top <= viewportHeight && rect.bottom >= 0;
+    }
+  
+    function update(){
+      var doc = document.documentElement;
+      var scrollTop = window.pageYOffset || doc.scrollTop || 0;
+      var scrollHeight = doc.scrollHeight;
+      var clientHeight = doc.clientHeight;
+      var scrollable = Math.max(scrollHeight - clientHeight, 0);
+  
+      if (scrollable <= 0){
+        overlay.classList.remove('is-visible');
+        overlay.setAttribute('aria-hidden','true');
+        return;
+      }
+      var progress = scrollTop / scrollable;
+  
+      if (progress >= threshold && !isTargetReached()){
+        overlay.classList.add('is-visible');
+        overlay.setAttribute('aria-hidden','false');
+      } else {
+        overlay.classList.remove('is-visible');
+        overlay.setAttribute('aria-hidden','true');
+      }
+    }
+  
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    window.addEventListener('load', update);
+    document.addEventListener('DOMContentLoaded', update);
+  })();
+  </script>
+  

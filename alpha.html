@@ -1,0 +1,3037 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <link
+      rel="stylesheet"
+      as="style"
+      crossorigin
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
+    />
+    <style>
+      #alpha-profile-root {
+        font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+        color: #4f4f4f;
+        line-height: 1.6;
+      }
+      #alpha-profile-root form {
+        display: grid;
+        gap: 28px;
+      }
+      #alpha-profile-root fieldset {
+        margin: 0;
+        padding: 0;
+        border: none;
+        display: grid;
+        gap: 20px;
+      }
+      #alpha-profile-root fieldset + fieldset {
+        margin-top: 40px;
+      }
+      #alpha-profile-root legend {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        font-weight: 700;
+        font-size: 22px;
+        margin-bottom: 8px;
+        color: #4f4f4f;
+      }
+      #alpha-profile-root .legend-title {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      #alpha-profile-root .legend-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-left: auto;
+      }
+      #alpha-profile-root .legend-hint-wrap {
+        position: relative;
+        display: inline-flex;
+      }
+      #alpha-profile-root .legend-hint {
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translate(-50%, -6px);
+        background: rgba(83, 119, 246, 0.18);
+        color: #2f49c8;
+        border-radius: 999px;
+        padding: 3px 10px;
+        font-size: 11px;
+        font-weight: 600;
+        line-height: 1.4;
+        white-space: nowrap;
+        box-shadow: 0 8px 18px rgba(83, 119, 246, 0.18);
+        pointer-events: none;
+      }
+      #alpha-profile-root .legend-hint::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border: 6px solid transparent;
+        border-top-color: rgba(83, 119, 246, 0.18);
+      }
+      #alpha-profile-root .btn-outline {
+        border: 1px solid #bfc7d8;
+        background: #ffffff;
+        color: #4f4f4f;
+        padding: 6px 14px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+      #alpha-profile-root .btn-outline:hover {
+        border-color: #5377f6;
+        color: #2f49c8;
+        box-shadow: 0 10px 20px rgba(83, 119, 246, 0.15);
+      }
+      #alpha-profile-root .btn-outline:focus-visible {
+        outline: 2px solid #5377f6;
+        outline-offset: 2px;
+      }
+      #alpha-profile-root .field-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 20px;
+      }
+      #alpha-profile-root .field {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      #alpha-profile-root label {
+        font-weight: 600;
+        color: #7e7e7e;
+        font-size: 18px;
+      }
+      #alpha-profile-root .file-input {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        clip-path: inset(50%);
+        border: 0;
+        white-space: nowrap;
+      }
+      #alpha-profile-root .badge-public {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-left: 8px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: rgba(83, 119, 246, 0.12);
+        color: #5377f6;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      #alpha-profile-root .badge-match {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-left: 8px;
+        padding: 2px 10px;
+        border-radius: 999px;
+        background: rgba(250, 214, 230, 0.6);
+        color: #e45e9d;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      #alpha-profile-root .badge-verify {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-left: 8px;
+        padding: 2px 10px;
+        border-radius: 999px;
+        background: rgba(187, 247, 208, 0.55);
+        color: #047857;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      #alpha-profile-root .badge-preference {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-left: 8px;
+        padding: 2px 10px;
+        border-radius: 999px;
+        background: rgba(251, 191, 36, 0.25);
+        color: #c2410c;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      #alpha-profile-root .info-badge {
+        cursor: pointer;
+      }
+      #alpha-profile-root .info-badge:focus-visible {
+        outline: 2px solid rgba(83, 119, 246, 0.45);
+        outline-offset: 2px;
+      }
+      #alpha-profile-root .info-bubble {
+        position: fixed;
+        bottom: 22px;
+        left: 50%;
+        transform: translate(-50%, 18px);
+        background: rgba(255, 255, 255, 0.95);
+        color: #374151;
+        border-radius: 999px;
+        padding: 10px 18px;
+        font-size: 14px;
+        font-weight: 600;
+        box-shadow: 0 18px 36px rgba(83, 119, 246, 0.25);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s ease, transform 0.25s ease;
+        z-index: 1000;
+      }
+      #alpha-profile-root .info-bubble::after {
+        content: '';
+        position: absolute;
+        top: -8px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.95);
+        box-shadow: 0 -12px 28px rgba(83, 119, 246, 0.2);
+      }
+      #alpha-profile-root .info-bubble.is-visible {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
+      #alpha-profile-root .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+      #alpha-profile-root .field-note {
+        margin: 0;
+        font-size: 14px;
+        color: #9aa2b4;
+      }
+      #alpha-profile-root .field-note p {
+        margin: 0 0 6px;
+      }
+      #alpha-profile-root .field-note p:last-child {
+        margin-bottom: 0;
+      }
+      #alpha-profile-root .field-note ul {
+        margin: 8px 0 0;
+        padding-left: 18px;
+        list-style: disc;
+      }
+      #alpha-profile-root .field-note li {
+        margin-top: 4px;
+      }
+      #alpha-profile-root .file-drop-zone {
+        border: 1px dashed #bfc7d8;
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        background: #f9fbff;
+        color: #7e7e7e;
+        display: grid;
+        gap: 10px;
+        cursor: pointer;
+        transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+      }
+      #alpha-profile-root .file-drop-zone .file-drop-default {
+        display: grid;
+        gap: 6px;
+      }
+      #alpha-profile-root .file-drop-zone strong {
+        font-size: 16px;
+        color: #4f4f4f;
+      }
+      #alpha-profile-root .file-drop-zone .file-drop-hint {
+        font-size: 14px;
+      }
+      #alpha-profile-root .file-drop-zone.is-dragover {
+        border-color: #5377f6;
+        background: rgba(83, 119, 246, 0.12);
+        color: #4f4f4f;
+      }
+      #alpha-profile-root .file-drop-zone:focus-visible {
+        outline: 2px solid #5377f6;
+        outline-offset: 2px;
+      }
+      #alpha-profile-root .file-drop-zone .file-drop-selected {
+        display: grid;
+        gap: 10px;
+        font-size: 15px;
+        font-weight: 600;
+        color: #4f4f4f;
+      }
+      #alpha-profile-root .file-drop-zone:not(.has-files) .file-drop-selected {
+        display: none;
+      }
+      #alpha-profile-root .file-drop-zone.has-files .file-drop-default {
+        display: none;
+      }
+      #alpha-profile-root .file-drop-files {
+        display: grid;
+        gap: 8px;
+        font-weight: 500;
+      }
+      #alpha-profile-root .file-drop-zone:not(.has-files) .file-drop-files {
+        font-weight: 600;
+      }
+      #alpha-profile-root .file-drop-file {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0;
+        font-size: 14px;
+        font-weight: 500;
+        color: #4f4f4f;
+      }
+      #alpha-profile-root .file-drop-file-progress {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: conic-gradient(#5377f6 calc(var(--progress, 0) * 1deg), #e2e8f6 0deg);
+        display: grid;
+        place-items: center;
+        color: #4f4f4f;
+        font-size: 12px;
+        font-weight: 700;
+        flex-shrink: 0;
+        position: relative;
+      }
+      #alpha-profile-root .file-drop-file-progress::after {
+        content: '';
+        position: absolute;
+        inset: 4px;
+        border-radius: 50%;
+        background: #ffffff;
+      }
+      #alpha-profile-root .file-drop-file-progress span {
+        position: relative;
+        z-index: 1;
+      }
+      #alpha-profile-root .file-drop-file-status {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: #e4ecff;
+        color: #2f49c8;
+        font-size: 16px;
+        font-weight: 700;
+        flex-shrink: 0;
+      }
+      #alpha-profile-root .file-drop-file-check {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: #e4ecff;
+        color: #2f49c8;
+        font-weight: 700;
+        font-size: 16px;
+        flex-shrink: 0;
+      }
+      #alpha-profile-root .file-drop-file-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      #alpha-profile-root .file-remove-btn {
+        border: none;
+        background: #f87171;
+        color: #ffffff;
+        border-radius: 8px;
+        padding: 6px 12px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      #alpha-profile-root .file-remove-btn:hover {
+        background: #dc2626;
+      }
+      #alpha-profile-root label span.helper {
+        display: block;
+        margin-top: 4px;
+        font-size: 15px;
+        color: #6b7a90;
+      }
+      #alpha-profile-root .multi-checkbox-list {
+        display: grid;
+        gap: 8px;
+      }
+      #alpha-profile-root .multi-checkbox-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        border: 1px solid #d5dbea;
+        border-radius: 10px;
+        background: #ffffff;
+        transition: border-color 0.2s ease, background 0.2s ease;
+      }
+      #alpha-profile-root .multi-checkbox-item:hover {
+        border-color: #5a67d8;
+        background: #eef3ff;
+      }
+      #alpha-profile-root .multi-checkbox-item input[type='checkbox'] {
+        width: 18px;
+        height: 18px;
+        accent-color: #5377f6;
+        flex-shrink: 0;
+      }
+      #alpha-profile-root .multi-dropdown {
+        position: relative;
+      }
+      #alpha-profile-root .multi-dropdown-trigger {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        width: 100%;
+        border: 1px solid #d5dbea;
+        background: #f9fbff;
+        border-radius: 10px;
+        padding: 12px 14px;
+        font-size: 16px;
+        font-weight: 500;
+        color: #7e7e7e;
+        cursor: pointer;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
+      }
+      #alpha-profile-root .multi-dropdown.has-selection .multi-dropdown-trigger {
+        background: #ffffff;
+        border-color: #b9c4de;
+        color: #4f4f4f;
+        font-weight: 600;
+      }
+      #alpha-profile-root .multi-dropdown-trigger:focus-visible {
+        outline: 2px solid #5a67d8;
+        outline-offset: 2px;
+      }
+      #alpha-profile-root .multi-dropdown-trigger::after {
+        content: '▾';
+        font-size: 12px;
+        color: inherit;
+      }
+      #alpha-profile-root .multi-dropdown.is-open .multi-dropdown-trigger::after {
+        content: '▴';
+      }
+      #alpha-profile-root .multi-dropdown-label {
+        flex: 1;
+        text-align: left;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      #alpha-profile-root .multi-dropdown-panel {
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        right: 0;
+        background: #ffffff;
+        border: 1px solid #d5dbea;
+        border-radius: 12px;
+        box-shadow: 0 18px 40px rgba(73, 89, 245, 0.18);
+        padding: 12px 10px;
+        display: grid;
+        gap: 6px;
+        max-height: 264px;
+        overflow-y: auto;
+        z-index: 60;
+      }
+      #alpha-profile-root .multi-dropdown-panel[hidden] {
+        display: none;
+      }
+      #alpha-profile-root .multi-dropdown-option {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        font-size: 15px;
+        color: #4f4f4f;
+        cursor: pointer;
+        transition: background 0.2s ease, color 0.2s ease;
+      }
+      #alpha-profile-root .multi-dropdown-option:hover {
+        background: rgba(83, 119, 246, 0.12);
+        color: #2f49c8;
+      }
+      #alpha-profile-root .multi-dropdown-option input[type='checkbox'] {
+        width: 16px;
+        height: 16px;
+        accent-color: #5377f6;
+        flex-shrink: 0;
+      }
+      #alpha-profile-root .multi-select-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        clip-path: inset(50%);
+        border: 0;
+        white-space: nowrap;
+      }
+      #alpha-profile-root input,
+      #alpha-profile-root textarea,
+      #alpha-profile-root select {
+        border: 1px solid #d5dbea;
+        background: #f9fbff;
+        border-radius: 10px;
+        padding: 12px 14px;
+        font-size: 18px;
+        font-family: inherit;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+      #alpha-profile-root input:focus,
+      #alpha-profile-root textarea:focus,
+      #alpha-profile-root select:focus {
+        outline: none;
+        border-color: #5a67d8;
+        box-shadow: 0 0 0 2px rgba(90, 103, 216, 0.25);
+        background: #ffffff;
+      }
+      #alpha-profile-root textarea {
+        min-height: 140px;
+        resize: vertical;
+      }
+      #alpha-profile-root select[multiple] {
+        min-height: 160px;
+      }
+      #alpha-profile-root .agreements-group {
+        display: grid;
+        gap: 12px;
+        margin-top: 12px;
+      }
+      #alpha-profile-root .agreements {
+        font-weight: 600;
+        color: #7e7e7e;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        border: none;
+        border-radius: 0;
+        padding: 0;
+      }
+      #alpha-profile-root .agreement-item {
+        display: grid;
+        gap: 6px;
+      }
+      #alpha-profile-root .agreement-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: nowrap;
+      }
+      #alpha-profile-root .agreement-header .agreements {
+        flex: 1;
+        min-width: 0;
+      }
+      #alpha-profile-root .agreement-toggle {
+        margin: 0;
+        width: 28px;
+        height: 28px;
+        min-width: 28px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #f9fbff;
+        border: 1px solid #d5dbea;
+        border-radius: 50%;
+        color: #7e7e7e;
+        cursor: pointer;
+        transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+      }
+      #alpha-profile-root .agreement-toggle:hover {
+        background: rgba(83, 119, 246, 0.08);
+        border-color: #b6c1df;
+      }
+      #alpha-profile-root .agreement-toggle::before {
+        content: '\25BC';
+        font-size: 12px;
+        line-height: 1;
+      }
+      #alpha-profile-root .agreement-toggle[aria-expanded='true']::before {
+        content: '\25B2';
+      }
+      #alpha-profile-root .agreement-toggle:focus-visible {
+        outline: 2px solid #5377f6;
+        outline-offset: 2px;
+      }
+      #alpha-profile-root .agreement-details {
+        font-size: 14px;
+        color: #7e7e7e;
+        background: #f9fbff;
+        border: 1px solid #d5dbea;
+        border-radius: 8px;
+        padding: 14px 16px;
+      }
+      #alpha-profile-root .agreements input[type='checkbox'] {
+        width: 18px;
+        height: 18px;
+        margin-top: 3px;
+      }
+      #alpha-profile-root .agreements span {
+        display: block;
+      }
+      #alpha-profile-root .textarea-small {
+        min-height: 100px;
+      }
+      #alpha-profile-root .submit-row {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        align-items: center;
+      }
+      #alpha-profile-root .submit-hint {
+        position: relative;
+        display: inline-block;
+        margin-bottom: 4px;
+        padding: 10px 16px;
+        background: #eef3ff;
+        border-radius: 14px;
+        color: #2f49c8;
+        font-size: 15px;
+        font-weight: 600;
+        text-align: center;
+        animation: submitHintFloat 3.2s ease-in-out infinite;
+        will-change: transform;
+      }
+      #alpha-profile-root .submit-hint::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border-width: 8px 8px 0 8px;
+        border-style: solid;
+        border-color: #eef3ff transparent transparent transparent;
+      }
+      @keyframes submitHintFloat {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-6px);
+        }
+      }
+      #alpha-profile-root button[type='submit'] {
+        border: none;
+        border-radius: 12px;
+        background: #5377f6;
+        color: #ffffff;
+        font-weight: 700;
+        padding: 14px 24px;
+        cursor: pointer;
+        font-size: 18px;
+        transition: transform 0.15s ease, box-shadow 0.2s ease;
+      }
+      #alpha-profile-root button[type='submit']:hover:not([disabled]) {
+        transform: translateY(-1px);
+        box-shadow: 0 18px 40px rgba(73, 89, 245, 0.35);
+      }
+      #alpha-profile-root button[type='submit'][disabled] {
+        cursor: not-allowed;
+        opacity: 0.6;
+      }
+      #alpha-profile-root .form-message {
+        font-size: 15px;
+        font-weight: 600;
+      }
+      #alpha-profile-root .form-message.success {
+        color: #1b7f44;
+      }
+      #alpha-profile-root .form-message.error {
+        color: #d64545;
+      }
+      #alpha-profile-root .notice {
+        border: 1px solid #d5dbea;
+        border-radius: 16px;
+        padding: 18px 20px;
+        color: #4f4f4f;
+        font-size: 14px;
+        background: transparent;
+      }
+      #alpha-profile-root .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(17, 24, 39, 0.45);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        z-index: 999;
+      }
+      #alpha-profile-root .modal-backdrop[hidden] {
+        display: none;
+      }
+      #alpha-profile-root .modal-dialog {
+        background: #ffffff;
+        border-radius: 18px;
+        padding: 28px 32px;
+        max-width: 360px;
+        width: 100%;
+        box-shadow: 0 24px 60px rgba(17, 24, 39, 0.25);
+        text-align: center;
+        color: #4f4f4f;
+      }
+      #alpha-profile-root .modal-dialog p {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+      }
+      #alpha-profile-root .modal-dialog button {
+        margin-top: 22px;
+        border: none;
+        border-radius: 12px;
+        background: #5377f6;
+        color: #ffffff;
+        font-weight: 700;
+        padding: 12px 20px;
+        cursor: pointer;
+        font-size: 16px;
+        transition: transform 0.15s ease, box-shadow 0.2s ease;
+      }
+      #alpha-profile-root .modal-dialog button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 16px 32px rgba(83, 119, 246, 0.28);
+      }
+      #alpha-profile-root .modal-dialog button:focus-visible {
+        outline: 2px solid #2f49c8;
+        outline-offset: 2px;
+      }
+      @media (max-width: 780px) {
+        #alpha-profile-root .field-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="alpha-profile-root">
+      <form id="profileForm" novalidate>
+        <div id="infoBubble" class="info-bubble" role="status" aria-live="polite" hidden></div>
+        <fieldset>
+          <legend>
+            <span class="legend-title">기본 정보</span>
+            <span class="legend-actions" role="group" aria-label="임시 저장">
+              <span class="legend-hint-wrap">
+                <span class="legend-hint">번호 입력 후 저장</span>
+                <button type="button" class="btn-outline" id="draftSaveButton">임시 저장하기</button>
+              </span>
+              <span class="legend-hint-wrap">
+                <span class="legend-hint">번호 입력 후 불러오기</span>
+                <button type="button" class="btn-outline" id="draftLoadButton">임시 저장 불러오기</button>
+              </span>
+            </span>
+          </legend>
+          <div class="field-grid">
+            <div class="field">
+              <label for="profilePhone">연락처 (처음 신청하신 휴대폰 번호와 동일하게 입력해주세요.)</label>
+              <input
+                id="profilePhone"
+                type="tel"
+                inputmode="tel"
+                autocomplete="tel-national"
+                placeholder="010-1234-5678"
+                required
+              />
+            </div>
+            <div class="field">
+              <label for="profileMbti">
+                MBTI
+                <span class="badge-public" aria-hidden="true">공개</span>
+                <span class="sr-only">상대방에게 공개되는 정보</span>
+              </label>
+              <input id="profileMbti" type="text" maxlength="8" placeholder="예: ENFP" />
+            </div>
+            <div class="field">
+              <label for="profileJob">
+                직업 / 직무
+                <span class="badge-public" aria-hidden="true">공개</span>
+                <span class="sr-only">상대방에게 공개되는 정보</span>
+              </label>
+              <input id="profileJob" type="text" placeholder="예: 중견 무역회사 해외영업" />
+            </div>
+            <div class="field">
+              <label for="profileJobDetail">
+                직업 / 직무 상세
+                <span class="badge-public" aria-hidden="true">공개</span>
+                <span class="sr-only">상대방에게 공개되는 정보</span>
+              </label>
+              <input
+                id="profileJobDetail"
+                type="text"
+                placeholder="예: 중견 무역회사 해외영업팀 북미 파트 담당"
+              />
+            </div>
+            <div class="field">
+              <label for="profileSmoking">
+                흡연
+                <span class="badge-public" aria-hidden="true">공개</span>
+                <span class="sr-only">상대방에게 공개되는 정보</span>
+              </label>
+              <select id="profileSmoking">
+                <option value="">선택</option>
+                <option value="비흡연">비흡연</option>
+                <option value="사회적 흡연">사회적 흡연</option>
+                <option value="흡연">흡연</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="profileSalaryRange">
+                연봉 (세후 기준)
+                <span class="badge-match" aria-hidden="true">매칭 후 공개</span>
+                <span class="sr-only">매칭 이후에 공개되는 정보</span>
+              </label>
+              <select id="profileSalaryRange">
+                <option value="">선택</option>
+                <option value="1">1) 3000만원 미만</option>
+                <option value="2">2) 3000-4000</option>
+                <option value="3">3) 4000-6000</option>
+                <option value="4">4) 6000-8000</option>
+                <option value="5">5) 8000-1억</option>
+                <option value="6">6) 1억-2억</option>
+                <option value="7">7) 2억-3억</option>
+                <option value="8">8) 3억 이상</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="profileUniversity">
+                대학교 및 학과
+                <span class="badge-match" aria-hidden="true">매칭 후 공개</span>
+                <span class="sr-only">매칭 이후에 공개되는 정보</span>
+              </label>
+              <input id="profileUniversity" type="text" placeholder="예: 연세대학교 기계공학과" />
+            </div>
+            <div class="field">
+              <label for="profileReligion">
+                종교
+                <span class="badge-match" aria-hidden="true">매칭 후 공개</span>
+                <span class="sr-only">매칭 이후에 공개되는 정보</span>
+              </label>
+              <select id="profileReligion">
+                <option value="">선택</option>
+                <option value="무교">무교</option>
+                <option value="기독교">기독교</option>
+                <option value="천주교">천주교</option>
+                <option value="불교">불교</option>
+                <option value="기타">기타</option>
+              </select>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>세부 프로필</legend>
+          <div class="field-grid">
+            <div class="field">
+              <label for="profileAppeal">
+                추가 어필
+                <span class="badge-public" aria-hidden="true">공개</span>
+                <span class="sr-only">상대방에게 공개되는 정보</span>
+              </label>
+              <textarea
+                id="profileAppeal"
+                class="textarea-small"
+                placeholder="예: 연매출 00억 사업가, 서울 자가 보유 등"
+              ></textarea>
+            </div>
+            <div class="field">
+              <label for="profileAboutMe">
+                '저는 이런 사람입니다'
+                <span class="badge-public" aria-hidden="true">공개</span>
+                <span class="sr-only">상대방에게 공개되는 정보</span>
+              </label>
+              <textarea
+                id="profileAboutMe"
+                class="textarea-small"
+                placeholder="나를 표현할 수 있는 매력 포인트, 성격, 장점 등을 작성해주세요."
+              ></textarea>
+            </div>
+            <div class="field">
+              <label for="profileSufficientCondition">
+                충분조건
+                <span class="badge-public" aria-hidden="true">공개</span>
+                <span class="sr-only">상대방에게 공개되는 정보</span>
+              </label>
+              <p class="field-note" id="sufficientConditionNote">이런 점이 있다면 더 잘 맞을 거예요.</p>
+              <textarea
+                id="profileSufficientCondition"
+                class="textarea-small"
+                aria-describedby="sufficientConditionNote"
+                placeholder="예: 서로 성장하고 응원할 수 있는 관계를 원합니다."
+              ></textarea>
+            </div>
+            <div class="field">
+              <label for="profileNecessaryCondition">
+                필요조건
+                <span class="badge-public" aria-hidden="true">공개</span>
+                <span class="sr-only">상대방에게 공개되는 정보</span>
+              </label>
+              <p class="field-note" id="necessaryConditionNote">이건 꼭 맞아야 해요.</p>
+              <textarea
+                id="profileNecessaryCondition"
+                class="textarea-small"
+                aria-describedby="necessaryConditionNote"
+                placeholder="예: 장거리 연애가 가능한 분을 선호합니다."
+              ></textarea>
+            </div>
+            <div class="field">
+              <label for="profileLikesDislikes">
+                좋아하는 것 / 싫어하는 것
+                <span class="badge-match" aria-hidden="true">매칭 후 공개</span>
+                <span class="sr-only">매칭 이후에 공개되는 정보</span>
+              </label>
+              <textarea
+                id="profileLikesDislikes"
+                class="textarea-small"
+                placeholder="예: 캠핑과 등산을 즐기며, 인스턴트 음식은 잘 먹지 않습니다."
+              ></textarea>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>관계 및 라이프스타일</legend>
+          <div class="field-grid">
+            <div class="field">
+              <label for="profileTattoo">
+                문신 여부
+                <span class="badge-public" aria-hidden="true">공개</span>
+                <span class="sr-only">상대방에게 공개되는 정보</span>
+              </label>
+              <select id="profileTattoo">
+                <option value="">선택</option>
+                <option value="문신 없음">문신 없음</option>
+                <option value="문신 있음">문신 있음</option>
+                <option value="비공개">비공개</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="profileCarOwnership">
+                자차 유무
+                <span class="badge-public" aria-hidden="true">공개</span>
+                <span class="sr-only">상대방에게 공개되는 정보</span>
+              </label>
+              <select id="profileCarOwnership">
+                <option value="">선택</option>
+                <option value="있음">있음</option>
+                <option value="없음">없음</option>
+                <option value="구입 계획 있음">구입 계획 있음</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="profileLastRelationship">
+                마지막 연애 시기
+                <span class="badge-match" aria-hidden="true">매칭 후 공개</span>
+                <span class="sr-only">매칭 이후에 공개되는 정보</span>
+              </label>
+              <input
+                id="profileLastRelationship"
+                type="text"
+                placeholder="예: 2024년 5쯤 이별"
+              />
+            </div>
+            <div class="field">
+              <label for="profileRelationshipCount">
+                성인 후 연애 횟수
+                <span class="badge-match" aria-hidden="true">매칭 후 공개</span>
+                <span class="sr-only">매칭 이후에 공개되는 정보</span>
+              </label>
+              <select id="profileRelationshipCount">
+                <option value="">선택</option>
+                <option value="0회">0회</option>
+                <option value="1~3회">1~3회</option>
+                <option value="4~6회">4~6회</option>
+                <option value="7~9회">7~9회</option>
+                <option value="10~12회">10~12회</option>
+                <option value="13~15회">13~15회</option>
+                <option value="16~19회">16~19회</option>
+                <option value="20회 이상">20회 이상</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="profileLongDistance">장거리 연애 가능 여부</label>
+              <select id="profileLongDistance">
+                <option value="">선택</option>
+                <option value="가능">가능</option>
+                <option value="불가능">불가능</option>
+                <option value="상황에 따라">상황에 따라</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="profileDivorceStatus">돌싱 여부</label>
+              <select id="profileDivorceStatus">
+                <option value="">선택</option>
+                <option value="돌싱입니다(자녀o)">돌싱입니다(자녀o)</option>
+                <option value="돌싱입니다(자녀x)">돌싱입니다(자녀x)</option>
+                <option value="돌싱이 아닙니다">돌싱이 아닙니다</option>
+              </select>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>선호 조건</legend>
+          <div class="field-grid">
+            <div class="field">
+              <label for="profilePreferredHeights" id="profilePreferredHeightsLabel">
+                선호하는 키
+                <span class="badge-preference" aria-hidden="true">매칭용</span>
+                <span class="sr-only">매칭을 위해 참고되는 정보</span>
+              </label>
+              <div class="multi-dropdown" data-select-id="profilePreferredHeights">
+                <button
+                  type="button"
+                  class="multi-dropdown-trigger"
+                  aria-haspopup="listbox"
+                  aria-expanded="false"
+                  aria-controls="profilePreferredHeightsPanel"
+                >
+                  <span class="multi-dropdown-label">선택 없음</span>
+                </button>
+                <div
+                  id="profilePreferredHeightsPanel"
+                  class="multi-dropdown-panel"
+                  data-multi-select="profilePreferredHeights"
+                  role="listbox"
+                  aria-multiselectable="true"
+                  hidden
+                >
+                  <label class="multi-dropdown-option">
+                    <input type="checkbox" value="160cm 이하" />
+                    <span>160cm 이하</span>
+                  </label>
+                  <label class="multi-dropdown-option">
+                    <input type="checkbox" value="161-165cm" />
+                    <span>161-165cm</span>
+                  </label>
+                  <label class="multi-dropdown-option">
+                    <input type="checkbox" value="166-170cm" />
+                    <span>166-170cm</span>
+                  </label>
+                  <label class="multi-dropdown-option">
+                    <input type="checkbox" value="171-175cm" />
+                    <span>171-175cm</span>
+                  </label>
+                  <label class="multi-dropdown-option">
+                    <input type="checkbox" value="176-180cm" />
+                    <span>176-180cm</span>
+                  </label>
+                  <label class="multi-dropdown-option">
+                    <input type="checkbox" value="181cm 이상" />
+                    <span>181cm 이상</span>
+                  </label>
+                </div>
+              </div>
+              <select
+                id="profilePreferredHeights"
+                multiple
+                class="multi-select-hidden"
+                aria-hidden="true"
+                tabindex="-1"
+              >
+                <option value="160cm 이하">160cm 이하</option>
+                <option value="161-165cm">161-165cm</option>
+                <option value="166-170cm">166-170cm</option>
+                <option value="171-175cm">171-175cm</option>
+                <option value="176-180cm">176-180cm</option>
+                <option value="181cm 이상">181cm 이상</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="profilePreferredAges" id="profilePreferredAgesLabel">
+                선호 나이
+                <span class="badge-preference" aria-hidden="true">매칭용</span>
+                <span class="sr-only">매칭을 위해 참고되는 정보</span>
+              </label>
+              <div class="multi-dropdown" data-select-id="profilePreferredAges">
+                <button
+                  type="button"
+                  class="multi-dropdown-trigger"
+                  aria-haspopup="listbox"
+                  aria-expanded="false"
+                  aria-controls="profilePreferredAgesPanel"
+                >
+                  <span class="multi-dropdown-label">선택 없음</span>
+                </button>
+                <div
+                  id="profilePreferredAgesPanel"
+                  class="multi-dropdown-panel"
+                  data-multi-select="profilePreferredAges"
+                  role="listbox"
+                  aria-multiselectable="true"
+                  hidden
+                >
+                  <label class="multi-dropdown-option">
+                    <input type="checkbox" value="20대 초반" />
+                    <span>20대 초반</span>
+                  </label>
+                  <label class="multi-dropdown-option">
+                    <input type="checkbox" value="20대 중반" />
+                    <span>20대 중반</span>
+                  </label>
+                  <label class="multi-dropdown-option">
+                    <input type="checkbox" value="20대 후반" />
+                    <span>20대 후반</span>
+                  </label>
+                  <label class="multi-dropdown-option">
+                    <input type="checkbox" value="30대 초반" />
+                    <span>30대 초반</span>
+                  </label>
+                  <label class="multi-dropdown-option">
+                    <input type="checkbox" value="30대 중반" />
+                    <span>30대 중반</span>
+                  </label>
+                  <label class="multi-dropdown-option">
+                    <input type="checkbox" value="30대 후반 이상" />
+                    <span>30대 후반 이상</span>
+                  </label>
+                </div>
+              </div>
+              <select
+                id="profilePreferredAges"
+                multiple
+                class="multi-select-hidden"
+                aria-hidden="true"
+                tabindex="-1"
+              >
+                <option value="20대 초반">20대 초반</option>
+                <option value="20대 중반">20대 중반</option>
+                <option value="20대 후반">20대 후반</option>
+                <option value="30대 초반">30대 초반</option>
+                <option value="30대 중반">30대 중반</option>
+                <option value="30대 후반 이상">30대 후반 이상</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="profilePreferredLifestyle" id="profilePreferredLifestyleLabel">
+                선호 라이프스타일
+                <span class="badge-preference" aria-hidden="true">매칭용</span>
+                <span class="sr-only">매칭을 위해 참고되는 정보</span>
+              </label>
+              <div class="multi-dropdown" data-select-id="profilePreferredLifestyle">
+                <button
+                  type="button"
+                  class="multi-dropdown-trigger"
+                  aria-haspopup="listbox"
+                  aria-expanded="false"
+                  aria-controls="profilePreferredLifestylePanel"
+                >
+                  <span class="multi-dropdown-label">선택 없음</span>
+                </button>
+                <div
+                  id="profilePreferredLifestylePanel"
+                  class="multi-dropdown-panel"
+                  data-multi-select="profilePreferredLifestyle"
+                  role="listbox"
+                  aria-multiselectable="true"
+                  hidden
+                >
+                  <label class="multi-dropdown-option">
+                    <input type="checkbox" value="활동적인 야외 취미" />
+                    <span>활동적인 야외 취미</span>
+                  </label>
+                  <label class="multi-dropdown-option">
+                    <input type="checkbox" value="집중적인 자기계발" />
+                    <span>집중적인 자기계발</span>
+                  </label>
+                  <label class="multi-dropdown-option">
+                    <input type="checkbox" value="집에서 휴식하기" />
+                    <span>집에서 휴식하기</span>
+                  </label>
+                  <label class="multi-dropdown-option">
+                    <input type="checkbox" value="여행과 새로운 경험" />
+                    <span>여행과 새로운 경험</span>
+                  </label>
+                  <label class="multi-dropdown-option">
+                    <input type="checkbox" value="문화·예술 감상" />
+                    <span>문화·예술 감상</span>
+                  </label>
+                  <label class="multi-dropdown-option">
+                    <input type="checkbox" value="운동·건강 관리" />
+                    <span>운동·건강 관리</span>
+                  </label>
+                  <label class="multi-dropdown-option">
+                    <input type="checkbox" value="미식·카페 탐방" />
+                    <span>미식·카페 탐방</span>
+                  </label>
+                  <label class="multi-dropdown-option">
+                    <input type="checkbox" value="반려동물과 함께" />
+                    <span>반려동물과 함께</span>
+                  </label>
+                </div>
+              </div>
+              <select
+                id="profilePreferredLifestyle"
+                multiple
+                class="multi-select-hidden"
+                aria-hidden="true"
+                tabindex="-1"
+              >
+                <option value="활동적인 야외 취미">활동적인 야외 취미</option>
+                <option value="집중적인 자기계발">집중적인 자기계발</option>
+                <option value="집에서 휴식하기">집에서 휴식하기</option>
+                <option value="여행과 새로운 경험">여행과 새로운 경험</option>
+                <option value="문화·예술 감상">문화·예술 감상</option>
+                <option value="운동·건강 관리">운동·건강 관리</option>
+                <option value="미식·카페 탐방">미식·카페 탐방</option>
+                <option value="반려동물과 함께">반려동물과 함께</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="profilePreferredAppearance">
+                선호하는 외적 이상형
+                <span class="badge-preference" aria-hidden="true">매칭용</span>
+                <span class="sr-only">매칭을 위해 참고되는 정보</span>
+              </label>
+              <select id="profilePreferredAppearance">
+                <option value="">선택</option>
+                <option value="깔끔하고 단정한 스타일">깔끔하고 단정한 스타일</option>
+                <option value="세련된 도시 감성">세련된 도시 감성</option>
+                <option value="스포티하고 건강한 스타일">스포티하고 건강한 스타일</option>
+                <option value="캐주얼하고 편안한 분위기">캐주얼하고 편안한 분위기</option>
+                <option value="러블리하고 부드러운 인상">러블리하고 부드러운 인상</option>
+                <option value="개성 있는 패션 감각">개성 있는 패션 감각</option>
+                <option value="상관없음">상관없음</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="profileDink">
+                딩크 여부
+                <span class="badge-preference" aria-hidden="true">매칭용</span>
+                <span class="sr-only">매칭을 위해 참고되는 정보</span>
+              </label>
+              <select id="profileDink">
+                <option value="">선택</option>
+                <option value="딩크를 원합니다">딩크를 원합니다</option>
+                <option value="딩크를 고려 중입니다">딩크를 고려 중입니다</option>
+                <option value="딩크를 원하지 않습니다">딩크를 원하지 않습니다</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="profileMarriageTiming">
+                결혼을 생각하는 시기
+                <span class="badge-preference" aria-hidden="true">매칭용</span>
+                <span class="sr-only">매칭을 위해 참고되는 정보</span>
+              </label>
+              <select id="profileMarriageTiming">
+                <option value="">선택</option>
+                <option value="상대방에 따라 다름">상대방에 따라 다름</option>
+                <option value="결혼생각 없음">결혼생각 없음</option>
+                <option value="연애 시작 후 3개월 안에 결혼준비 시작">
+                  연애 시작 후 3개월 안에 결혼준비 시작
+                </option>
+                <option value="연애 시작 후 6개월 안에 결혼준비 시작">
+                  연애 시작 후 6개월 안에 결혼준비 시작
+                </option>
+                <option value="연애 시작 후 1년 정도에 결혼준비 시작">
+                  연애 시작 후 1년 정도에 결혼준비 시작
+                </option>
+                <option value="연애 시작 후 1년 6개월 정도에 결혼준비 시작">
+                  연애 시작 후 1년 6개월 정도에 결혼준비 시작
+                </option>
+                <option value="연애 시작 후 2년정도에 결혼준비 시작">
+                  연애 시작 후 2년정도에 결혼준비 시작
+                </option>
+                <option value="연애 시작 후 2년 이상에 결혼준비 시작">
+                  연애 시작 후 2년 이상에 결혼준비 시작
+                </option>
+              </select>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>증빙 자료 및 사진</legend>
+          <div class="field-grid">
+            <div class="field">
+              <label for="profileIdCard">
+                신분증 업로드
+                <span class="badge-verify" aria-hidden="true">확인용</span>
+                <span class="sr-only">매칭 매니저 확인용 비공개 정보</span>
+              </label>
+              <input
+                id="profileIdCard"
+                class="file-input"
+                type="file"
+                accept="image/*,.pdf"
+                multiple
+              />
+              <div
+                class="file-drop-zone"
+                data-target="profileIdCard"
+                data-placeholder="선택된 파일 없음"
+                tabindex="0"
+                role="button"
+                aria-label="신분증 파일을 업로드하려면 클릭하거나 파일을 끌어다 놓으세요"
+              >
+                <div class="file-drop-default">
+                  <strong>클릭 또는 드래그해서 업로드</strong>
+                  <span class="file-drop-hint">신분증 이미지 또는 PDF 파일을 첨부해주세요.</span>
+                </div>
+                <div class="file-drop-selected">
+                  <div class="file-drop-files">선택된 파일 없음</div>
+                </div>
+              </div>
+            </div>
+            <div class="field">
+              <label for="profileEmploymentProof">
+                재직 증명서 / 명함 업로드
+                <span class="badge-verify" aria-hidden="true">확인용</span>
+                <span class="sr-only">매칭 매니저 확인용 비공개 정보</span>
+              </label>
+              <input
+                id="profileEmploymentProof"
+                class="file-input"
+                type="file"
+                accept="image/*,.pdf"
+                multiple
+                aria-describedby="employmentProofNote"
+              />
+              <div
+                class="file-drop-zone"
+                data-target="profileEmploymentProof"
+                data-placeholder="선택된 파일 없음"
+                tabindex="0"
+                role="button"
+                aria-label="재직 증빙 파일을 업로드하려면 클릭하거나 파일을 끌어다 놓으세요"
+                aria-describedby="employmentProofNote"
+              >
+                <div class="file-drop-default">
+                  <strong>클릭 또는 드래그해서 업로드</strong>
+                  <span class="file-drop-hint">건강보험 자격득실·4대보험·사업자등록증 등 증빙 자료를 첨부해주세요.</span>
+                </div>
+                <div class="file-drop-selected">
+                  <div class="file-drop-files">선택된 파일 없음</div>
+                </div>
+              </div>
+              <div class="field-note" id="employmentProofNote">
+                <p>건강보험 자격득실, 4대보험 가입증명서, 사업자등록증, 급여명세서도 가능합니다.</p>
+                <p>프리랜서는 매니저에게 별도 문의해 주시면 방법을 안내합니다.</p>
+              </div>
+            </div>
+            <div class="field">
+              <label for="profilePhotosFace">
+                프로필 사진 업로드 (얼굴)
+                <span class="badge-public" aria-hidden="true">공개</span>
+                <span class="sr-only">상대방에게 공개되는 정보</span>
+              </label>
+              <input
+                id="profilePhotosFace"
+                class="file-input"
+                type="file"
+                accept="image/*"
+                multiple
+                aria-describedby="profilePhotosFaceNote"
+              />
+              <div
+                class="file-drop-zone"
+                data-target="profilePhotosFace"
+                data-placeholder="선택된 얼굴 사진 없음"
+                tabindex="0"
+                role="button"
+                aria-label="얼굴 사진을 업로드하려면 클릭하거나 파일을 끌어다 놓으세요"
+                aria-describedby="profilePhotosFaceNote"
+              >
+                <div class="file-drop-default">
+                  <strong>클릭 또는 드래그해서 업로드</strong>
+                  <span class="file-drop-hint">최근 6개월 내 얼굴이 선명하게 나온 사진을 첨부해주세요.</span>
+                </div>
+                <div class="file-drop-selected">
+                  <div class="file-drop-files">선택된 얼굴 사진 없음</div>
+                </div>
+              </div>
+              <div class="field-note" id="profilePhotosFaceNote">
+                <p>얼굴 사진은 최소 1장 이상 첨부해주세요. (마스크·선글라스 착용 불가)</p>
+              </div>
+            </div>
+            <div class="field">
+              <label for="profilePhotosFull">
+                프로필 사진 업로드 (전신)
+                <span class="badge-public" aria-hidden="true">공개</span>
+                <span class="sr-only">상대방에게 공개되는 정보</span>
+              </label>
+              <input
+                id="profilePhotosFull"
+                class="file-input"
+                type="file"
+                accept="image/*"
+                multiple
+                aria-describedby="profilePhotosFullNote"
+              />
+              <div
+                class="file-drop-zone"
+                data-target="profilePhotosFull"
+                data-placeholder="선택된 전신 사진 없음"
+                tabindex="0"
+                role="button"
+                aria-label="전신 사진을 업로드하려면 클릭하거나 파일을 끌어다 놓으세요"
+                aria-describedby="profilePhotosFullNote"
+              >
+                <div class="file-drop-default">
+                  <strong>클릭 또는 드래그해서 업로드</strong>
+                  <span class="file-drop-hint">얼굴이 보이는 전신 사진을 첨부해주세요.</span>
+                </div>
+                <div class="file-drop-selected">
+                  <div class="file-drop-files">선택된 전신 사진 없음</div>
+                </div>
+              </div>
+              <div class="field-note" id="profilePhotosFullNote">
+                <p>전신이 보이는 사진은 최소 1장 이상 첨부해주세요.</p>
+                <p>1:1 매칭 시 상대에게 공개될 수 있으니 현재 모습과 가까운 사진을 사용해주세요.</p>
+              </div>
+            </div>
+          </div>
+        </fieldset>
+
+        <div class="agreements-group">
+          <div class="agreement-item">
+            <div class="agreement-header">
+              <label class="agreements">
+                <input id="agreementInfo" type="checkbox" required />
+                <span>
+                  개인정보 수집 및 활용, 책임 및 면책 조항을 확인하고 동의합니다.
+                </span>
+              </label>
+              <button
+                type="button"
+                class="agreement-toggle"
+                data-target="agreementInfoDetails"
+                aria-expanded="false"
+                aria-label="개인정보 수집 및 활용 세부 내용 보기"
+                data-label-close="개인정보 수집 및 활용 세부 내용 보기"
+                data-label-open="개인정보 수집 및 활용 세부 내용 닫기"
+              ></button>
+            </div>
+            <div id="agreementInfoDetails" class="agreement-details" hidden>
+              <p>
+                제출하신 개인정보는 신청자 확인과 매칭 진행을 위한 용도로만 사용되며, 매칭 종료 후 즉시 파기됩니다.
+                허위 정보 기재 시 민/형사상 책임이 발생할 수 있으니 정확하게 작성해주세요.
+              </p>
+            </div>
+          </div>
+          <div class="agreement-item">
+            <div class="agreement-header">
+              <label class="agreements">
+                <input id="agreementManners" type="checkbox" required />
+                <span>
+                  매너있는 대화 및 만남에 대한 동의 사항(잠수, 일방 취소 패널티 등)을 확인했습니다.
+                </span>
+              </label>
+              <button
+                type="button"
+                class="agreement-toggle"
+                data-target="agreementMannersDetails"
+                aria-expanded="false"
+                aria-label="동의 사항 세부 내용 보기"
+                data-label-close="동의 사항 세부 내용 보기"
+                data-label-open="동의 사항 세부 내용 닫기"
+              ></button>
+            </div>
+            <div id="agreementMannersDetails" class="agreement-details" hidden>
+              <p>
+                상대방과의 약속을 존중하고 잠수나 일방 취소 등 비매너 행위 발생 시 안내된 패널티 및 제재가 적용됩니다.
+                또한 상대방 프로필의 캡처, 저장, 유포 및 상업적 이용은 금지되며, 위반 시 법적 책임이 따를 수 있습니다.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="submit-row">
+          <div class="submit-hint" role="note">서버 전송까지 약 5초 정도 걸려요.</div>
+          <button type="submit" id="submitButton">프로필 정보 제출하기</button>
+          <p class="form-message" id="formMessage" role="status" aria-live="polite"></p>
+        </div>
+        <div
+          id="submissionModal"
+          class="modal-backdrop"
+          hidden
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="submissionModalMessage"
+        >
+          <div class="modal-dialog">
+            <p id="submissionModalMessage">프로필 정보 제출이 성공했습니다!</p>
+            <button type="button" id="submissionModalClose">확인</button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <script src="https://ygsa-backend.onrender.com/backend-config.js"></script>
+    <script src="https://ygsa-backend.onrender.com/firebase-config.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+    <script>
+      const HOSTNAME = window.location && window.location.hostname
+      const IS_LOCAL_HOST = /^(localhost|127\\.0\\.0\\.1)$/i.test(HOSTNAME || '')
+      const DEFAULT_BACKEND_ORIGIN = IS_LOCAL_HOST
+        ? 'http://localhost:5000'
+        : 'https://ygsa-backend.onrender.com'
+      const BACKEND_ORIGIN_RAW = (window.BACKEND_ORIGIN || '').trim()
+      const BACKEND_ORIGIN = (BACKEND_ORIGIN_RAW || DEFAULT_BACKEND_ORIGIN).replace(/\/$/, '')
+      const API_BASE_URL = BACKEND_ORIGIN
+      const PROFILE_API_URL = `${API_BASE_URL}/api/consult/profile`
+      const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024
+      const MAX_UPLOAD_SIZE_LABEL = '10MB'
+      const DRAFT_STORAGE_KEY = 'alphaProfileDraft_v1'
+      const DRAFT_STORAGE_PREFIX = `${DRAFT_STORAGE_KEY}:`
+
+      const formEl = document.getElementById('profileForm')
+      const submitBtn = document.getElementById('submitButton')
+      const messageEl = document.getElementById('formMessage')
+
+      const phoneInput = document.getElementById('profilePhone')
+      const jobInput = document.getElementById('profileJob')
+      const mbtiInput = document.getElementById('profileMbti')
+      const universityInput = document.getElementById('profileUniversity')
+      const salaryRangeSelect = document.getElementById('profileSalaryRange')
+      const jobDetailInput = document.getElementById('profileJobDetail')
+      const appealInput = document.getElementById('profileAppeal')
+      const smokingSelect = document.getElementById('profileSmoking')
+      const religionSelect = document.getElementById('profileReligion')
+      const dinkSelect = document.getElementById('profileDink')
+      const lastRelationshipInput = document.getElementById('profileLastRelationship')
+      const marriageTimingSelect = document.getElementById('profileMarriageTiming')
+      const relationshipCountSelect = document.getElementById('profileRelationshipCount')
+      const carOwnershipSelect = document.getElementById('profileCarOwnership')
+      const tattooSelect = document.getElementById('profileTattoo')
+      const longDistanceSelect = document.getElementById('profileLongDistance')
+      const divorceStatusSelect = document.getElementById('profileDivorceStatus')
+      const sufficientInput = document.getElementById('profileSufficientCondition')
+      const necessaryInput = document.getElementById('profileNecessaryCondition')
+      const likesDislikesInput = document.getElementById('profileLikesDislikes')
+      const aboutMeInput = document.getElementById('profileAboutMe')
+      const preferredHeightsSelect = document.getElementById('profilePreferredHeights')
+      const preferredAgesSelect = document.getElementById('profilePreferredAges')
+      const preferredLifestyleSelect = document.getElementById('profilePreferredLifestyle')
+      const preferredAppearanceSelect = document.getElementById('profilePreferredAppearance')
+      const valuesSelect = document.getElementById('profileValues')
+      const idCardInput = document.getElementById('profileIdCard')
+      const employmentProofInput = document.getElementById('profileEmploymentProof')
+      const photosFaceInput = document.getElementById('profilePhotosFace')
+      const photosFullInput = document.getElementById('profilePhotosFull')
+      const agreementInfo = document.getElementById('agreementInfo')
+      const agreementManners = document.getElementById('agreementManners')
+      const agreementToggles = Array.from(document.querySelectorAll('.agreement-toggle'))
+      const draftSaveButton = document.getElementById('draftSaveButton')
+      const draftLoadButton = document.getElementById('draftLoadButton')
+      const fileDropZones = Array.from(document.querySelectorAll('.file-drop-zone'))
+      const submissionModal = document.getElementById('submissionModal')
+      const submissionModalCloseBtn = document.getElementById('submissionModalClose')
+
+      const infoBubbleEl = document.getElementById('infoBubble')
+      const INFO_BADGE_MESSAGES = {
+        public: '매칭 전 상대방에게 보여지는 정보에요.',
+        match: '개인정보 보호를 위해 매칭 후 공개를 하고 있어요.',
+        verify: '매칭 매니저 확인용 자료로만 사용돼요.',
+        preference: '매칭을 위해 참고되는 정보에요.',
+      }
+      let infoBubbleAutoHideTimer = null
+      let infoBubbleCleanupTimer = null
+      const dropdownBySelectId = new Map()
+      const openDropdowns = new Set()
+
+      let selectedValues = []
+      const uploadSessionId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+      const uploadStateByInput = new Map()
+      const pendingTempUploads = new Set()
+      const PENDING_UPLOADS_STORAGE_KEY = 'alphaProfilePendingUploads'
+      const UPLOAD_INPUT_CONFIG = {
+        profileIdCard: {
+          group: 'documents',
+          key: 'idCard',
+          storageFolder: 'id-card',
+          label: '신분증',
+          allowMultiple: true,
+        },
+        profileEmploymentProof: {
+          group: 'documents',
+          key: 'employmentProof',
+          storageFolder: 'employment-proof',
+          label: '재직 증빙',
+          allowMultiple: true,
+        },
+        profilePhotosFace: {
+          group: 'photos',
+          key: 'face',
+          storageFolder: 'photos/face',
+          label: '프로필 얼굴 사진',
+          allowMultiple: true,
+        },
+        profilePhotosFull: {
+          group: 'photos',
+          key: 'full',
+          storageFolder: 'photos/full',
+          label: '프로필 전신 사진',
+          allowMultiple: true,
+        },
+      }
+      let firebaseStorageInstance = null
+      let firebaseInitError = null
+      let firebaseInitPromise = null
+
+      const STORAGE_RULES_MARKER = '__rules_init_marker__.txt'
+
+      function getStorageRootPrefix() {
+        const root =
+          typeof window.FIREBASE_STORAGE_ROOT === 'string'
+            ? window.FIREBASE_STORAGE_ROOT.trim()
+            : ''
+        if (!root) return ''
+        return root.replace(/\/+$/, '') + '/'
+      }
+
+      async function ensureStorageRulesWritable(storage) {
+        if (!storage || typeof storage.ref !== 'function') return
+        const markerPath = `${getStorageRootPrefix()}${STORAGE_RULES_MARKER}`
+        try {
+          const markerRef = storage.ref().child(markerPath)
+          await markerRef.putString('rules_ready', 'raw', {
+            contentType: 'text/plain',
+            customMetadata: {
+              updatedAt: String(Date.now()),
+            },
+          })
+        } catch (error) {
+          console.warn('[firebase] 초기 업로드 권한 확인 실패', error)
+        }
+      }
+      function syncCheckboxGroupFromSelect(selectEl) {
+        if (!selectEl || !selectEl.id) return
+        const group = document.querySelector(`[data-multi-select="${selectEl.id}"]`)
+        if (!group) return
+        const selectedValues = new Set(
+          Array.from(selectEl.options || [])
+            .filter((option) => option.selected)
+            .map((option) => option.value)
+        )
+        Array.from(group.querySelectorAll('input[type="checkbox"]')).forEach((checkbox) => {
+          checkbox.checked = selectedValues.has(checkbox.value)
+          const optionLabel = checkbox.closest('.multi-dropdown-option')
+          if (optionLabel) {
+            optionLabel.setAttribute('aria-selected', checkbox.checked ? 'true' : 'false')
+          }
+        })
+        updateDropdownSummaryForSelect(selectEl)
+      }
+
+      function handleMultiSelectCheckboxChange(event) {
+        const checkbox = event.target
+        if (!checkbox || checkbox.type !== 'checkbox') return
+        const group = checkbox.closest('[data-multi-select]')
+        if (!group) return
+        const targetId = group.dataset.multiSelect
+        if (!targetId) return
+        const selectEl = document.getElementById(targetId)
+        if (!selectEl) return
+        Array.from(selectEl.options || []).forEach((option) => {
+          if (option.value === checkbox.value) {
+            option.selected = checkbox.checked
+          }
+        })
+        selectEl.dispatchEvent(new Event('change', { bubbles: true }))
+        const optionLabel = checkbox.closest('.multi-dropdown-option')
+        if (optionLabel) {
+          optionLabel.setAttribute('aria-selected', checkbox.checked ? 'true' : 'false')
+        }
+        updateDropdownSummaryForSelect(selectEl)
+      }
+
+      const multiSelectCheckboxGroups = Array.from(document.querySelectorAll('[data-multi-select]'))
+      multiSelectCheckboxGroups.forEach((group) => {
+        group.addEventListener('change', handleMultiSelectCheckboxChange)
+        const targetId = group.dataset.multiSelect
+        const selectEl = targetId ? document.getElementById(targetId) : null
+        if (selectEl) {
+          syncCheckboxGroupFromSelect(selectEl)
+        }
+      })
+
+      async function ensureFirebaseStorage() {
+        if (firebaseStorageInstance) return firebaseStorageInstance
+        if (firebaseInitError) throw firebaseInitError
+        if (firebaseInitPromise) return firebaseInitPromise
+
+        const init = async () => {
+          if (typeof firebase === 'undefined' || typeof firebase.initializeApp !== 'function') {
+            throw new Error('Firebase SDK가 로드되지 않았습니다.')
+          }
+
+          let config = window.FIREBASE_CONFIG
+          if (!config || !config.apiKey) {
+            const configPromise = window.__FIREBASE_CONFIG_PROMISE__
+            if (configPromise && typeof configPromise.then === 'function') {
+              config = await configPromise
+            }
+          }
+          if (!config || !config.apiKey) {
+            throw new Error('Firebase 설정(FIREBASE_CONFIG)이 필요합니다.')
+          }
+
+          if (!firebase.apps || !firebase.apps.length) {
+            try {
+              firebase.initializeApp(config)
+            } catch (error) {
+              if (!/already exists/i.test(error.message)) {
+                throw error
+              }
+            }
+          }
+
+          let storageInstance = null
+          let lastError = null
+          for (let attempt = 1; attempt <= 3; attempt += 1) {
+            try {
+              storageInstance = firebase.storage()
+              break
+            } catch (error) {
+              lastError = error
+              await new Promise((resolve) => setTimeout(resolve, 1200 * attempt))
+            }
+          }
+          if (!storageInstance) {
+            throw lastError || new Error('Firebase Storage 초기화에 실패했습니다.')
+          }
+
+          await ensureStorageRulesWritable(storageInstance)
+          firebaseStorageInstance = storageInstance
+          return firebaseStorageInstance
+        }
+
+        firebaseInitPromise = init().catch((error) => {
+          firebaseInitError =
+            error instanceof Error ? error : new Error('Firebase 초기화에 실패했습니다.')
+          throw firebaseInitError
+        })
+
+        try {
+          return await firebaseInitPromise
+        } finally {
+          firebaseInitPromise = null
+        }
+      }
+
+      function sanitizeFileName(name) {
+        return String(name || 'file')
+          .replace(/[^0-9a-zA-Z._-]/g, '_')
+          .replace(/_+/g, '_')
+          .slice(-120)
+      }
+
+      function getUploadEntries(inputId) {
+        if (!inputId) return []
+        return uploadStateByInput.get(inputId) || []
+      }
+
+      function setUploadEntries(inputId, entries) {
+        if (!inputId) return
+        uploadStateByInput.set(inputId, Array.isArray(entries) ? entries : [])
+      }
+
+      function upsertUploadEntry(inputId, uploadRecord) {
+        if (!inputId || !uploadRecord) return
+        const list = getUploadEntries(inputId)
+        const index = list.findIndex((item) => item.id === uploadRecord.id)
+        if (index >= 0) {
+          list[index] = { ...list[index], ...uploadRecord }
+        } else {
+          list.push(uploadRecord)
+        }
+        setUploadEntries(inputId, list)
+        return list
+      }
+
+      function removeUploadEntry(inputId, uploadId) {
+        if (!inputId || !uploadId) return
+        const list = getUploadEntries(inputId)
+        const nextList = list.filter((item) => item.id !== uploadId)
+        setUploadEntries(inputId, nextList)
+        return nextList
+      }
+
+      function buildStoragePath({ target, folder, fileName, phoneKey }) {
+        const safeFolder = folder || 'misc'
+        const base =
+          target === 'draft'
+            ? `drafts/${phoneKey || 'unknown'}/${safeFolder}`
+            : target === 'profile'
+            ? `profiles/${phoneKey || 'unknown'}/${safeFolder}`
+            : `temp/${uploadSessionId}/${safeFolder}`
+        const name = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${sanitizeFileName(
+          fileName,
+        )}`
+        return `${base}/${name}`
+      }
+
+      async function uploadFileToFirebase({
+        inputId,
+        file,
+        folder,
+        onProgress,
+        metadata = {},
+        target = 'temp',
+        phoneKey = '',
+      }) {
+        const storage = await ensureFirebaseStorage()
+        const storagePath = buildStoragePath({
+          target,
+          folder,
+          fileName: file.name,
+          phoneKey,
+        })
+        const storageRef = storage.ref().child(storagePath)
+        const uploadTask = storageRef.put(file, metadata)
+        return await new Promise((resolve, reject) => {
+          uploadTask.on(
+            'state_changed',
+            (snapshot) => {
+              if (typeof onProgress === 'function') {
+                const progress = snapshot.totalBytes
+                  ? snapshot.bytesTransferred / snapshot.totalBytes
+                  : snapshot.bytesTransferred
+                  ? 1
+                  : 0
+                onProgress(progress, snapshot)
+              }
+            },
+            (error) => {
+              reject(error)
+            },
+            async () => {
+              try {
+                const downloadURL = await storageRef.getDownloadURL()
+                resolve({
+                  storagePath,
+                  downloadURL,
+                  fullPath: storagePath,
+                  bucket: storageRef.bucket || storage?.app?.options?.storageBucket || '',
+                  contentType: file.type || metadata.contentType || '',
+                  size: file.size || 0,
+                  name: file.name || storageRef.name,
+                  uploadedAt: Date.now(),
+                  target,
+                })
+              } catch (error) {
+                reject(error)
+              }
+            },
+          )
+        })
+      }
+
+      async function deleteFromFirebase(storagePath) {
+        if (!storagePath) return
+        try {
+          const storage = await ensureFirebaseStorage()
+          const ref = storage.ref().child(storagePath)
+          await ref.delete()
+        } catch (error) {
+          console.warn('[firebase] 삭제 실패', error)
+        }
+      }
+
+      function loadPendingUploadPaths() {
+        try {
+          const raw = localStorage.getItem(PENDING_UPLOADS_STORAGE_KEY)
+          if (!raw) return new Set()
+          const parsed = JSON.parse(raw)
+          if (!Array.isArray(parsed)) return new Set()
+          return new Set(parsed.filter((value) => typeof value === 'string' && value))
+        } catch (error) {
+          console.warn('[firebase] 임시 업로드 정보 로드 실패', error)
+          return new Set()
+        }
+      }
+
+      function persistPendingUploadPaths() {
+        try {
+          localStorage.setItem(
+            PENDING_UPLOADS_STORAGE_KEY,
+            JSON.stringify(Array.from(pendingTempUploads)),
+          )
+        } catch (error) {
+          console.warn('[firebase] 임시 업로드 정보 저장 실패', error)
+        }
+      }
+
+      async function cleanupStoredPendingUploads() {
+        const stored = loadPendingUploadPaths()
+        if (!stored.size) return
+        try {
+          await ensureFirebaseStorage()
+        } catch (error) {
+          return
+        }
+        pendingTempUploads.clear()
+        stored.forEach((path) => pendingTempUploads.add(path))
+        await Promise.all(
+          Array.from(stored).map(async (path) => {
+            await deleteFromFirebase(path)
+          }),
+        )
+        pendingTempUploads.clear()
+        persistPendingUploadPaths()
+      }
+      const ensureArray = (value) => {
+        if (Array.isArray(value)) {
+          return value
+            .map((item) => (item == null ? '' : String(item).trim()))
+            .filter(Boolean)
+        }
+        if (typeof value === 'string') {
+          const trimmed = value.trim()
+          return trimmed ? [trimmed] : []
+        }
+        return []
+      }
+      if (preferredHeightsSelect) setMultiSelectValues(preferredHeightsSelect, [])
+      if (preferredAgesSelect) setMultiSelectValues(preferredAgesSelect, [])
+      if (preferredLifestyleSelect) setMultiSelectValues(preferredLifestyleSelect, [])
+
+      cleanupStoredPendingUploads().catch((error) => {
+        console.warn('[firebase] 임시 업로드 정리 실패', error)
+      })
+
+      function updateDropdownSummaryForSelect(selectEl) {
+        if (!selectEl || !selectEl.id) return
+        const dropdown = dropdownBySelectId.get(selectEl.id)
+        if (!dropdown) return
+        const labelEl = dropdown.querySelector('.multi-dropdown-label')
+        if (!labelEl) return
+        const selections = getMultiSelectValues(selectEl)
+        if (!selections.length) {
+          labelEl.textContent = '선택 없음'
+          dropdown.classList.remove('has-selection')
+          return
+        }
+        const preview = selections.slice(0, 2).join(', ')
+        const extraCount = selections.length - 2
+        labelEl.textContent = extraCount > 0 ? `${preview} 외 ${extraCount}개` : preview
+        dropdown.classList.add('has-selection')
+      }
+
+      function closeDropdown(dropdown) {
+        if (!dropdown) return
+        dropdown.classList.remove('is-open')
+        const trigger = dropdown.querySelector('.multi-dropdown-trigger')
+        const panel = dropdown.querySelector('.multi-dropdown-panel')
+        trigger?.setAttribute('aria-expanded', 'false')
+        panel?.setAttribute('hidden', '')
+        openDropdowns.delete(dropdown)
+      }
+
+      function openDropdown(dropdown) {
+        if (!dropdown) return
+        const trigger = dropdown.querySelector('.multi-dropdown-trigger')
+        const panel = dropdown.querySelector('.multi-dropdown-panel')
+        trigger?.setAttribute('aria-expanded', 'true')
+        panel?.removeAttribute('hidden')
+        dropdown.classList.add('is-open')
+        openDropdowns.add(dropdown)
+      }
+
+      function closeAllDropdowns(exceptDropdown = null) {
+        Array.from(openDropdowns).forEach((dropdown) => {
+          if (dropdown !== exceptDropdown) {
+            closeDropdown(dropdown)
+          }
+        })
+      }
+
+      function setupMultiDropdowns() {
+        const dropdowns = Array.from(document.querySelectorAll('.multi-dropdown[data-select-id]'))
+        dropdowns.forEach((dropdown) => {
+          const selectId = dropdown.dataset.selectId
+          const selectEl = selectId ? document.getElementById(selectId) : null
+          if (!selectEl) return
+          dropdownBySelectId.set(selectId, dropdown)
+          const trigger = dropdown.querySelector('.multi-dropdown-trigger')
+          const panel = dropdown.querySelector('.multi-dropdown-panel')
+          const checkboxes = Array.from(panel?.querySelectorAll('input[type="checkbox"]') || [])
+
+          checkboxes.forEach((checkbox) => {
+            const optionLabel = checkbox.closest('.multi-dropdown-option')
+            if (optionLabel) {
+              optionLabel.setAttribute('role', 'option')
+            }
+          })
+
+          const syncCheckboxesFromSelect = () => {
+            const selectedSet = new Set(getMultiSelectValues(selectEl))
+            checkboxes.forEach((checkbox) => {
+              checkbox.checked = selectedSet.has(checkbox.value)
+              const optionLabel = checkbox.closest('.multi-dropdown-option')
+              if (optionLabel) {
+                optionLabel.setAttribute('aria-selected', checkbox.checked ? 'true' : 'false')
+              }
+            })
+          }
+
+          syncCheckboxesFromSelect()
+          updateDropdownSummaryForSelect(selectEl)
+
+          trigger?.addEventListener('click', (event) => {
+            event.preventDefault()
+            const isOpen = dropdown.classList.contains('is-open')
+            if (isOpen) {
+              closeDropdown(dropdown)
+            } else {
+              closeAllDropdowns(dropdown)
+              openDropdown(dropdown)
+            }
+          })
+
+          checkboxes.forEach((checkbox) => {
+            checkbox.addEventListener('change', () => {
+              const option = Array.from(selectEl.options).find((opt) => opt.value === checkbox.value)
+              if (option) option.selected = checkbox.checked
+              selectEl.dispatchEvent(new Event('change', { bubbles: true }))
+              updateDropdownSummaryForSelect(selectEl)
+            })
+          })
+
+          selectEl.addEventListener('change', () => {
+            syncCheckboxesFromSelect()
+            updateDropdownSummaryForSelect(selectEl)
+          })
+        })
+      }
+
+      setupMultiDropdowns()
+
+      document.addEventListener('click', (event) => {
+        if (!event.target.closest('.multi-dropdown')) {
+          closeAllDropdowns()
+        }
+      })
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          closeAllDropdowns()
+        }
+      })
+
+      function showInfoBubble(message) {
+        if (!infoBubbleEl || !message) return
+        window.clearTimeout(infoBubbleAutoHideTimer)
+        window.clearTimeout(infoBubbleCleanupTimer)
+        infoBubbleEl.textContent = message
+        infoBubbleEl.hidden = false
+        window.requestAnimationFrame(() => {
+          infoBubbleEl.classList.add('is-visible')
+        })
+        infoBubbleAutoHideTimer = window.setTimeout(() => {
+          hideInfoBubble()
+        }, 3200)
+      }
+
+      function hideInfoBubble() {
+        if (!infoBubbleEl) return
+        infoBubbleEl.classList.remove('is-visible')
+        window.clearTimeout(infoBubbleAutoHideTimer)
+        window.clearTimeout(infoBubbleCleanupTimer)
+        infoBubbleCleanupTimer = window.setTimeout(() => {
+          infoBubbleEl.hidden = true
+          infoBubbleEl.textContent = ''
+        }, 220)
+      }
+
+      function setupInfoBadges() {
+        const badges = Array.from(
+          document.querySelectorAll(
+            '#alpha-profile-root .badge-public, #alpha-profile-root .badge-match, #alpha-profile-root .badge-verify, #alpha-profile-root .badge-preference',
+          ),
+        )
+        badges.forEach((badge) => {
+          if (!badge) return
+          const labelText = (badge.textContent || '').trim()
+          let messageKey = 'public'
+          if (badge.classList.contains('badge-match')) {
+            messageKey = 'match'
+          } else if (badge.classList.contains('badge-verify') || labelText === '확인용') {
+            messageKey = 'verify'
+          } else if (badge.classList.contains('badge-preference')) {
+            messageKey = 'preference'
+          }
+          const message = INFO_BADGE_MESSAGES[messageKey]
+          if (!message) return
+          badge.classList.add('info-badge')
+          badge.dataset.info = message
+          badge.setAttribute('role', 'button')
+          badge.setAttribute('tabindex', '0')
+          if (badge.hasAttribute('aria-hidden')) {
+            badge.removeAttribute('aria-hidden')
+          }
+          badge.addEventListener('click', () => showInfoBubble(message))
+          badge.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              showInfoBubble(message)
+            }
+          })
+        })
+      }
+
+      setupInfoBadges()
+
+      document.addEventListener('click', (event) => {
+        if (!infoBubbleEl || !infoBubbleEl.classList.contains('is-visible')) return
+        if (event.target.closest('.info-badge')) return
+        hideInfoBubble()
+      })
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          hideInfoBubble()
+        }
+      })
+
+      window.addEventListener(
+        'scroll',
+        () => {
+          if (infoBubbleEl && infoBubbleEl.classList.contains('is-visible')) {
+            hideInfoBubble()
+          }
+        },
+        { passive: true },
+      )
+
+      if (phoneInput) {
+        const applyPhoneFormatting = () => {
+          const isActive = document.activeElement === phoneInput
+          const selectionStart = phoneInput.selectionStart ?? 0
+          const digitsBeforeCursor = String(phoneInput.value)
+            .slice(0, selectionStart)
+            .replace(/[^0-9]/g, '')
+          const formatted = formatPhoneNumber(phoneInput.value)
+          phoneInput.value = formatted
+
+          if (isActive && typeof phoneInput.setSelectionRange === 'function') {
+            let nextCursor = 0
+            let digitsSeen = 0
+            const targetDigits = digitsBeforeCursor.length
+            while (nextCursor < formatted.length && digitsSeen < targetDigits) {
+              if (/[0-9]/.test(formatted.charAt(nextCursor))) {
+                digitsSeen++
+              }
+              nextCursor++
+            }
+            phoneInput.setSelectionRange(nextCursor, nextCursor)
+          }
+        }
+
+        phoneInput.addEventListener('input', applyPhoneFormatting)
+        phoneInput.addEventListener('blur', applyPhoneFormatting)
+        applyPhoneFormatting()
+      }
+
+      if (valuesSelect) {
+        valuesSelect.addEventListener('change', () => enforceValuesLimit(valuesSelect, 1))
+      }
+
+      function formatPhoneNumber(raw) {
+        const digits = String(raw || '').replace(/[^0-9]/g, '')
+        if (!digits) return ''
+        if (digits.length <= 3) return digits
+        if (digits.length <= 7) return digits.replace(/(\d{3})(\d+)/, '$1-$2')
+        return digits.replace(/(\d{3})(\d{3,4})(\d{0,4}).*/, (_, a, b, c) =>
+          c ? `${a}-${b}-${c}` : `${a}-${b}`
+        )
+      }
+
+      function normalizePhoneKey(raw) {
+        return String(raw || '').replace(/[^0-9]/g, '')
+      }
+
+      function getMultiSelectValues(selectEl) {
+        if (!selectEl) return []
+        if (!selectEl.multiple) {
+          const value = selectEl.value
+          return value ? [value] : []
+        }
+        return Array.from(selectEl.selectedOptions || [])
+          .map((option) => option.value)
+          .filter(Boolean)
+      }
+
+      function setMultiSelectValues(selectEl, values) {
+        if (!selectEl) return
+        const list = Array.isArray(values) ? values : []
+        if (!selectEl.multiple) {
+          selectEl.value = list[0] || ''
+          syncCheckboxGroupFromSelect(selectEl)
+          return
+        }
+        const set = new Set(list)
+        Array.from(selectEl.options || []).forEach((option) => {
+          option.selected = set.has(option.value)
+        })
+        syncCheckboxGroupFromSelect(selectEl)
+      }
+
+      function enforceValuesLimit(selectEl, limit) {
+        if (!selectEl) return
+        const selected = getMultiSelectValues(selectEl)
+        if (!selectEl.multiple) {
+          selectedValues = selected
+          showMessage('', '')
+          return
+        }
+        if (selected.length > limit) {
+          setMultiSelectValues(selectEl, selectedValues)
+          showMessage(`가치관은 최대 ${limit}개까지 선택할 수 있습니다.`, 'error')
+        } else {
+          selectedValues = selected
+          showMessage('', '')
+        }
+      }
+
+      function formatBytes(bytes) {
+        if (!Number.isFinite(bytes)) return ''
+        if (bytes >= 1024 * 1024) {
+          return `${(bytes / (1024 * 1024)).toFixed(1)}MB`
+        }
+        if (bytes >= 1024) {
+          return `${(bytes / 1024).toFixed(1)}KB`
+        }
+        return `${bytes}B`
+      }
+
+      function findOversizedFile(files) {
+        const list = Array.isArray(files) ? files : Array.from(files || [])
+        return list.find((file) => Number(file?.size) > MAX_UPLOAD_SIZE_BYTES) || null
+      }
+
+      function createUploadRecord({ inputId, file, config }) {
+        return {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          inputId,
+          name: file?.name || '파일',
+          size: Number(file?.size) || 0,
+          type: file?.type || '',
+          file,
+          status: 'uploading',
+          progress: 0,
+          storagePath: '',
+          downloadURL: '',
+          uploadedAt: null,
+          group: config?.group || 'documents',
+          category: config?.key || 'general',
+          storageFolder: config?.storageFolder || 'general',
+          persistLevel: 'temp',
+          fromDraft: false,
+        }
+      }
+
+      function serializeUploadRecord(record) {
+        if (!record) return null
+        const {
+          id,
+          name,
+          size,
+          type,
+          storagePath,
+          downloadURL,
+          uploadedAt,
+          group,
+          category,
+          storageFolder,
+          persistLevel,
+        } = record
+        if (!downloadURL) return null
+        return {
+          id,
+          name,
+          size,
+          type,
+          storagePath,
+          downloadURL,
+          url: downloadURL,
+          uploadedAt,
+          group,
+          category,
+          storageFolder,
+          persistLevel,
+        }
+      }
+
+      function refreshDropZone(zone, inputEl) {
+        updateFileDropSummary(zone, inputEl)
+      }
+
+      function getDropZoneByInputId(inputId) {
+        if (!inputId) return null
+        return document.querySelector(`.file-drop-zone[data-target="${inputId}"]`)
+      }
+
+      async function deleteUploadRecord(record, { removeRemote = true } = {}) {
+        if (!record) return
+        removeUploadEntry(record.inputId, record.id)
+        if (removeRemote && record.storagePath) {
+          await deleteFromFirebase(record.storagePath)
+          pendingTempUploads.delete(record.storagePath)
+          persistPendingUploadPaths()
+        }
+        const zone = getDropZoneByInputId(record.inputId)
+        const inputEl = record.inputId ? document.getElementById(record.inputId) : null
+        if (zone) {
+          updateFileDropSummary(zone, inputEl)
+        }
+      }
+
+      async function removeUploadById(inputId, uploadId, options = {}) {
+        if (!inputId || !uploadId) return
+        const entries = getUploadEntries(inputId)
+        const record = entries.find((item) => item.id === uploadId)
+        if (!record) return
+        await deleteUploadRecord(record, options)
+      }
+
+      async function handleSelectedFiles({ inputEl, zone, config, files }) {
+        const inputId = inputEl?.id
+        if (!inputId || !zone || !files?.length) return
+        const allowMultiple = Boolean(config?.allowMultiple || inputEl.multiple)
+        const oversized = findOversizedFile(files)
+        if (oversized) {
+          showMessage(
+            `'${oversized.name}' 파일이 ${MAX_UPLOAD_SIZE_LABEL} 용량 제한을 초과했습니다. (${formatBytes(
+              oversized.size,
+            )})`,
+            'error',
+          )
+          return
+        }
+        try {
+          await ensureFirebaseStorage()
+        } catch (error) {
+          console.error('[firebase] init failed', error)
+          showMessage(error.message || '파일 업로드 환경 설정이 필요합니다.', 'error')
+          return
+        }
+
+        if (!allowMultiple) {
+          const existingEntries = getUploadEntries(inputId)
+          await Promise.all(existingEntries.map((entry) => deleteUploadRecord(entry)))
+        }
+
+        for (const file of files) {
+          const record = createUploadRecord({ inputId, file, config })
+          upsertUploadEntry(inputId, record)
+          updateFileDropSummary(zone, inputEl)
+          try {
+            const uploadResult = await uploadFileToFirebase({
+              inputId,
+              file,
+              folder: record.storageFolder,
+              metadata: { contentType: file.type || undefined },
+              target: 'temp',
+              onProgress: (progress) => {
+                upsertUploadEntry(inputId, {
+                  ...record,
+                  progress: Math.max(0, Math.min(1, progress || 0)),
+                  status: 'uploading',
+                })
+                updateFileDropSummary(zone, inputEl)
+              },
+            })
+            pendingTempUploads.add(uploadResult.storagePath)
+            persistPendingUploadPaths()
+            upsertUploadEntry(inputId, {
+              ...record,
+              ...uploadResult,
+              status: 'uploaded',
+              progress: 1,
+              persistLevel: 'temp',
+            })
+          } catch (error) {
+            console.error('[firebase] upload failed', error)
+            upsertUploadEntry(inputId, {
+              ...record,
+              status: 'error',
+              progress: 0,
+              error: error?.message || '업로드 실패',
+            })
+            showMessage(`'${file.name}' 업로드에 실패했습니다.`, 'error')
+          } finally {
+            updateFileDropSummary(zone, inputEl)
+          }
+        }
+      }
+
+      function updateFileDropSummary(zone, inputEl) {
+        if (!zone) return
+        const inputId = inputEl?.id || zone.dataset.target || ''
+        const summaryEl = zone.querySelector('.file-drop-files')
+        const placeholder = zone.dataset.placeholder || '선택된 파일 없음'
+        if (!summaryEl) return
+        const entries = getUploadEntries(inputId)
+        const hasFiles = entries.length > 0
+        zone.classList.toggle('has-files', hasFiles)
+        if (!hasFiles) {
+          summaryEl.textContent = placeholder
+          return
+        }
+        summaryEl.innerHTML = ''
+        entries.forEach((entry, index) => {
+          const item = document.createElement('div')
+          item.className = 'file-drop-file'
+          item.dataset.uploadId = entry.id
+
+          if (entry.status === 'uploading') {
+            const progress = Math.max(0, Math.min(1, entry.progress || 0))
+            const progressDeg = Math.round(progress * 360)
+            const progressWrap = document.createElement('div')
+            progressWrap.className = 'file-drop-file-progress'
+            progressWrap.style.setProperty('--progress', String(progressDeg))
+            const progressText = document.createElement('span')
+            progressText.textContent = `${Math.round(progress * 100)}%`
+            progressWrap.appendChild(progressText)
+            item.appendChild(progressWrap)
+          } else {
+            const status = document.createElement('div')
+            status.className = 'file-drop-file-status'
+            if (entry.status === 'error') {
+              status.style.background = '#fee2e2'
+              status.style.color = '#b91c1c'
+              status.textContent = '!'
+            } else {
+              status.textContent = '✔'
+            }
+            item.appendChild(status)
+          }
+
+          const textWrap = document.createElement('div')
+          textWrap.style.display = 'grid'
+          textWrap.style.gap = '4px'
+          textWrap.style.flex = '1'
+
+          const nameSpan = document.createElement('span')
+          nameSpan.className = 'file-drop-file-name'
+          nameSpan.textContent = entry.name || `파일 ${index + 1}`
+          textWrap.appendChild(nameSpan)
+
+          const metaSpan = document.createElement('span')
+          metaSpan.style.fontSize = '12px'
+          metaSpan.style.color = '#6b7280'
+          metaSpan.textContent = formatBytes(entry.size || 0)
+          if (entry.persistLevel && entry.persistLevel !== 'temp') {
+            metaSpan.textContent += ` · ${entry.persistLevel === 'draft' ? '임시 저장됨' : '제출됨'}`
+          }
+          textWrap.appendChild(metaSpan)
+
+          if (entry.downloadURL) {
+            const link = document.createElement('a')
+            link.href = entry.downloadURL
+            link.target = '_blank'
+            link.rel = 'noopener noreferrer'
+            link.style.fontSize = '12px'
+            link.style.color = '#2f49c8'
+            link.style.textDecoration = 'underline'
+            link.textContent = '링크 열기'
+            textWrap.appendChild(link)
+          }
+
+          if (entry.status === 'error' && entry.error) {
+            const errorText = document.createElement('span')
+            errorText.style.fontSize = '12px'
+            errorText.style.color = '#d64545'
+            errorText.textContent = entry.error
+            textWrap.appendChild(errorText)
+          }
+
+          item.appendChild(textWrap)
+
+          const removeBtn = document.createElement('button')
+          removeBtn.type = 'button'
+          removeBtn.className = 'file-remove-btn'
+          removeBtn.dataset.target = inputId
+          removeBtn.dataset.uploadId = entry.id
+          removeBtn.textContent = '삭제'
+          removeBtn.disabled = entry.status === 'uploading'
+          item.appendChild(removeBtn)
+
+          summaryEl.appendChild(item)
+        })
+      }
+
+      async function promoteUploadsToTarget(target, { phoneKey } = {}) {
+        const tasks = []
+        uploadStateByInput.forEach((entries, inputId) => {
+          entries.forEach((entry) => {
+            if (entry.status === 'error') return
+            if (entry.persistLevel === target) return
+            if (!entry.file) {
+              upsertUploadEntry(inputId, {
+                ...entry,
+                persistLevel: target,
+                status: 'persisted',
+                progress: 1,
+              })
+              return
+            }
+            tasks.push(
+              (async () => {
+                const uploadResult = await uploadFileToFirebase({
+                  inputId,
+                  file: entry.file,
+                  folder: entry.storageFolder,
+                  metadata: { contentType: entry.type || undefined },
+                  target,
+                  phoneKey,
+                })
+                if (entry.storagePath && entry.storagePath !== uploadResult.storagePath) {
+                  await deleteFromFirebase(entry.storagePath)
+                  pendingTempUploads.delete(entry.storagePath)
+                  persistPendingUploadPaths()
+                }
+                upsertUploadEntry(inputId, {
+                  ...entry,
+                  ...uploadResult,
+                  status: 'persisted',
+                  progress: 1,
+                  persistLevel: target,
+                })
+                const zone = getDropZoneByInputId(inputId)
+                const inputEl = inputId ? document.getElementById(inputId) : null
+                if (zone) updateFileDropSummary(zone, inputEl)
+              })().catch((error) => {
+                console.error('[firebase] promote failed', error)
+                throw error
+              }),
+            )
+          })
+        })
+        if (tasks.length) {
+          await Promise.all(tasks)
+        }
+        persistPendingUploadPaths()
+      }
+
+      async function persistUploadsForDraft(phoneKey) {
+        await promoteUploadsToTarget('draft', { phoneKey })
+      }
+
+      async function persistUploadsForSubmit(phoneKey) {
+        await promoteUploadsToTarget('profile', { phoneKey })
+      }
+
+      function serializeUploadsForDraft() {
+        const result = {}
+        uploadStateByInput.forEach((entries, inputId) => {
+          result[inputId] = entries
+            .map((entry) => {
+              const serialized = serializeUploadRecord(entry)
+              if (!serialized) return null
+              return {
+                ...serialized,
+                group: entry.group,
+                category: entry.category,
+                storageFolder: entry.storageFolder,
+                persistLevel: entry.persistLevel || 'draft',
+              }
+            })
+            .filter(Boolean)
+        })
+        return result
+      }
+
+      function hydrateUploadsFromDraft(uploadData) {
+        if (!uploadData || typeof uploadData !== 'object') return
+        Object.entries(uploadData).forEach(([inputId, list]) => {
+          if (!Array.isArray(list)) return
+          const entries = list.map((item) => ({
+            id: item.id || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            inputId,
+            name: item.name || '파일',
+            size: Number(item.size) || 0,
+            type: item.type || '',
+            file: null,
+            status: 'persisted',
+            progress: 1,
+            storagePath: item.storagePath || '',
+            downloadURL: item.downloadURL || '',
+            uploadedAt: item.uploadedAt || Date.now(),
+            group: item.group || (UPLOAD_INPUT_CONFIG[inputId]?.group || 'documents'),
+            category: item.category || (UPLOAD_INPUT_CONFIG[inputId]?.key || 'general'),
+            storageFolder: item.storageFolder || (UPLOAD_INPUT_CONFIG[inputId]?.storageFolder || 'general'),
+            persistLevel: item.persistLevel || 'draft',
+            fromDraft: true,
+          }))
+          setUploadEntries(inputId, entries)
+          const zone = getDropZoneByInputId(inputId)
+          const inputEl = document.getElementById(inputId)
+          if (zone) updateFileDropSummary(zone, inputEl)
+        })
+      }
+
+      function buildAttachmentPayload() {
+        const documentsPayload = {}
+        const photosPayload = []
+        uploadStateByInput.forEach((entries) => {
+          entries.forEach((entry) => {
+            if (!entry.downloadURL || entry.status === 'error') return
+            const serialized = serializeUploadRecord(entry)
+            if (!serialized) return
+            if (entry.group === 'documents') {
+              documentsPayload[entry.category] = serialized
+            } else if (entry.group === 'photos') {
+              photosPayload.push({
+                ...serialized,
+                role: entry.category,
+              })
+            }
+          })
+        })
+        return { documentsPayload, photosPayload }
+      }
+
+      fileDropZones.forEach((zone) => {
+        const targetId = zone.dataset.target
+        const inputEl = targetId ? document.getElementById(targetId) : null
+        const config = targetId ? UPLOAD_INPUT_CONFIG[targetId] : null
+        if (!inputEl) return
+
+        updateFileDropSummary(zone, inputEl)
+
+        zone.addEventListener('click', (event) => {
+          event.preventDefault()
+          inputEl.click()
+        })
+
+        zone.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            inputEl.click()
+          }
+        })
+
+        zone.addEventListener('dragenter', (event) => {
+          event.preventDefault()
+          zone.classList.add('is-dragover')
+        })
+
+        zone.addEventListener('dragover', (event) => {
+          event.preventDefault()
+          if (event.dataTransfer) {
+            event.dataTransfer.dropEffect = 'copy'
+          }
+          zone.classList.add('is-dragover')
+        })
+
+        zone.addEventListener('dragleave', () => {
+          zone.classList.remove('is-dragover')
+        })
+
+        zone.addEventListener('drop', async (event) => {
+          event.preventDefault()
+          zone.classList.remove('is-dragover')
+          const files = Array.from(event.dataTransfer?.files || [])
+          if (!files.length) return
+          await handleSelectedFiles({ inputEl, zone, config, files })
+        })
+
+        inputEl.addEventListener('change', async () => {
+          const files = Array.from(inputEl.files || [])
+          if (!files.length) return
+          await handleSelectedFiles({ inputEl, zone, config, files })
+          inputEl.value = ''
+        })
+      })
+
+      document.addEventListener('click', (event) => {
+        const button = event.target.closest('.file-remove-btn')
+        if (!button) return
+        const targetId = button.dataset.target
+        const uploadId = button.dataset.uploadId
+        if (!targetId || !uploadId) return
+        removeUploadById(targetId, uploadId)
+      })
+
+      function collectDraftData() {
+        const values = valuesSelect ? getMultiSelectValues(valuesSelect) : []
+        const phoneRaw = phoneInput?.value || ''
+        const phoneKey = normalizePhoneKey(phoneRaw)
+        return {
+          phone: phoneRaw,
+          phoneKey,
+          mbti: mbtiInput?.value || '',
+          job: jobInput?.value || '',
+          jobDetail: jobDetailInput?.value || '',
+          university: universityInput?.value || '',
+          salaryRange: salaryRangeSelect?.value || '',
+          smoking: smokingSelect?.value || '',
+          religion: religionSelect?.value || '',
+          dink: dinkSelect?.value || '',
+          lastRelationship: lastRelationshipInput?.value?.trim() || '',
+          marriageTiming: marriageTimingSelect?.value || '',
+          relationshipCount: relationshipCountSelect?.value || '',
+          carOwnership: carOwnershipSelect?.value || '',
+          tattoo: tattooSelect?.value || '',
+          longDistance: longDistanceSelect?.value || '',
+          divorceStatus: divorceStatusSelect?.value || '',
+          profileAppeal: appealInput?.value || '',
+          likesDislikes: likesDislikesInput?.value || '',
+          sufficientCondition: sufficientInput?.value || '',
+          necessaryCondition: necessaryInput?.value || '',
+          aboutMe: aboutMeInput?.value || '',
+          preferredHeights: getMultiSelectValues(preferredHeightsSelect),
+          preferredAges: getMultiSelectValues(preferredAgesSelect),
+          preferredLifestyle: getMultiSelectValues(preferredLifestyleSelect),
+          preferredAppearance: preferredAppearanceSelect?.value || '',
+          values,
+          agreements: {
+            info: agreementInfo?.checked || false,
+            manners: agreementManners?.checked || false,
+          },
+          uploads: serializeUploadsForDraft(),
+          savedAt: Date.now(),
+        }
+      }
+
+      function applyDraftData(draft) {
+        if (!draft || typeof draft !== 'object') return
+        uploadStateByInput.clear()
+        pendingTempUploads.clear()
+        persistPendingUploadPaths()
+        if (phoneInput) {
+          phoneInput.value = draft.phone || ''
+          phoneInput.dispatchEvent(new Event('input'))
+        }
+        if (mbtiInput) mbtiInput.value = draft.mbti || ''
+        if (jobInput) jobInput.value = draft.job || ''
+        if (jobDetailInput) jobDetailInput.value = draft.jobDetail || ''
+        if (universityInput) universityInput.value = draft.university || ''
+        if (salaryRangeSelect) salaryRangeSelect.value = draft.salaryRange || ''
+        if (smokingSelect) smokingSelect.value = draft.smoking || ''
+        if (religionSelect) religionSelect.value = draft.religion || ''
+        if (dinkSelect) dinkSelect.value = draft.dink || ''
+        if (lastRelationshipInput) lastRelationshipInput.value = draft.lastRelationship || ''
+        if (marriageTimingSelect) marriageTimingSelect.value = draft.marriageTiming || ''
+        if (relationshipCountSelect) relationshipCountSelect.value = draft.relationshipCount || ''
+        if (carOwnershipSelect) carOwnershipSelect.value = draft.carOwnership || ''
+        if (tattooSelect) tattooSelect.value = draft.tattoo || ''
+        if (longDistanceSelect) longDistanceSelect.value = draft.longDistance || ''
+        if (divorceStatusSelect) divorceStatusSelect.value = draft.divorceStatus || ''
+        if (appealInput) appealInput.value = draft.profileAppeal || ''
+        if (likesDislikesInput) likesDislikesInput.value = draft.likesDislikes || ''
+        if (sufficientInput) sufficientInput.value = draft.sufficientCondition || ''
+        if (necessaryInput) necessaryInput.value = draft.necessaryCondition || ''
+        if (aboutMeInput) aboutMeInput.value = draft.aboutMe || ''
+        if (preferredHeightsSelect)
+          setMultiSelectValues(preferredHeightsSelect, ensureArray(draft.preferredHeights))
+        if (preferredAgesSelect)
+          setMultiSelectValues(preferredAgesSelect, ensureArray(draft.preferredAges))
+        if (preferredLifestyleSelect)
+          setMultiSelectValues(preferredLifestyleSelect, ensureArray(draft.preferredLifestyle))
+        if (preferredAppearanceSelect) preferredAppearanceSelect.value = draft.preferredAppearance || ''
+
+        const draftValues = Array.isArray(draft.values) ? draft.values.slice(0, 1) : []
+        if (valuesSelect) {
+          setMultiSelectValues(valuesSelect, draftValues)
+        }
+        selectedValues = draftValues
+
+        if (agreementInfo) agreementInfo.checked = Boolean(draft.agreements?.info)
+        if (agreementManners) agreementManners.checked = Boolean(draft.agreements?.manners)
+
+        fileDropZones.forEach((zone) => {
+          const targetId = zone.dataset.target
+          const inputEl = targetId ? document.getElementById(targetId) : null
+          if (inputEl) {
+            inputEl.value = ''
+          }
+          updateFileDropSummary(zone, inputEl)
+        })
+        hydrateUploadsFromDraft(draft.uploads)
+      }
+
+      draftSaveButton?.addEventListener('click', async () => {
+        try {
+          const phoneKey = normalizePhoneKey(phoneInput?.value || '')
+          if (!phoneKey) {
+            alert('임시 저장을 위해 연락처를 먼저 입력해주세요.')
+            return
+          }
+          await persistUploadsForDraft(phoneKey)
+          const draft = collectDraftData()
+          localStorage.setItem(`${DRAFT_STORAGE_PREFIX}${phoneKey}`, JSON.stringify(draft))
+          alert('입력한 내용을 임시 저장했습니다.')
+        } catch (error) {
+          console.error('[draft] save failed', error)
+          showMessage('임시 저장에 실패했습니다. 브라우저 저장소를 확인해주세요.', 'error')
+        }
+      })
+
+      draftLoadButton?.addEventListener('click', () => {
+        try {
+          const phoneKey = normalizePhoneKey(phoneInput?.value || '')
+          if (!phoneKey) {
+            alert('임시 저장 불러오기를 위해 연락처를 입력해주세요.')
+            return
+          }
+          const raw = localStorage.getItem(`${DRAFT_STORAGE_PREFIX}${phoneKey}`)
+          if (!raw) {
+            alert('저장된 임시 데이터가 없습니다.')
+            return
+          }
+          const draft = JSON.parse(raw)
+          applyDraftData(draft)
+          showMessage('임시 저장된 데이터를 불러왔습니다. 제출 전 내용을 확인해주세요.', 'success')
+        } catch (error) {
+          console.error('[draft] load failed', error)
+          showMessage('임시 데이터를 불러오지 못했습니다.', 'error')
+        }
+      })
+
+      function openSubmissionModal() {
+        if (!submissionModal) return
+        submissionModal.hidden = false
+        submissionModalCloseBtn?.focus()
+      }
+
+      function closeSubmissionModal() {
+        if (!submissionModal) return
+        submissionModal.hidden = true
+      }
+
+      agreementToggles.forEach((button) => {
+        const targetId = button.dataset.target
+        const detailsEl = document.getElementById(targetId)
+        if (!detailsEl) return
+        const closeLabel = button.dataset.labelClose || button.getAttribute('aria-label') || ''
+        const openLabel = button.dataset.labelOpen || closeLabel
+        button.addEventListener('click', () => {
+          const isHidden = detailsEl.hasAttribute('hidden')
+          if (isHidden) {
+            detailsEl.removeAttribute('hidden')
+          } else {
+            detailsEl.setAttribute('hidden', '')
+          }
+          button.setAttribute('aria-expanded', isHidden ? 'true' : 'false')
+          button.setAttribute('aria-label', isHidden ? openLabel : closeLabel)
+        })
+      })
+
+      submissionModalCloseBtn?.addEventListener('click', () => closeSubmissionModal())
+      submissionModal?.addEventListener('click', (event) => {
+        if (event.target === submissionModal) {
+          closeSubmissionModal()
+        }
+      })
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && submissionModal && !submissionModal.hidden) {
+          closeSubmissionModal()
+        }
+      })
+
+      function showMessage(text, type) {
+        if (!messageEl) return
+        messageEl.textContent = text
+        messageEl.classList.remove('success', 'error')
+        if (type) {
+          messageEl.classList.add(type)
+        }
+      }
+
+      function setSubmitting(isSubmitting) {
+        if (submitBtn) {
+          submitBtn.disabled = isSubmitting
+          submitBtn.textContent = isSubmitting ? '전송 중…' : '프로필 정보 제출하기'
+        }
+      }
+
+      window.addEventListener('beforeunload', () => {
+        try {
+          persistPendingUploadPaths()
+        } catch (error) {
+          /* noop */
+        }
+      })
+
+      formEl?.addEventListener('submit', async (event) => {
+        event.preventDefault()
+        showMessage('', '')
+
+        if (!formEl.reportValidity()) {
+          showMessage('누락된 항목이 없는지 확인해주세요.', 'error')
+          return
+        }
+
+        const values = getMultiSelectValues(valuesSelect)
+        if (values.length > 1) {
+          showMessage('가치관은 한 개만 선택해주세요.', 'error')
+          return
+        }
+        selectedValues = values
+
+        if (!agreementInfo.checked || !agreementManners.checked) {
+          showMessage('모든 동의 항목에 체크해주세요.', 'error')
+          return
+        }
+
+        const hasPendingUploads = Array.from(uploadStateByInput.values()).some((entries) =>
+          entries.some((entry) => entry.status === 'uploading'),
+        )
+        if (hasPendingUploads) {
+          showMessage('파일 업로드가 끝날 때까지 기다려주세요.', 'error')
+          return
+        }
+
+        const phoneKey = normalizePhoneKey(phoneInput?.value || '')
+        if (!phoneKey) {
+          showMessage('연락처를 입력해주세요.', 'error')
+          return
+        }
+
+        try {
+          showMessage('첨부 파일을 정리하고 있습니다…', '')
+          await persistUploadsForSubmit(phoneKey)
+          showMessage('', '')
+        } catch (error) {
+          console.error('[firebase] finalize uploads failed', error)
+          showMessage('첨부 파일을 저장하지 못했습니다. 다시 시도해주세요.', 'error')
+          return
+        }
+
+        const { documentsPayload, photosPayload } = buildAttachmentPayload()
+        const photosFaceUpload = photosPayload.filter((photo) => photo.role === 'face')
+        const photosFullUpload = photosPayload.filter((photo) => photo.role === 'full')
+
+        const payload = {
+          phone: formatPhoneNumber(phoneInput?.value || ''),
+          mbti: mbtiInput?.value?.trim() || '',
+          job: jobInput?.value?.trim() || '',
+          university: universityInput?.value?.trim() || '',
+          salaryRange: salaryRangeSelect?.value || '',
+          jobDetail: jobDetailInput?.value?.trim() || '',
+          profileAppeal: appealInput?.value?.trim() || '',
+          smoking: smokingSelect?.value || '',
+          religion: religionSelect?.value || '',
+          dink: dinkSelect?.value || '',
+          lastRelationship: lastRelationshipInput?.value?.trim() || '',
+          marriageTiming: marriageTimingSelect?.value || '',
+          relationshipCount: relationshipCountSelect?.value || '',
+          carOwnership: carOwnershipSelect?.value || '',
+          tattoo: tattooSelect?.value || '',
+          longDistance: longDistanceSelect?.value || '',
+          divorceStatus: divorceStatusSelect?.value || '',
+          sufficientCondition: sufficientInput?.value?.trim() || '',
+          necessaryCondition: necessaryInput?.value?.trim() || '',
+          likesDislikes: likesDislikesInput?.value?.trim() || '',
+          aboutMe: aboutMeInput?.value?.trim() || '',
+          preferredHeights: getMultiSelectValues(preferredHeightsSelect),
+          preferredAges: getMultiSelectValues(preferredAgesSelect),
+          preferredLifestyle: getMultiSelectValues(preferredLifestyleSelect),
+          preferredAppearance: preferredAppearanceSelect?.value || '',
+          values,
+          valuesCustom: '',
+          agreements: {
+            info: agreementInfo.checked,
+            manners: agreementManners.checked,
+          },
+          documents: documentsPayload,
+          photos: photosPayload,
+          photosFace: photosFaceUpload,
+          photosFull: photosFullUpload,
+        }
+
+        if (!payload.phone) {
+          showMessage('연락처를 입력해주세요.', 'error')
+          return
+        }
+
+        try {
+          setSubmitting(true)
+          const res = await fetch(PROFILE_API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          })
+          const body = await res.json().catch(() => ({}))
+
+          if (!res.ok || !body?.ok) {
+            const message =
+              body?.message ||
+              (res.status === 404 ? '예약한 번호가 없습니다.' : '프로필 저장에 실패했습니다.')
+            throw new Error(message)
+          }
+          openSubmissionModal()
+          showMessage('', '')
+          formEl.reset()
+          selectedValues = []
+          setMultiSelectValues(valuesSelect, [])
+          setMultiSelectValues(preferredHeightsSelect, [])
+          setMultiSelectValues(preferredAgesSelect, [])
+          setMultiSelectValues(preferredLifestyleSelect, [])
+          if (preferredAppearanceSelect) preferredAppearanceSelect.value = ''
+          uploadStateByInput.clear()
+          pendingTempUploads.clear()
+          persistPendingUploadPaths()
+          fileDropZones.forEach((zone) => {
+            const targetId = zone.dataset.target
+            const inputEl = targetId ? document.getElementById(targetId) : null
+            if (inputEl) {
+              inputEl.value = ''
+            }
+            updateFileDropSummary(zone, inputEl)
+          })
+          agreementToggles.forEach((button) => {
+            const targetId = button.dataset.target
+            const detailsEl = document.getElementById(targetId)
+            if (detailsEl) {
+              detailsEl.setAttribute('hidden', '')
+            }
+            button.setAttribute('aria-expanded', 'false')
+            const closeLabel = button.dataset.labelClose || button.getAttribute('aria-label') || ''
+            button.setAttribute('aria-label', closeLabel)
+          })
+        } catch (error) {
+          const message = error?.message || '프로필 저장에 실패했습니다. 다시 시도해주세요.'
+          showMessage(message, 'error')
+        } finally {
+          setSubmitting(false)
+        }
+      })
+    </script>
+  </body>
+</html>
+

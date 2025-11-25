@@ -2,22 +2,6 @@
       const ADMIN_PASSWORD = 'admin'
       const AUTH_STORAGE_KEY = 'ygsa_admin_auth'
       const AUTH_DURATION_MS = 60 * 60 * 1000
-      const PHONE_STATUS_VALUES = ['pending', 'scheduled', 'done']
-      const PHONE_STATUS_LABELS = {
-        pending: '상담 전',
-        scheduled: '상담 예정',
-        done: '상담 완료',
-      }
-      const STATUS_CLASS_NAMES = {
-        pending: 'status-before',
-        scheduled: 'status-scheduled',
-        done: 'status-complete',
-      }
-      const DEPOSIT_STATUS_VALUES = ['pending', 'completed']
-      const DEPOSIT_STATUS = {
-        pending: 'pending',
-        completed: 'completed',
-      }
       const authOverlay = document.getElementById('authOverlay')
       const authForm = document.getElementById('authForm')
       const authIdInput = document.getElementById('authId')
@@ -330,34 +314,12 @@
       const moimDetailView = document.getElementById('moimDetailView')
       const detailScheduleInfo = document.getElementById('detailScheduleInfo')
       const detailAttachmentsSection = document.getElementById('detailAttachmentsSection')
+      const detailIdCardItem = document.getElementById('detailIdCardItem')
       const detailIdCardLink = document.getElementById('detailIdCardLink')
+      const detailEmploymentItem = document.getElementById('detailEmploymentItem')
       const detailEmploymentLink = document.getElementById('detailEmploymentLink')
-      const detailIdCardInput = document.getElementById('detailIdCardInput')
-      const detailEmploymentInput = document.getElementById('detailEmploymentInput')
-      const detailPhotosFaceInput = document.getElementById('detailPhotosFaceInput')
-      const detailPhotosFullInput = document.getElementById('detailPhotosFullInput')
-      const attachmentDropZones = Array.from(document.querySelectorAll('[data-attachment-dropzone]'))
-      const attachmentSelectButtons = Array.from(document.querySelectorAll('[data-attachment-select]'))
-      const attachmentClearButtons = Array.from(document.querySelectorAll('[data-attachment-clear]'))
-      const photoClearButtons = Array.from(document.querySelectorAll('[data-photo-clear]'))
-      const attachmentListElements = {}
-      document.querySelectorAll('[data-attachment-list]').forEach((node) => {
-        if (node?.dataset?.attachmentList) {
-          attachmentListElements[node.dataset.attachmentList] = node
-        }
-      })
-      const attachmentEmptyElements = {}
-      document.querySelectorAll('[data-attachment-empty]').forEach((node) => {
-        if (node?.dataset?.attachmentEmpty) {
-          attachmentEmptyElements[node.dataset.attachmentEmpty] = node
-        }
-      })
-      const attachmentSectionElements = {}
-      document.querySelectorAll('[data-attachment-item]').forEach((node) => {
-        if (node?.dataset?.attachmentItem) {
-          attachmentSectionElements[node.dataset.attachmentItem] = node
-        }
-      })
+      const detailPhotosItem = document.getElementById('detailPhotosItem')
+      const detailPhotosGrid = document.getElementById('detailPhotosGrid')
       const detailDraftLoadBtn = document.getElementById('detailDraftLoadBtn')
       const detailSectionButtons = Array.from(
         document.querySelectorAll('[data-detail-section-target]')
@@ -377,8 +339,6 @@
       let detailRecordId = null
       let depositStatusUpdating = false
       let activeDetailSectionId = null
-      let detailAttachmentState = null
-      let detailAttachmentUploadsInProgress = 0
       const viewState = {
         search: '',
         gender: 'all',
@@ -397,79 +357,25 @@
         }
       }
       initializeDetailSectionTabs()
-      initializeAttachmentControls()
-      if (detailPhoneInput) {
-        detailPhoneInput.addEventListener('input', () => {
-          if (detailAttachmentState) {
-            detailAttachmentState.phoneKey = normalizePhoneKey(detailPhoneInput.value || '')
-          }
-        })
-      }
       const calendarState = {
         current: new Date(),
         selectedDate: '',
       }
-      const ATTACHMENT_FILE_LIMIT_BYTES = 10 * 1024 * 1024
-      const ATTACHMENT_FILE_LIMIT_LABEL = '10MB'
-      const ATTACHMENT_UPLOAD_CONFIG = {
-        idCard: {
-          key: 'idCard',
-          label: '신분증',
-          type: 'document',
-          group: 'documents',
-          category: 'idCard',
-          role: 'idCard',
-          storageFolder: 'id-card',
-          multiple: false,
-          inputEl: detailIdCardInput,
-          dropZoneEl:
-            attachmentDropZones.find((zone) => zone.dataset.attachmentDropzone === 'idCard') || null,
-        },
-        employmentProof: {
-          key: 'employmentProof',
-          label: '재직 증빙',
-          type: 'document',
-          group: 'documents',
-          category: 'employmentProof',
-          role: 'employmentProof',
-          storageFolder: 'employment-proof',
-          multiple: false,
-          inputEl: detailEmploymentInput,
-          dropZoneEl:
-            attachmentDropZones.find(
-              (zone) => zone.dataset.attachmentDropzone === 'employmentProof'
-            ) || null,
-        },
-        photosFace: {
-          key: 'photosFace',
-          label: '얼굴 사진',
-          type: 'photo',
-          group: 'photos',
-          category: 'face',
-          role: 'face',
-          photoRole: 'face',
-          storageFolder: 'photos/face',
-          multiple: true,
-          inputEl: detailPhotosFaceInput,
-          dropZoneEl:
-            attachmentDropZones.find((zone) => zone.dataset.attachmentDropzone === 'photosFace') ||
-            null,
-        },
-        photosFull: {
-          key: 'photosFull',
-          label: '전신 사진',
-          type: 'photo',
-          group: 'photos',
-          category: 'full',
-          role: 'full',
-          photoRole: 'full',
-          storageFolder: 'photos/full',
-          multiple: true,
-          inputEl: detailPhotosFullInput,
-          dropZoneEl:
-            attachmentDropZones.find((zone) => zone.dataset.attachmentDropzone === 'photosFull') ||
-            null,
-        },
+      const PHONE_STATUS_VALUES = ['pending', 'scheduled', 'done']
+      const PHONE_STATUS_LABELS = {
+        pending: '상담 전',
+        scheduled: '상담 예정',
+        done: '상담 완료',
+      }
+      const STATUS_CLASS_NAMES = {
+        pending: 'status-before',
+        scheduled: 'status-scheduled',
+        done: 'status-complete',
+      }
+      const DEPOSIT_STATUS_VALUES = ['pending', 'completed']
+      const DEPOSIT_STATUS = {
+        pending: 'pending',
+        completed: 'completed',
       }
       const DEPOSIT_STATUS_LABELS = {
         pending: '입금 전',
@@ -1329,10 +1235,11 @@
 
       function toggleAttachmentsTab(hasAttachments) {
         if (!attachmentsTabButton) return
-        attachmentsTabButton.disabled = false
-        attachmentsTabButton.setAttribute('aria-disabled', 'false')
-        attachmentsTabButton.classList.toggle('has-attachments', Boolean(hasAttachments))
-        attachmentsTabButton.classList.toggle('is-empty', !hasAttachments)
+        attachmentsTabButton.disabled = !hasAttachments
+        attachmentsTabButton.setAttribute('aria-disabled', hasAttachments ? 'false' : 'true')
+        if (!hasAttachments && activeDetailSectionId === 'attachments') {
+          resetDetailSectionTabs()
+        }
       }
 
       function initializeDetailSectionTabs() {
@@ -1359,7 +1266,16 @@
         const heightLine = record.height ? `신장 ${record.height}` : null
         const districtLine = record.district ? `거주 구 ${record.district}` : null
         const mbtiLine = record.mbti ? `MBTI ${record.mbti}` : null
-        detailSubtitleEl.textContent = ''
+        detailSubtitleEl.textContent = [
+          record.phone ? `연락처 ${record.phone}` : null,
+          record.job ? `직업 ${record.job}` : null,
+          mbtiLine,
+          heightLine,
+          districtLine,
+          record.createdAt ? `신청 ${formatDate(record.createdAt)}` : null,
+        ]
+          .filter(Boolean)
+          .join(' · ')
 
         if (IS_MOIM_VIEW) {
           renderMoimDetailView(record)
@@ -1423,7 +1339,7 @@
         detailNotesInput.value = record.notes || ''
         detailScheduleInfo.textContent = record.meetingSchedule
           ? `현재 예약: ${formatDate(record.meetingSchedule)}`
-          : ''
+          : '대면 상담 일정이 아직 없습니다.'
 
         currentDraftData = getDraftForPhone(record.phone)
         if (detailDraftLoadBtn) {
@@ -1488,7 +1404,12 @@
         if (detailNecessaryConditionInput) detailNecessaryConditionInput.value = ''
         if (detailLikesDislikesInput) detailLikesDislikesInput.value = ''
         if (detailAboutMeInput) detailAboutMeInput.value = ''
-        resetDetailAttachmentState()
+        if (detailAttachmentsSection) detailAttachmentsSection.hidden = true
+        if (detailIdCardItem) detailIdCardItem.hidden = true
+        if (detailEmploymentItem) detailEmploymentItem.hidden = true
+        if (detailPhotosItem) detailPhotosItem.hidden = true
+        if (detailPhotosGrid) detailPhotosGrid.innerHTML = ''
+        toggleAttachmentsTab(false)
         if (moimDetailView) {
           moimDetailView.innerHTML = ''
           moimDetailView.hidden = true
@@ -1552,538 +1473,6 @@
             </a>
           </li>
         `
-      }
-
-      function formatBytes(bytes) {
-        if (!Number.isFinite(bytes) || bytes <= 0) return ''
-        if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)}MB`
-        if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)}KB`
-        return `${bytes}B`
-      }
-
-      function createEmptyAttachmentState(phoneKey = '') {
-        return {
-          phoneKey,
-          documents: {
-            idCard: null,
-            employmentProof: null,
-          },
-          photos: [],
-        }
-      }
-
-      function ensureAttachmentEntryId(entry) {
-        if (!entry || typeof entry !== 'object') return null
-        if (!entry.id) {
-          entry.id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-        }
-        return entry
-      }
-
-      function cloneAttachmentEntry(entry) {
-        if (!entry || typeof entry !== 'object') return null
-        const clone = ensureAttachmentEntryId({ ...entry })
-        if (entry.meta && typeof entry.meta === 'object') {
-          clone.meta = { ...entry.meta }
-        }
-        return clone
-      }
-
-      function normalizePhotoEntries(list) {
-        if (!Array.isArray(list)) return []
-        return list
-          .map((photo) => cloneAttachmentEntry(photo))
-          .filter(Boolean)
-      }
-
-      function hasAttachmentEntries(state) {
-        if (!state) return false
-        const docs = state.documents || {}
-        const hasDocs = Boolean(docs.idCard || docs.employmentProof)
-        const hasPhotos = Array.isArray(state.photos) && state.photos.length > 0
-        return hasDocs || hasPhotos
-      }
-
-      function setElementHiddenState(el, shouldHide) {
-        if (!el) return
-        if (shouldHide) {
-          el.setAttribute('hidden', '')
-          el.style.display = 'none'
-        } else {
-          el.removeAttribute('hidden')
-          el.style.display = ''
-        }
-      }
-
-      function renderDocumentAttachment(key, entry, linkEl) {
-        const emptyEl = attachmentEmptyElements[key]
-        const sectionEl = attachmentSectionElements[key]
-        const config = ATTACHMENT_UPLOAD_CONFIG[key]
-        if (config?.clearBtn) {
-          config.clearBtn.disabled = !entry
-        }
-        const source = entry ? getFileSource(entry) : ''
-        const hasEntry = Boolean(entry && source)
-        if (hasEntry && linkEl) {
-          const sizeLabel = formatBytes(Number(entry.size) || 0)
-          linkEl.href = source
-          linkEl.download = entry.name || linkEl.download || 'attachment'
-          linkEl.textContent = sizeLabel
-            ? `${entry.name || '파일'} · ${sizeLabel} 다운로드`
-            : `${entry.name || '파일'} 다운로드`
-          linkEl.target = '_blank'
-          linkEl.rel = 'noopener noreferrer'
-        } else if (linkEl) {
-          linkEl.href = '#'
-          linkEl.textContent = '다운로드'
-        }
-        setElementHiddenState(linkEl, !hasEntry)
-        setElementHiddenState(emptyEl, hasEntry)
-        if (sectionEl) {
-          sectionEl.classList.toggle('has-attachment', hasEntry)
-          sectionEl.classList.toggle('is-empty', !hasEntry)
-        }
-      }
-
-      function getPhotoListByKey(key) {
-        const config = ATTACHMENT_UPLOAD_CONFIG[key]
-        if (!config) return []
-        const role = config.photoRole
-        if (!Array.isArray(detailAttachmentState?.photos)) return []
-        return detailAttachmentState.photos.filter(
-          (photo) => (photo.role || photo.category) === role
-        )
-      }
-
-      function renderPhotoAttachmentList(key) {
-        const config = ATTACHMENT_UPLOAD_CONFIG[key]
-        if (!config) return
-        const listEl = attachmentListElements[key]
-        const emptyEl = attachmentEmptyElements[key]
-        if (!listEl) return
-        const photos = getPhotoListByKey(key)
-        listEl.innerHTML = ''
-        const hasPhotos = photos.length > 0
-        if (config.clearBtn) {
-          config.clearBtn.disabled = !hasPhotos
-        }
-        if (!hasPhotos) {
-          if (emptyEl) emptyEl.hidden = false
-          return
-        }
-        if (emptyEl) emptyEl.hidden = true
-        photos.forEach((photo, index) => {
-          const card = document.createElement('div')
-          card.className = 'attachment-photo-card'
-          const source = getFileSource(photo)
-          if (source) {
-            const img = document.createElement('img')
-            img.src = source
-            img.alt = `${config.label} ${index + 1}`
-            card.appendChild(img)
-          }
-          const footer = document.createElement('div')
-          footer.className = 'attachment-photo-card-footer'
-          const label = document.createElement('span')
-          const sizeLabel = formatBytes(Number(photo.size) || 0)
-          label.textContent = sizeLabel
-            ? `${photo.name || `${config.label} ${index + 1}`} · ${sizeLabel}`
-            : photo.name || `${config.label} ${index + 1}`
-          footer.appendChild(label)
-          const removeBtn = document.createElement('button')
-          removeBtn.type = 'button'
-          removeBtn.dataset.attachmentPhotoId = photo.id
-          removeBtn.dataset.attachmentPhotoKey = key
-          removeBtn.textContent = '삭제'
-          footer.appendChild(removeBtn)
-          card.appendChild(footer)
-          listEl.appendChild(card)
-        })
-      }
-
-      function renderDetailAttachmentSection() {
-        if (!detailAttachmentsSection) return
-        const phoneKey = normalizePhoneKey(detailPhoneInput?.value || '')
-        if (!detailAttachmentState) {
-          detailAttachmentState = createEmptyAttachmentState(phoneKey)
-        }
-        const docs = detailAttachmentState.documents || {}
-        renderDocumentAttachment('idCard', docs.idCard, detailIdCardLink)
-        renderDocumentAttachment('employmentProof', docs.employmentProof, detailEmploymentLink)
-        renderPhotoAttachmentList('photosFace')
-        renderPhotoAttachmentList('photosFull')
-        toggleAttachmentsTab(hasAttachmentEntries(detailAttachmentState))
-      }
-
-      function updateDetailAttachments(record) {
-        const phoneKey = normalizePhoneKey(record?.phone)
-        detailAttachmentState = createEmptyAttachmentState(phoneKey)
-        if (record?.documents) {
-          detailAttachmentState.documents.idCard = cloneAttachmentEntry(record.documents.idCard)
-          detailAttachmentState.documents.employmentProof = cloneAttachmentEntry(
-            record.documents.employmentProof
-          )
-        }
-        detailAttachmentState.photos = normalizePhotoEntries(record?.photos)
-        renderDetailAttachmentSection()
-      }
-
-      function resetDetailAttachmentState() {
-        const phoneKey = normalizePhoneKey(detailPhoneInput?.value || '')
-        detailAttachmentState = createEmptyAttachmentState(phoneKey)
-        renderDetailAttachmentSection()
-      }
-
-      function buildDetailAttachmentPayload() {
-        const documentsPayload = {}
-        const docs = detailAttachmentState?.documents || {}
-        if (docs.idCard) {
-          documentsPayload.idCard = { ...docs.idCard }
-        }
-        if (docs.employmentProof) {
-          documentsPayload.employmentProof = { ...docs.employmentProof }
-        }
-        const photosPayload = Array.isArray(detailAttachmentState?.photos)
-          ? detailAttachmentState.photos.map((photo) => ({ ...photo }))
-          : []
-        return { documentsPayload, photosPayload }
-      }
-
-      const attachmentUploadingKeys = new Set()
-      let firebaseStorageInstance = null
-      let firebaseInitPromise = null
-      let firebaseInitError = null
-
-      function setAttachmentUploading(key, isUploading) {
-        const config = ATTACHMENT_UPLOAD_CONFIG[key]
-        if (!config) return
-        if (isUploading) {
-          attachmentUploadingKeys.add(key)
-        } else {
-          attachmentUploadingKeys.delete(key)
-        }
-        if (config.dropZoneEl) {
-          config.dropZoneEl.classList.toggle(
-            'is-uploading',
-            attachmentUploadingKeys.has(key)
-          )
-        }
-        if (config.selectBtn) {
-          config.selectBtn.disabled = attachmentUploadingKeys.has(key)
-        }
-      }
-
-      function triggerAttachmentInput(key) {
-        const config = ATTACHMENT_UPLOAD_CONFIG[key]
-        if (!config || !config.inputEl) return
-        config.inputEl.click()
-      }
-
-      function clearDocumentAttachment(key) {
-        if (!detailAttachmentState || !detailAttachmentState.documents) return
-        if (!Object.prototype.hasOwnProperty.call(detailAttachmentState.documents, key)) return
-        const existing = detailAttachmentState.documents[key]
-        detailAttachmentState.documents[key] = null
-        renderDetailAttachmentSection()
-        if (existing?.storagePath) {
-          deleteFromFirebase(existing.storagePath).catch((error) =>
-            console.warn('[firebase] 문서 삭제 실패', error)
-          )
-        }
-      }
-
-      function clearPhotoCategory(key) {
-        if (!detailAttachmentState) return
-        const config = ATTACHMENT_UPLOAD_CONFIG[key]
-        if (!config) return
-        const role = config.photoRole
-        const photos = detailAttachmentState.photos || []
-        const [kept, removed] = photos.reduce(
-          (acc, photo) => {
-            if ((photo.role || photo.category) === role) {
-              acc[1].push(photo)
-            } else {
-              acc[0].push(photo)
-            }
-            return acc
-          },
-          [[], []]
-        )
-        detailAttachmentState.photos = kept
-        renderDetailAttachmentSection()
-        removed.forEach((entry) => {
-          if (entry?.storagePath) {
-            deleteFromFirebase(entry.storagePath).catch((error) =>
-              console.warn('[firebase] 사진 삭제 실패', error)
-            )
-          }
-        })
-      }
-
-      function handlePhotoRemove(key, photoId) {
-        if (!detailAttachmentState || !photoId) return
-        const photos = detailAttachmentState.photos || []
-        const index = photos.findIndex((photo) => String(photo.id) === String(photoId))
-        if (index === -1) return
-        const [removed] = photos.splice(index, 1)
-        detailAttachmentState.photos = photos
-        renderDetailAttachmentSection()
-        if (removed?.storagePath) {
-          deleteFromFirebase(removed.storagePath).catch((error) =>
-            console.warn('[firebase] 사진 삭제 실패', error)
-          )
-        }
-      }
-
-      function getAttachmentPhoneKey() {
-        const phoneKey = detailAttachmentState?.phoneKey || normalizePhoneKey(detailPhoneInput?.value || '')
-        if (detailAttachmentState) {
-          detailAttachmentState.phoneKey = phoneKey
-        }
-        return phoneKey
-      }
-
-      async function handleAttachmentFiles(key, files) {
-        const config = ATTACHMENT_UPLOAD_CONFIG[key]
-        if (!config || !files?.length) return
-        if (!detailAttachmentState) {
-          detailAttachmentState = createEmptyAttachmentState(getAttachmentPhoneKey())
-        }
-        const phoneKey = getAttachmentPhoneKey()
-        if (!phoneKey) {
-          showToast('연락처를 먼저 입력해주세요.')
-          detailPhoneInput?.focus()
-          return
-        }
-        const queue = config.multiple ? Array.from(files) : [files[0]]
-        for (const file of queue) {
-          if (!file) continue
-          if (file.size > ATTACHMENT_FILE_LIMIT_BYTES) {
-            showToast(
-              `'${file.name}' 파일이 ${ATTACHMENT_FILE_LIMIT_LABEL} 제한을 초과했습니다.`
-            )
-            continue
-          }
-          detailAttachmentUploadsInProgress += 1
-          setAttachmentUploading(key, true)
-          const previousEntry =
-            config.type === 'document' ? detailAttachmentState.documents[config.category] : null
-          try {
-            const uploadResult = await uploadFileToFirebase({ file, phoneKey, config })
-            const entry = ensureAttachmentEntryId({
-              id: uploadResult.id || `${config.key}-${Date.now()}`,
-              name: file.name || config.label,
-              size: uploadResult.size ?? file.size ?? 0,
-              type: uploadResult.contentType || file.type || '',
-              downloadURL: uploadResult.downloadURL,
-              url: uploadResult.downloadURL,
-              storagePath: uploadResult.storagePath,
-              uploadedAt: uploadResult.uploadedAt || Date.now(),
-              group: config.group,
-              category: config.category,
-              role: config.role,
-              bucket: uploadResult.bucket,
-            })
-            if (config.type === 'document') {
-              detailAttachmentState.documents[config.category] = entry
-              if (previousEntry?.storagePath && previousEntry.storagePath !== entry.storagePath) {
-                deleteFromFirebase(previousEntry.storagePath).catch((error) =>
-                  console.warn('[firebase] 이전 문서 삭제 실패', error)
-                )
-              }
-            } else {
-              detailAttachmentState.photos = detailAttachmentState.photos || []
-              detailAttachmentState.photos.push(entry)
-            }
-            renderDetailAttachmentSection()
-            showToast(`${config.label} 업로드를 완료했습니다.`)
-          } catch (error) {
-            console.error('[firebase] upload failed', error)
-            showToast(error?.message || `${config.label} 업로드에 실패했습니다.`)
-          } finally {
-            detailAttachmentUploadsInProgress = Math.max(
-              0,
-              detailAttachmentUploadsInProgress - 1
-            )
-            setAttachmentUploading(key, false)
-          }
-        }
-      }
-
-      async function ensureFirebaseStorage() {
-        if (firebaseStorageInstance) return firebaseStorageInstance
-        if (firebaseInitError) throw firebaseInitError
-        if (firebaseInitPromise) return firebaseInitPromise
-        firebaseInitPromise = (async () => {
-          if (typeof firebase === 'undefined' || typeof firebase.initializeApp !== 'function') {
-            throw new Error('Firebase SDK가 로드되지 않았습니다.')
-          }
-          let config = window.FIREBASE_CONFIG
-          if (!config?.apiKey) {
-            const configPromise = window.__FIREBASE_CONFIG_PROMISE__
-            if (configPromise && typeof configPromise.then === 'function') {
-              config = await configPromise
-            }
-          }
-          if (!config?.apiKey) {
-            throw new Error('Firebase 설정(FIREBASE_CONFIG)이 필요합니다.')
-          }
-          if (!firebase.apps || !firebase.apps.length) {
-            firebase.initializeApp(config)
-          }
-          firebaseStorageInstance = firebase.storage()
-          return firebaseStorageInstance
-        })().catch((error) => {
-          firebaseInitError = error instanceof Error ? error : new Error(String(error || ''))
-          throw firebaseInitError
-        })
-        try {
-          return await firebaseInitPromise
-        } finally {
-          firebaseInitPromise = null
-        }
-      }
-
-      async function uploadFileToFirebase({ file, phoneKey, config }) {
-        const storage = await ensureFirebaseStorage()
-        const storagePath = buildStoragePath(phoneKey, config.storageFolder, file.name)
-        const storageRef = storage.ref().child(storagePath)
-        const metadata = { contentType: file.type || undefined }
-        await storageRef.put(file, metadata)
-        const downloadURL = await storageRef.getDownloadURL()
-        return {
-          storagePath,
-          downloadURL,
-          bucket: storageRef.bucket || storage.app?.options?.storageBucket || '',
-          size: file.size,
-          contentType: metadata.contentType || file.type || '',
-          uploadedAt: Date.now(),
-        }
-      }
-
-      async function deleteFromFirebase(storagePath) {
-        if (!storagePath) return
-        try {
-          const storage = await ensureFirebaseStorage()
-          const ref = storage.ref().child(storagePath)
-          await ref.delete()
-        } catch (error) {
-          console.warn('[firebase] delete failed', error)
-        }
-      }
-
-      function getStorageRootPrefix() {
-        const root =
-          typeof window.FIREBASE_STORAGE_ROOT === 'string'
-            ? window.FIREBASE_STORAGE_ROOT.trim()
-            : ''
-        if (!root) return ''
-        return root.replace(/\/+$/, '') + '/'
-      }
-
-      function sanitizeFileName(name) {
-        return String(name || 'file')
-          .replace(/[^0-9a-zA-Z._-]/g, '_')
-          .replace(/_+/g, '_')
-          .slice(-120)
-      }
-
-      function buildStoragePath(phoneKey, folder, fileName) {
-        const safeFolder = (folder || 'misc').replace(/^\//, '')
-        const prefix = getStorageRootPrefix()
-        const name = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${sanitizeFileName(
-          fileName
-        )}`
-        return `${prefix}profiles/${phoneKey || 'unknown'}/${safeFolder}/${name}`
-      }
-
-      function initializeAttachmentControls() {
-        attachmentSelectButtons.forEach((button) => {
-          const key = button.dataset.attachmentSelect
-          const config = ATTACHMENT_UPLOAD_CONFIG[key]
-          if (!config) return
-          config.selectBtn = button
-          button.addEventListener('click', () => triggerAttachmentInput(key))
-        })
-        attachmentClearButtons.forEach((button) => {
-          const key = button.dataset.attachmentClear
-          const config = ATTACHMENT_UPLOAD_CONFIG[key]
-          if (!config) return
-          config.clearBtn = button
-          button.addEventListener('click', () => clearDocumentAttachment(key))
-        })
-        photoClearButtons.forEach((button) => {
-          const key = button.dataset.photoClear
-          const config = ATTACHMENT_UPLOAD_CONFIG[key]
-          if (!config) return
-          config.clearBtn = button
-          button.addEventListener('click', () => clearPhotoCategory(key))
-        })
-        attachmentDropZones.forEach((zone) => {
-          const key = zone.dataset.attachmentDropzone
-          const config = ATTACHMENT_UPLOAD_CONFIG[key]
-          if (!config) return
-          config.dropZoneEl = zone
-          zone.addEventListener('click', () => triggerAttachmentInput(key))
-          zone.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault()
-              triggerAttachmentInput(key)
-            }
-          })
-          zone.addEventListener('dragenter', (event) => {
-            event.preventDefault()
-            zone.classList.add('is-dragover')
-          })
-          zone.addEventListener('dragover', (event) => {
-            event.preventDefault()
-            zone.classList.add('is-dragover')
-          })
-          zone.addEventListener('dragleave', () => zone.classList.remove('is-dragover'))
-          zone.addEventListener('drop', (event) => {
-            event.preventDefault()
-            zone.classList.remove('is-dragover')
-            const dropped = Array.from(event.dataTransfer?.files || [])
-            if (dropped.length) {
-              handleAttachmentFiles(key, dropped)
-            }
-          })
-        })
-        if (detailIdCardInput) {
-          detailIdCardInput.addEventListener('change', (event) => {
-            const files = Array.from(event.target.files || [])
-            if (files.length) handleAttachmentFiles('idCard', files)
-            detailIdCardInput.value = ''
-          })
-        }
-        if (detailEmploymentInput) {
-          detailEmploymentInput.addEventListener('change', (event) => {
-            const files = Array.from(event.target.files || [])
-            if (files.length) handleAttachmentFiles('employmentProof', files)
-            detailEmploymentInput.value = ''
-          })
-        }
-        if (detailPhotosFaceInput) {
-          detailPhotosFaceInput.addEventListener('change', (event) => {
-            const files = Array.from(event.target.files || [])
-            if (files.length) handleAttachmentFiles('photosFace', files)
-            detailPhotosFaceInput.value = ''
-          })
-        }
-        if (detailPhotosFullInput) {
-          detailPhotosFullInput.addEventListener('change', (event) => {
-            const files = Array.from(event.target.files || [])
-            if (files.length) handleAttachmentFiles('photosFull', files)
-            detailPhotosFullInput.value = ''
-          })
-        }
-        document.addEventListener('click', (event) => {
-          const target = event.target.closest('[data-attachment-photo-id]')
-          if (!target) return
-          const key = target.dataset.attachmentPhotoKey
-          const photoId = target.dataset.attachmentPhotoId
-          handlePhotoRemove(key, photoId)
-        })
       }
 
       function normalizeHeightValue(raw) {
@@ -2154,6 +1543,87 @@
           return `data:${mime};base64,${fileData.base64.trim()}`
         }
         return ''
+      }
+
+      function setAttachmentLink(linkEl, fileData, fallbackLabel) {
+        if (!linkEl || !fileData) return false
+        const source = getFileSource(fileData)
+        if (!source) return false
+        const name = fileData.name || fallbackLabel || '첨부파일'
+        linkEl.href = source
+        linkEl.download = name
+        linkEl.textContent = `${name} 다운로드`
+        linkEl.target = '_blank'
+        linkEl.rel = 'noopener noreferrer'
+        linkEl.title = source
+        let urlContainer = linkEl.nextElementSibling
+        if (!urlContainer || !urlContainer.classList.contains('attachment-url')) {
+          urlContainer = document.createElement('div')
+          urlContainer.className = 'attachment-url'
+          linkEl.insertAdjacentElement('afterend', urlContainer)
+        }
+        urlContainer.textContent = source
+        urlContainer.title = source
+        urlContainer.hidden = false
+        return true
+      }
+
+      function renderPhotoAttachments(container, photos) {
+        if (!container) return 0
+        container.innerHTML = ''
+        const list = Array.isArray(photos) ? photos : []
+        list
+          .filter((photo) => {
+            const source = getFileSource(photo)
+            return Boolean(source)
+          })
+          .forEach((photo, index) => {
+            const source = getFileSource(photo)
+            const item = document.createElement('div')
+            item.className = 'attachment-photo-item'
+            const link = document.createElement('a')
+            link.href = source
+            const label = photo.name || `사진 ${index + 1}`
+            link.download = label
+            link.title = `${label} 다운로드`
+            link.target = '_blank'
+            link.rel = 'noopener noreferrer'
+            const img = document.createElement('img')
+            img.src = source
+            img.alt = label
+            link.appendChild(img)
+            const urlBox = document.createElement('div')
+            urlBox.className = 'attachment-url'
+            urlBox.textContent = source
+            urlBox.title = source
+            item.appendChild(link)
+            item.appendChild(urlBox)
+            container.appendChild(item)
+          })
+        return container.childElementCount
+      }
+
+      function updateDetailAttachments(record) {
+        if (!detailAttachmentsSection) return
+        const documents = record?.documents || {}
+        const photos = Array.isArray(record?.photos) ? record.photos : []
+
+        const hasIdCard = setAttachmentLink(detailIdCardLink, documents.idCard, '신분증')
+        if (detailIdCardItem) detailIdCardItem.hidden = !hasIdCard
+
+        const hasEmployment = setAttachmentLink(
+          detailEmploymentLink,
+          documents.employmentProof,
+          '재직 증빙'
+        )
+        if (detailEmploymentItem) detailEmploymentItem.hidden = !hasEmployment
+
+        const photoCount = renderPhotoAttachments(detailPhotosGrid, photos)
+        if (detailPhotosItem) detailPhotosItem.hidden = photoCount === 0
+
+        const hasAny = hasIdCard || hasEmployment || photoCount > 0
+        detailAttachmentsSection.hidden = !hasAny
+        toggleAttachmentsTab(hasAny)
       }
 
       function getDraftForPhone(phone) {
@@ -2345,11 +1815,6 @@
           return
         }
 
-        if (detailAttachmentUploadsInProgress > 0) {
-          showToast('파일 업로드가 끝날 때까지 기다려주세요.')
-          return
-        }
-
         const nameValue = (detailNameInput?.value || '').trim()
         if (detailNameInput) detailNameInput.value = nameValue
         const phoneValue = formatPhoneNumber(detailPhoneInput?.value)
@@ -2478,9 +1943,9 @@
           meetingSchedule,
           notes: detailNotesInput.value?.trim() || '',
         }
-        const { documentsPayload, photosPayload } = buildDetailAttachmentPayload()
-        payload.documents = documentsPayload
-        payload.photos = photosPayload
+        const existingRecord = items.find((item) => item.id === detailRecordId) || {}
+        payload.documents = existingRecord.documents || {}
+        payload.photos = existingRecord.photos || []
 
         suppressUpdateToast = true
         try {

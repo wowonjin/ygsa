@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <title>프로필 카드 확인</title>
+    <link
+      rel="stylesheet"
+      as="style"
+      crossorigin
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
+    />
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+        --bg: #f3f4f6;
+        --ink: #111827;
+        --ink-subtle: #4b5563;
+        --card: #ffffff;
+        --line: rgba(15, 23, 42, 0.08);
+        --accent: #1f6feb;
+        --accent-soft: rgba(31, 111, 235, 0.12);
+        --success: #047857;
+        --danger: #dc2626;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: linear-gradient(160deg, #e0f2ff 0%, #f8f9fb 45%, #f3f4f6 100%);
+        color: var(--ink);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 16px;
+      }
+
+      main {
+        width: min(960px, 100%);
+        display: grid;
+        gap: 28px;
+      }
+
+      .panel {
+        background: var(--card);
+        border-radius: 20px;
+        box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
+        padding: clamp(24px, 4vw, 36px);
+      }
+
+      .panel h1 {
+        margin: 0 0 12px;
+        font-size: clamp(24px, 5vw, 32px);
+        font-weight: 800;
+      }
+
+      .panel p.description {
+        margin: 0 0 20px;
+        color: var(--ink-subtle);
+        font-size: 15px;
+        line-height: 1.7;
+      }
+
+      form {
+        display: grid;
+        gap: 16px;
+      }
+
+      label {
+        display: grid;
+        gap: 8px;
+        font-weight: 600;
+        color: var(--ink-subtle);
+      }
+
+      input[type='tel'] {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 14px 16px;
+        font-size: 16px;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      input[type='tel']:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 4px var(--accent-soft);
+      }
+
+      button {
+        appearance: none;
+        border: none;
+        border-radius: 999px;
+        padding: 14px 18px;
+        font-size: 16px;
+        font-weight: 700;
+        background: var(--accent);
+        color: #ffffff;
+        cursor: pointer;
+        transition: transform 0.1s ease, box-shadow 0.1s ease;
+      }
+
+      button:hover:not([disabled]) {
+        transform: translateY(-1px);
+        box-shadow: 0 12px 20px rgba(31, 111, 235, 0.18);
+      }
+
+      button[disabled] {
+        cursor: not-allowed;
+        background: #9ca3af;
+        box-shadow: none;
+      }
+
+      .message {
+        display: none;
+        padding: 12px 14px;
+        border-radius: 12px;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      .message.is-visible {
+        display: block;
+      }
+
+      .message.error {
+        background: rgba(220, 38, 38, 0.08);
+        color: var(--danger);
+      }
+
+      .message.success {
+        background: rgba(4, 120, 87, 0.1);
+        color: var(--success);
+      }
+
+      #profileSection {
+        display: none;
+      }
+
+      #profileSection.is-visible {
+        display: block;
+      }
+
+      .profile-card {
+        display: grid;
+        gap: 24px;
+      }
+
+      .profile-header {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: flex-end;
+      }
+
+      .profile-title {
+        display: grid;
+        gap: 6px;
+      }
+
+      #profileName {
+        margin: 0;
+        font-size: clamp(24px, 4vw, 30px);
+        font-weight: 800;
+        letter-spacing: -0.01em;
+      }
+
+      #profileMeta {
+        margin: 0;
+        color: var(--ink-subtle);
+        font-size: 14px;
+      }
+
+      .profile-expiry {
+        font-size: 13px;
+        font-weight: 600;
+        padding: 10px 14px;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--accent);
+      }
+
+      .profile-layout {
+        display: grid;
+        gap: 24px;
+        grid-template-columns: minmax(0, 240px) minmax(0, 1fr);
+      }
+
+      .profile-sidebar {
+        display: grid;
+        gap: 20px;
+        align-content: start;
+      }
+
+      .profile-photo {
+        position: relative;
+        width: 100%;
+        padding-top: 100%;
+        border-radius: 18px;
+        overflow: hidden;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.16), rgba(236, 72, 153, 0.18));
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+      }
+
+      .profile-photo img,
+      .profile-photo .photo-fallback {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .profile-photo .photo-fallback {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: clamp(28px, 6vw, 42px);
+        color: rgba(15, 23, 42, 0.85);
+        background: linear-gradient(115deg, rgba(191, 219, 254, 0.5), rgba(221, 214, 254, 0.5));
+      }
+
+      .info-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 10px;
+      }
+
+      .info-item {
+        display: grid;
+        gap: 4px;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 12px;
+        padding: 12px;
+        background: rgba(249, 250, 251, 0.7);
+      }
+
+      .info-item strong {
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #6b7280;
+      }
+
+      .info-item span {
+        font-size: 14px;
+        font-weight: 600;
+        color: #1f2937;
+      }
+
+      .profile-content {
+        display: grid;
+        gap: 20px;
+      }
+
+      .profile-section {
+        border: 1px solid rgba(15, 23, 42, 0.06);
+        border-radius: 16px;
+        padding: 18px 20px;
+        background: rgba(255, 255, 255, 0.82);
+        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
+        display: grid;
+        gap: 12px;
+      }
+
+      .profile-section h3 {
+        margin: 0;
+        font-size: 15px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #1f2937;
+      }
+
+      .profile-text {
+        margin: 0;
+        font-size: 14px;
+        line-height: 1.7;
+        color: #374151;
+        white-space: pre-line;
+      }
+
+      .profile-info-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 10px;
+      }
+
+      .profile-info-list li {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: 14px;
+        color: #1f2937;
+      }
+
+      .profile-info-list li span.label {
+        font-weight: 600;
+        color: #475569;
+      }
+
+      .profile-info-list li span.value {
+        flex: 1;
+        text-align: right;
+        color: #111827;
+      }
+
+      @media (max-width: 768px) {
+        body {
+          padding: 24px 12px;
+        }
+        .profile-layout {
+          grid-template-columns: 1fr;
+        }
+        .profile-photo {
+          max-width: 260px;
+          justify-self: center;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="panel" id="accessPanel">
+        <h1>프로필 카드 확인</h1>
+        <p class="description">
+          프로필 정보를 확인하려면 등록된 전화번호를 입력해주세요. 인증된 번호만 3일 동안 열람할 수
+          있습니다.
+        </p>
+        <form id="accessForm" novalidate>
+          <label>
+            전화번호
+            <input
+              id="phoneInput"
+              type="tel"
+              inputmode="tel"
+              autocomplete="tel"
+              placeholder="예: 010-1234-5678"
+              required
+            />
+          </label>
+          <button type="submit" id="submitButton">프로필 열람하기</button>
+          <p id="formMessage" class="message" role="alert"></p>
+        </form>
+      </section>
+      <section class="panel" id="profileSection">
+        <div class="profile-card">
+          <header class="profile-header">
+            <div class="profile-title">
+              <h2 id="profileName">회원님</h2>
+              <p id="profileMeta">기본 정보</p>
+            </div>
+            <div class="profile-expiry" id="profileExpiry" hidden></div>
+          </header>
+          <div class="profile-layout">
+            <aside class="profile-sidebar">
+              <div class="profile-photo">
+                <img id="profilePhoto" alt="프로필 사진" hidden />
+                <div id="profilePhotoFallback" class="photo-fallback">YG</div>
+              </div>
+              <ul class="info-list" id="profileBasicList"></ul>
+            </aside>
+            <div class="profile-content">
+              <section class="profile-section" id="profileSummarySection" hidden>
+                <h3>소개</h3>
+                <p id="profileSummary" class="profile-text"></p>
+              </section>
+              <section class="profile-section" id="profileConditionSection" hidden>
+                <h3>조건</h3>
+                <p id="profileConditions" class="profile-text"></p>
+              </section>
+              <section class="profile-section" id="profileLikesSection" hidden>
+                <h3>취향</h3>
+                <p id="profileLikes" class="profile-text"></p>
+              </section>
+              <section class="profile-section" id="profileLifestyleSection" hidden>
+                <h3>라이프스타일</h3>
+                <ul id="profileLifestyleList" class="profile-info-list"></ul>
+              </section>
+              <section class="profile-section" id="profilePreferenceSection" hidden>
+                <h3>선호</h3>
+                <ul id="profilePreferenceList" class="profile-info-list"></ul>
+              </section>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <script>
+      const params = new URLSearchParams(window.location.search)
+      const token = (params.get('token') || '').trim()
+
+      const accessPanel = document.getElementById('accessPanel')
+      const accessForm = document.getElementById('accessForm')
+      const phoneInput = document.getElementById('phoneInput')
+      const submitButton = document.getElementById('submitButton')
+      const formMessage = document.getElementById('formMessage')
+      const profileSection = document.getElementById('profileSection')
+      const profileName = document.getElementById('profileName')
+      const profileMeta = document.getElementById('profileMeta')
+      const profileExpiry = document.getElementById('profileExpiry')
+      const profilePhoto = document.getElementById('profilePhoto')
+      const profilePhotoFallback = document.getElementById('profilePhotoFallback')
+      const profileBasicList = document.getElementById('profileBasicList')
+      const profileSummarySection = document.getElementById('profileSummarySection')
+      const profileSummary = document.getElementById('profileSummary')
+      const profileConditionSection = document.getElementById('profileConditionSection')
+      const profileConditions = document.getElementById('profileConditions')
+      const profileLikesSection = document.getElementById('profileLikesSection')
+      const profileLikes = document.getElementById('profileLikes')
+      const profileLifestyleSection = document.getElementById('profileLifestyleSection')
+      const profileLifestyleList = document.getElementById('profileLifestyleList')
+      const profilePreferenceSection = document.getElementById('profilePreferenceSection')
+      const profilePreferenceList = document.getElementById('profilePreferenceList')
+
+      const SALARY_RANGE_LABELS = {
+        '1': '3000만원 미만',
+        '2': '3000-4000만원',
+        '3': '4000-6000만원',
+        '4': '6000-8000만원',
+        '5': '8000-1억원',
+        '6': '1억-2억원',
+        '7': '2억-3억원',
+        '8': '3억원 이상',
+      }
+
+      function setMessage(message, type = 'error') {
+        if (!formMessage) return
+        formMessage.textContent = message || ''
+        formMessage.className = 'message'
+        if (message) {
+          formMessage.classList.add('is-visible')
+          formMessage.classList.add(type === 'success' ? 'success' : 'error')
+        }
+      }
+
+      function setLoading(isLoading) {
+        if (isLoading) {
+          submitButton.textContent = '확인 중…'
+        } else {
+          submitButton.textContent = '프로필 열람하기'
+        }
+        submitButton.disabled = isLoading
+        phoneInput.disabled = isLoading
+      }
+
+      function formatValue(value, fallback = '미입력') {
+        if (Array.isArray(value)) {
+          const joined = value.map((item) => formatValue(item, '')).filter(Boolean).join(', ')
+          return joined || fallback
+        }
+        if (value == null) return fallback
+        const text = String(value).trim()
+        return text || fallback
+      }
+
+      function selectPrimaryPhoto(photos) {
+        if (!Array.isArray(photos)) return ''
+        const candidates = photos
+          .map((item) => {
+            if (!item) return ''
+            if (typeof item === 'string') return item.trim()
+            if (typeof item.downloadURL === 'string') return item.downloadURL.trim()
+            if (typeof item.url === 'string') return item.url.trim()
+            return ''
+          })
+          .filter(Boolean)
+        return candidates.length ? candidates[0] : ''
+      }
+
+      function buildBasicInfo(profile) {
+        const basicEntries = [
+          { label: '성별', value: profile.gender },
+          { label: '생년', value: profile.birth },
+          { label: '신장', value: profile.height },
+          { label: 'MBTI', value: profile.mbti },
+          { label: '학력', value: profile.education },
+          { label: '대학교', value: profile.university },
+          { label: '연봉', value: SALARY_RANGE_LABELS[profile.salaryRange] || profile.salaryRange },
+          { label: '직업', value: profile.job },
+          { label: '거주지', value: profile.district },
+          { label: '연락처', value: profile.phone },
+        ]
+        if (profile.email) {
+          basicEntries.push({ label: '이메일', value: profile.email })
+        }
+        return basicEntries
+      }
+
+      function renderList(element, entries) {
+        if (!element) return
+        element.innerHTML = ''
+        const list = Array.isArray(entries) ? entries : []
+        list
+          .filter((entry) => entry && entry.label)
+          .forEach((entry) => {
+            const li = document.createElement('li')
+            const labelSpan = document.createElement('span')
+            labelSpan.textContent = entry.label
+            labelSpan.className = 'label'
+            const valueSpan = document.createElement('span')
+            valueSpan.textContent = formatValue(entry.value)
+            valueSpan.className = 'value'
+            li.append(labelSpan, valueSpan)
+            element.appendChild(li)
+          })
+        element.parentElement?.toggleAttribute('hidden', !element.childElementCount)
+      }
+
+      function renderBasicList(element, entries) {
+        if (!element) return
+        element.innerHTML = ''
+        entries.forEach((entry) => {
+          const item = document.createElement('li')
+          item.className = 'info-item'
+          const label = document.createElement('strong')
+          label.textContent = entry.label
+          const value = document.createElement('span')
+          value.textContent = formatValue(entry.value)
+          item.append(label, value)
+          element.appendChild(item)
+        })
+      }
+
+      function buildLifestyleEntries(profile) {
+        return [
+          { label: '흡연', value: profile.smoking },
+          { label: '종교', value: profile.religion },
+          { label: '장거리 연애', value: profile.longDistance },
+          { label: '딩크', value: profile.dink },
+          { label: '자차 보유', value: profile.carOwnership },
+          { label: '문신', value: profile.tattoo },
+          { label: '돌싱 여부', value: profile.divorceStatus },
+          { label: '마지막 연애', value: profile.lastRelationship },
+          { label: '연애 횟수', value: profile.relationshipCount },
+          { label: '결혼 시기', value: profile.marriageTiming },
+        ]
+      }
+
+      function buildPreferenceEntries(profile) {
+        const values =
+          Array.isArray(profile.values) && profile.values.length ? profile.values : []
+        const preferredHeights = formatValue(profile.preferredHeights, '')
+        const preferredAges = formatValue(profile.preferredAges, '')
+        const list = []
+        if (preferredHeights) list.push({ label: '선호 신장', value: preferredHeights })
+        if (preferredAges) list.push({ label: '선호 나이', value: preferredAges })
+        if (values.length) list.push({ label: '가치관', value: values.join(', ') })
+        if (profile.valuesCustom) list.push({ label: '추가 가치관', value: profile.valuesCustom })
+        return list
+      }
+
+      function formatSummary(profile) {
+        const paragraphs = [
+          profile.aboutMe,
+          profile.profileAppeal,
+          profile.jobDetail,
+        ]
+        return paragraphs.map((text) => formatValue(text, '')).filter(Boolean).join('\n\n')
+      }
+
+      function renderProfile(profile, grant) {
+        if (!profile || typeof profile !== 'object') return
+
+        profileSection.classList.add('is-visible')
+
+        profileName.textContent = formatValue(profile.name, '회원님')
+
+        const metaParts = []
+        if (profile.mbti) metaParts.push(`MBTI ${profile.mbti}`)
+        if (profile.job) metaParts.push(profile.job)
+        if (profile.height) metaParts.push(profile.height)
+        profileMeta.textContent = metaParts.length ? metaParts.join(' · ') : '기본 정보'
+
+        if (grant && grant.expiresAt) {
+          const expiresDate = new Date(grant.expiresAt)
+          if (!Number.isNaN(expiresDate.getTime())) {
+            const formatter = new Intl.DateTimeFormat('ko-KR', {
+              dateStyle: 'medium',
+              timeStyle: 'short',
+            })
+            profileExpiry.textContent = `접속 가능 기한: ${formatter.format(expiresDate)}`
+            profileExpiry.hidden = false
+          }
+        }
+
+        const photoUrl = selectPrimaryPhoto(profile.photos)
+        if (photoUrl) {
+          profilePhoto.src = photoUrl
+          profilePhoto.hidden = false
+          profilePhotoFallback.hidden = true
+        } else {
+          profilePhoto.hidden = true
+          const initials = formatValue(profile.name, 'YG')
+            .replace(/\s+/g, '')
+            .slice(0, 2)
+            .toUpperCase()
+          profilePhotoFallback.textContent = initials || 'YG'
+          profilePhotoFallback.hidden = false
+        }
+
+        renderBasicList(profileBasicList, buildBasicInfo(profile))
+
+        const summaryText = formatSummary(profile)
+        if (summaryText) {
+          profileSummary.textContent = summaryText
+          profileSummarySection.hidden = false
+        } else {
+          profileSummarySection.hidden = true
+        }
+
+        const conditionText = formatValue(
+          [profile.sufficientCondition, profile.necessaryCondition]
+            .map((item) => formatValue(item, ''))
+            .filter(Boolean)
+            .join('\n\n'),
+          '',
+        )
+        if (conditionText) {
+          profileConditions.textContent = conditionText
+          profileConditionSection.hidden = false
+        } else {
+          profileConditionSection.hidden = true
+        }
+
+        const likesText = formatValue(profile.likesDislikes, '')
+        if (likesText) {
+          profileLikes.textContent = likesText
+          profileLikesSection.hidden = false
+        } else {
+          profileLikesSection.hidden = true
+        }
+
+        const lifestyleEntries = buildLifestyleEntries(profile).filter(
+          (entry) => formatValue(entry.value, '') !== '',
+        )
+        if (lifestyleEntries.length) {
+          renderList(profileLifestyleList, lifestyleEntries)
+          profileLifestyleSection.hidden = false
+        } else {
+          profileLifestyleSection.hidden = true
+        }
+
+        const preferenceEntries = buildPreferenceEntries(profile)
+        if (preferenceEntries.length) {
+          renderList(profilePreferenceList, preferenceEntries)
+          profilePreferenceSection.hidden = false
+        } else {
+          profilePreferenceSection.hidden = true
+        }
+      }
+
+      async function verifyPhone(event) {
+        event.preventDefault()
+        if (!token) return
+        const phone = phoneInput.value.trim()
+        if (!phone) {
+          setMessage('전화번호를 입력해주세요.')
+          phoneInput.focus()
+          return
+        }
+        setMessage('')
+        setLoading(true)
+        try {
+          const res = await fetch('/api/profile-share/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token, phone }),
+          })
+          const body = await res.json().catch(() => ({}))
+          if (!res.ok || !body?.ok) {
+            const message =
+              body?.message || (res.status >= 500 ? '서버 오류가 발생했습니다.' : '인증에 실패했습니다.')
+            throw new Error(message)
+          }
+          renderProfile(body.data?.profile || {}, body.data?.grant || null)
+          accessPanel.hidden = true
+        } catch (error) {
+          setMessage(error.message || '인증에 실패했습니다.', 'error')
+        } finally {
+          setLoading(false)
+        }
+      }
+
+      if (!token) {
+        setMessage('유효하지 않은 링크입니다.')
+        submitButton.disabled = true
+        phoneInput.disabled = true
+      } else {
+        accessForm.addEventListener('submit', verifyPhone)
+      }
+    </script>
+  </body>
+</html>
+
+
+
+

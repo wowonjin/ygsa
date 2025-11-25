@@ -137,7 +137,6 @@
               <button type="submit" class="primary">저장</button>
             </div>
           </div>
-          <hr class="detail-section-divider" />
           <div class="detail-priority" aria-label="상담 진행 상태">
             <div class="field">
               <label for="detailPhoneStatus">전화 상담 상태</label>
@@ -156,74 +155,69 @@
                 </select>
                 <button type="button" id="detailClearSchedule" aria-label="일정 초기화">🗑</button>
               </div>
-              <p class="modal-subtitle detail-schedule-info" id="detailScheduleInfo"></p>
+              <p class="modal-subtitle" id="detailScheduleInfo"></p>
             </div>
           </div>
-          <hr class="detail-section-divider" />
-          <div class="detail-section-tabs" role="tablist" aria-label="상세 정보 섹션">
+          <div class="detail-section-tabs" role="tablist" aria-label="상세 정보 카테고리">
             <button
               type="button"
               class="detail-section-tab"
-              id="detailSectionTabBasic"
               data-detail-section-target="basic"
+              aria-controls="detailSectionBasic"
               role="tab"
               aria-selected="false"
-              aria-controls="detailSectionBasic"
             >
               기본 정보
             </button>
             <button
               type="button"
               class="detail-section-tab"
-              id="detailSectionTabProfile"
               data-detail-section-target="profile"
+              aria-controls="detailSectionProfile"
               role="tab"
               aria-selected="false"
-              aria-controls="detailSectionProfile"
             >
               세부 프로필
             </button>
             <button
               type="button"
               class="detail-section-tab"
-              id="detailSectionTabLifestyle"
               data-detail-section-target="lifestyle"
+              aria-controls="detailSectionLifestyle"
               role="tab"
               aria-selected="false"
-              aria-controls="detailSectionLifestyle"
             >
               라이프스타일
             </button>
             <button
               type="button"
               class="detail-section-tab"
-              id="detailSectionTabPreference"
               data-detail-section-target="preference"
+              aria-controls="detailSectionPreference"
               role="tab"
               aria-selected="false"
-              aria-controls="detailSectionPreference"
             >
               선호 조건
             </button>
             <button
               type="button"
               class="detail-section-tab"
-              id="detailSectionTabNotes"
               data-detail-section-target="notes"
+              aria-controls="detailSectionNotes"
               role="tab"
               aria-selected="false"
-              aria-controls="detailSectionNotes"
             >
               관리자 메모
             </button>
             <button
               type="button"
               class="detail-section-tab"
-              id="detailSectionTabAttachments"
               data-detail-section-target="attachments"
+              aria-controls="detailAttachmentsSection"
               role="tab"
               aria-selected="false"
-              aria-controls="detailSectionAttachments"
+              aria-disabled="true"
+              disabled
             >
               증빙 자료
             </button>
@@ -233,9 +227,7 @@
               class="detail-section detail-section-basic"
               id="detailSectionBasic"
               data-detail-section="basic"
-              role="tabpanel"
-              tabindex="0"
-              aria-labelledby="detailSectionTabBasic"
+              hidden
             >
               <legend>기본 정보</legend>
               <div class="detail-field-grid columns-3">
@@ -403,9 +395,7 @@
               class="detail-section detail-section-profile"
               id="detailSectionProfile"
               data-detail-section="profile"
-              role="tabpanel"
-              tabindex="0"
-              aria-labelledby="detailSectionTabProfile"
+              hidden
             >
               <legend>세부 프로필</legend>
               <div class="detail-field-grid columns-2">
@@ -466,9 +456,7 @@
               class="detail-section detail-section-lifestyle"
               id="detailSectionLifestyle"
               data-detail-section="lifestyle"
-              role="tabpanel"
-              tabindex="0"
-              aria-labelledby="detailSectionTabLifestyle"
+              hidden
             >
               <legend>관계 및 라이프스타일</legend>
               <div class="detail-field-grid columns-3">
@@ -549,9 +537,7 @@
               class="detail-section detail-section-preference"
               id="detailSectionPreference"
               data-detail-section="preference"
-              role="tabpanel"
-              tabindex="0"
-              aria-labelledby="detailSectionTabPreference"
+              hidden
             >
               <legend>선호 조건</legend>
               <div class="detail-field-grid columns-3">
@@ -788,9 +774,7 @@
               class="detail-section detail-section-notes"
               id="detailSectionNotes"
               data-detail-section="notes"
-              role="tabpanel"
-              tabindex="0"
-              aria-labelledby="detailSectionTabNotes"
+              hidden
             >
               <legend>관리자 메모</legend>
               <div class="detail-field-grid">
@@ -805,46 +789,21 @@
             class="detail-attachments"
             id="detailAttachmentsSection"
             data-detail-section="attachments"
-            role="tabpanel"
-            tabindex="0"
-            aria-labelledby="detailSectionTabAttachments"
+            hidden
           >
             <h3>증빙 자료 및 사진</h3>
             <div class="attachment-items">
-              <div class="attachment-item" id="detailIdCardItem" data-attachment-item="idCard">
-                <div class="attachment-item-header">
-                  <h4>신분증</h4>
-                </div>
-                <p class="attachment-empty" data-attachment-empty="idCard">
-                  등록된 신분증이 없습니다.
-                </p>
-                <a id="detailIdCardLink" href="#" download hidden>다운로드</a>
+              <div class="attachment-item" id="detailIdCardItem" hidden>
+                <h4>신분증</h4>
+                <a id="detailIdCardLink" href="#" download>다운로드</a>
               </div>
-              <div class="attachment-item" id="detailEmploymentItem" data-attachment-item="employmentProof">
-                <div class="attachment-item-header">
-                  <h4>재직 증빙</h4>
-                </div>
-                <p class="attachment-empty" data-attachment-empty="employmentProof">
-                  등록된 재직 증빙이 없습니다.
-                </p>
-                <a id="detailEmploymentLink" href="#" download hidden>다운로드</a>
+              <div class="attachment-item" id="detailEmploymentItem" hidden>
+                <h4>재직 증빙</h4>
+                <a id="detailEmploymentLink" href="#" download>다운로드</a>
               </div>
-              <div class="attachment-item" id="detailPhotosItem" data-attachment-item="photos">
+              <div class="attachment-item" id="detailPhotosItem" hidden>
                 <h4>프로필 사진</h4>
-                <div class="attachment-photo-subgroup">
-                  <h5>얼굴 사진</h5>
-                  <p class="attachment-empty" data-attachment-empty="photosFace">
-                    등록된 얼굴 사진이 없습니다.
-                  </p>
-                  <div class="attachment-photo-grid" data-attachment-list="photosFace"></div>
-                </div>
-                <div class="attachment-photo-subgroup">
-                  <h5>전신 사진</h5>
-                  <p class="attachment-empty" data-attachment-empty="photosFull">
-                    등록된 전신 사진이 없습니다.
-                  </p>
-                  <div class="attachment-photo-grid" data-attachment-list="photosFull"></div>
-                </div>
+                <div class="attachment-photo-grid" id="detailPhotosGrid"></div>
               </div>
             </div>
           </section>

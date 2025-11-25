@@ -1,0 +1,881 @@
+<!-- 아임웹 코드박스용: 신청서 + 버튼 (폰트 크게 & 레이아웃 재배치) -->
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<style>
+  .consult-form{
+    --line:#e6eeea;--ink:#4f4f4f;--brand:#2f7a57;--focus:0 0 0 3px rgba(47,122,87,.18);
+    font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);font-size:20px
+  }
+  .consult-form .grid{display:grid;grid-template-columns:1fr;gap:18px}
+  @media(min-width:840px){.consult-form .grid{grid-template-columns:1fr 1fr}}
+  .consult-form .field{display:flex;flex-direction:column;gap:10px;text-align:left}
+  .consult-form .label{font-weight:800;font-size:20px;text-align:left}
+  .consult-form .input,.consult-form .select,.consult-form .textarea{
+    width:100%;padding:16px 16px;border:1px solid var(--line);border-radius:12px;
+    outline:none;background:#fff;font-size:18px;
+    -webkit-appearance:none;-moz-appearance:none;appearance:none
+  }
+  .consult-form .input:focus,.consult-form .select:focus,.consult-form .textarea:focus{border-color:#5377f6;border-width:1px}
+  
+  /* 드롭다운 select 요소 강제 스타일 */
+  .consult-form .select{
+    border-color:var(--line)!important;
+    outline:none!important;
+    box-shadow:none!important;
+  }
+  .consult-form .select:focus,.consult-form .select:active,.consult-form .select:hover{
+    border-color:#5377f6!important;
+    border-width:1px!important;
+    outline:none!important;
+    box-shadow:none!important;
+  }
+
+  /* 드롭다운 옵션 스타일 */
+  .consult-form .select option{
+    padding:12px 16px;background:#fff;color:var(--ink);font-size:18px;
+    border:none;cursor:pointer;transition:background-color 0.2s ease
+  }
+  .consult-form .select option:hover,.consult-form .select option:focus{
+    background:#f0f4ff;color:#5377f6
+  }
+  .consult-form .select option:checked{
+    background:#f0f4ff;color:#5377f6;font-weight:600
+  }
+  .consult-form .select optgroup{
+    font-weight:700;font-size:17px;color:#5377f6;padding:8px 0 4px 0;
+    background:#f8f9fa;border-bottom:1px solid #5377f6;margin-top:8px
+  }
+  
+  /* 드롭다운 목록 박스 외곽선 - 브라우저별 스타일 */
+  .consult-form .select::-ms-expand{
+    border:1px solid #5377f6;
+  }
+  .consult-form .select:focus::-ms-expand{
+    border-color:#5377f6;
+  }
+  .consult-form .select optgroup:first-child{
+    margin-top:0
+  }
+  .consult-form .select optgroup option{
+    padding-left:24px;font-weight:400;color:var(--ink)
+  }
+  .consult-form .select optgroup option:hover{
+    background:#f0f4ff;color:#5377f6
+  }
+
+  /* 버튼 색상: #5377f6 */
+  .consult-form .btn{
+    appearance:none;border:none;border-radius:999px;padding:18px 22px;
+    font-weight:800;letter-spacing:.02em;font-size:20px;cursor:pointer;
+    background:#5377f6!important;color:#fff!important;min-width:240px;transition:transform .02s ease
+  }
+  /* 살짝 눌리는 느낌만 유지(테두리 효과 제거 유지) */
+  .consult-form .btn:active{transform:translateY(1px);outline:none;box-shadow:none;background:#5377f6!important}
+  .consult-form .btn:hover{filter:none;background:#5377f6!important}
+  .consult-form .btn:focus{outline:none;box-shadow:none;background:#5377f6!important}
+
+  /* "눌리지 않을 때"(= 비활성/disabled) 회색 톤으로 살짝 어둡게 */
+  .consult-form .btn[disabled]{
+    cursor:not-allowed;
+    /* 배경과 글자 모두 살짝 회색/어둡게 */
+    filter:grayscale(35%) brightness(0.92);
+    background:#5377f6!important;
+  }
+
+  .consult-form .divider{grid-column:1/-1;height:1px;background:var(--line);margin:8px 0}
+  .consult-form .agree{display:flex;align-items:flex-start;gap:12px;position:relative}
+  .consult-form .agree label{font-size:18px;cursor:pointer}
+  .consult-form .agree input[type="checkbox"]{width:20px;height:20px;cursor:pointer}
+  .consult-form .hint{color:#6c7a71;font-size:16px;line-height:1.4}
+  .consult-form .section-heading{
+    grid-column:1/-1;
+    font-size:24px;
+    font-weight:800;
+    margin:8px 0 4px 0
+  }
+  .consult-form .section-heading + .subtext{
+    grid-column:1/-1;
+    margin:-4px 0 8px 0;
+    color:#4a5c53;
+    font-size:17px
+  }
+  .consult-form .required-mark{color:#d64545;font-size:.9em;margin-left:4px}
+  .consult-form .policy-card{
+    background:#f8faf9;
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:18px 20px;
+    line-height:1.6
+  }
+  .consult-form .policy-card p{
+    margin:6px 0 0 0;
+  }
+  .consult-form .policy-card p:first-child{
+    margin-top:0;
+  }
+  .consult-form .policy-card ul{padding-left:20px;margin:8px 0 0 0}
+  .consult-form .policy-card li{margin-bottom:4px}
+  .consult-form .policy-card[hidden]{display:none}
+  .consult-form .checkbox-row{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin-top:12px
+  }
+  .consult-form .checkbox-row label{font-size:18px;font-weight:600}
+  .consult-form .account-box{
+    border:1px dashed #5377f6;
+    background:#f6f8ff;
+    border-radius:16px;
+    padding:16px 18px;
+    font-weight:600;
+    color:#1f2a44;
+    margin:12px 0
+  }
+  .consult-form .account-box span{display:block;font-weight:500;margin-top:6px;font-size:16px;color:#4a5c53}
+  .consult-form .policy-card strong{color:#1f2a44}
+  .consult-form .notice{
+    grid-column:1/-1;
+    font-size:17px;
+    color:#4a5c53;
+    margin:4px 0 8px 0;
+    line-height:1.5
+  }
+  .consult-form .textarea{font-size:16px;line-height:1.6;min-height:100px}
+  .consult-form .consent-all-row{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:14px 16px;
+    border:1px solid var(--line);
+    border-radius:14px;
+    background:#fff;
+  }
+  .consult-form .consent-all-row input[type="checkbox"]{
+    width:22px;
+    height:22px;
+    cursor:pointer;
+  }
+  .consult-form .consent-all-row label{
+    font-size:19px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .consult-form .policy-field{
+    border:1px solid rgba(0,0,0,0);
+    border-radius:18px;
+    padding:14px;
+    background:#fff;
+    box-shadow:0 2px 8px rgba(0,0,0,0.04);
+  }
+  .consult-form .policy-toggle-btn{
+    width:100%;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:14px 18px;
+    border:1px solid var(--line);
+    border-radius:14px;
+    background:#f8faf9;
+    font-size:18px;
+    font-weight:700;
+    text-align:left;
+    cursor:pointer;
+    transition:background 0.2s,border-color 0.2s;
+  }
+  .consult-form .policy-toggle-btn .policy-toggle-label{
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .consult-form .policy-toggle-btn .policy-toggle-icon{
+    margin-left:auto;
+    transition:transform 0.2s ease;
+  }
+  .consult-form .policy-toggle-btn.is-open{
+    background:#eef7f1;
+    border-color:#5377f6;
+  }
+  .consult-form .policy-toggle-btn.is-open .policy-toggle-icon{
+    transform:rotate(180deg);
+  }
+  .consult-form .policy-info-hint{
+    margin-top:8px;
+    color:#4a5c53;
+    font-size:14px;
+  }
+  .reveal-on-scroll{
+    opacity:0;
+    transform:translate3d(0,28px,0);
+    transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1);
+    transition-delay:0s;
+    will-change:opacity,transform
+  }
+
+  @media(max-width:640px){
+    .consult-form{
+      font-size:15px;
+      padding:0 4px;
+    }
+    .consult-form .grid{
+      gap:12px;
+    }
+    .consult-form .label{
+      font-size:16px;
+    }
+    .consult-form .input,
+    .consult-form .select,
+    .consult-form .textarea{
+      font-size:14px;
+      padding:12px 12px;
+    }
+    .consult-form .hint{
+      font-size:12px;
+    }
+    .consult-form .btn{
+      width:100%;
+      min-width:auto;
+      font-size:16px;
+      padding:14px 16px;
+    }
+    .consult-form .textarea{
+      min-height:80px;
+    }
+    .consult-form .section-heading{
+      font-size:18px;
+      margin-top:4px;
+    }
+    .consult-form .notice{
+      font-size:13px;
+    }
+    .consult-form .policy-card{
+      padding:14px;
+      font-size:13px;
+    }
+    .consult-form .policy-card ul{
+      padding-left:16px;
+    }
+    .consult-form .checkbox-row label{
+      font-size:15px;
+    }
+    .consult-form .account-box{
+      font-size:14px;
+      padding:14px;
+    }
+    .consult-form .account-box span{
+      font-size:12px;
+    }
+    .consult-form .consent-all-row{
+      flex-direction:column;
+      align-items:flex-start;
+      gap:8px;
+    }
+    .consult-form .policy-toggle-btn{
+      font-size:15px;
+      padding:12px 14px;
+    }
+  }
+  .reveal-on-scroll.is-visible{
+    opacity:1;
+    transform:translate3d(0,0,0)
+  }
+  @media(prefers-reduced-motion:reduce){
+    .reveal-on-scroll{
+      opacity:1!important;
+      transform:none!important;
+      transition:none!important
+    }
+  }
+  
+  /* 필드 말풍선 스타일 */
+  .consult-form .field{position:relative}
+  .consult-form .field-tooltip{
+    position:absolute;bottom:100%;left:0;margin-bottom:8px;
+    background:#333;color:#fff;padding:10px 14px;border-radius:8px;
+    font-size:15px;white-space:nowrap;z-index:1000;
+    opacity:0;visibility:hidden;transition:opacity 0.2s,visibility 0.2s;
+    pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,0.15)
+  }
+  .consult-form .field-tooltip::after{
+    content:'';position:absolute;top:100%;left:20px;
+    border:6px solid transparent;border-top-color:#333
+  }
+  .consult-form .field-tooltip.show{
+    opacity:1;visibility:visible
+  }
+  .consult-form .agree .field-tooltip{
+    bottom:auto;top:100%;left:0;margin-top:8px
+  }
+  .consult-form .agree .field-tooltip::after{
+    top:auto;bottom:100%;border-top-color:transparent;border-bottom-color:#333
+  }
+</style>
+
+<div class="consult-form">
+  <!-- action 속성을 배포된 백엔드 주소로 맞춰주세요. 아래 기본값은 Render 예시입니다. -->
+  <form id="contactForm" action="https://ygsa-backend.onrender.com/api/consult" method="POST" novalidate>
+    <input type="hidden" name="formType" value="moim" />
+    <div class="grid">
+      <div class="section-heading">기본 프로필</div>
+
+      <div class="field">
+        <label for="name" class="label">이름<span class="required-mark">*</span></label>
+        <input id="name" name="name" class="input" type="text" placeholder="홍길동" required autocomplete="name" />
+        <div class="field-tooltip" data-field="name">이름을 입력해주세요.</div>
+      </div>
+
+      <div class="field">
+        <label for="birth" class="label">출생년도<span class="required-mark">*</span></label>
+        <input
+          id="birth"
+          name="birth"
+          class="input"
+          type="text"
+          inputmode="numeric"
+          maxlength="4"
+          placeholder="1993"
+          required
+          autocomplete="bday-year"
+        />
+        <div class="field-tooltip" data-field="birth">출생년도를 4자리 숫자로 입력해주세요.</div>
+      </div>
+
+      <div class="field">
+        <label for="gender" class="label">성별<span class="required-mark">*</span></label>
+        <select id="gender" name="gender" class="select" required>
+          <option value="" selected disabled>(선택)</option>
+          <option value="남">남자</option>
+          <option value="여">여자</option>
+          <option value="기타">기타</option>
+        </select>
+        <div class="field-tooltip" data-field="gender">성별을 선택해주세요.</div>
+      </div>
+
+      <div class="field">
+        <label for="phone" class="label">연락처<span class="required-mark">*</span></label>
+        <input id="phone" name="phone" class="input" type="tel" inputmode="tel" placeholder="010-1234-5678" required autocomplete="tel-national" />
+        <div class="hint">숫자만 입력하면 자동으로 하이픈(-)이 삽입됩니다.</div>
+        <div class="field-tooltip" data-field="phone">연락처를 입력해주세요.</div>
+      </div>
+
+      <div class="field">
+        <label for="height" class="label">키<span class="required-mark">*</span></label>
+        <input
+          id="height"
+          name="height"
+          class="input"
+          type="text"
+          inputmode="numeric"
+          maxlength="5"
+          placeholder="170cm"
+          required
+          autocomplete="off"
+        />
+        <div class="field-tooltip" data-field="height">키를 입력해주세요. (예: 170cm)</div>
+      </div>
+
+      <div class="field">
+        <label for="edu" class="label">대학교 / 학과<span class="required-mark">*</span></label>
+        <input
+          id="edu"
+          name="education"
+          class="input"
+          type="text"
+          placeholder="예: 서울대학교 경영학과"
+          autocomplete="organization"
+          required
+        />
+        <div class="field-tooltip" data-field="edu">재학(졸업) 중인 대학교와 학과를 입력해주세요.</div>
+      </div>
+
+      <div class="field">
+        <label for="district" class="label">거주 구<span class="required-mark">*</span></label>
+        <input id="district" name="district" class="input" type="text" placeholder="서울특별시 강남구" required />
+        <div class="field-tooltip" data-field="district">거주하시는 구/군을 입력해주세요.</div>
+      </div>
+
+      <div class="field">
+        <label for="job" class="label">직업 (회사명 + 직무)<span class="required-mark">*</span></label>
+        <input id="job" name="job" class="input" type="text" placeholder="예: 삼성전자 개발자 / 맥킨지 전략컨설턴트" autocomplete="organization" required />
+        <div class="field-tooltip" data-field="job">회사명과 직무를 함께 입력해주세요.</div>
+      </div>
+
+      <div class="field">
+        <label for="workStyle" class="label">근무 분야/형태<span class="required-mark">*</span></label>
+        <select id="workStyle" name="workStyle" class="select" required>
+          <option value="" selected disabled>(선택)</option>
+          <option value="대기업">대기업</option>
+          <option value="중견기업">중견기업</option>
+          <option value="스타트업">스타트업</option>
+          <option value="공공/공기업">공공/공기업</option>
+          <option value="전문직">전문직</option>
+          <option value="자영업">자영업</option>
+          <option value="프리랜서">프리랜서</option>
+          <option value="기타">기타</option>
+        </select>
+        <div class="field-tooltip" data-field="workStyle">근무 형태를 선택해주세요.</div>
+      </div>
+
+      <div class="divider" aria-hidden="true"></div>
+
+      <div class="section-heading">라이프스타일 & 참여 목적</div>
+
+      <div class="field">
+        <label for="relationship" class="label">현재 연애 상태<span class="required-mark">*</span></label>
+        <select id="relationship" name="relationshipStatus" class="select" required>
+          <option value="" selected disabled>(선택)</option>
+          <option value="솔로">솔로</option>
+          <option value="썸">썸</option>
+          <option value="연애 중">연애 중</option>
+        </select>
+        <div class="field-tooltip" data-field="relationship">현재 연애 상태를 선택해주세요.</div>
+      </div>
+
+      <div class="field">
+        <label for="purpose" class="label">참여 목적<span class="required-mark">*</span></label>
+        <select id="purpose" name="participationGoal" class="select" required>
+          <option value="" selected disabled>(선택)</option>
+          <option value="연애 상대">연애 상대</option>
+          <option value="이성친구">이성친구</option>
+          <option value="커리어 네트워킹">커리어 네트워킹</option>
+          <option value="아직 모르겠음">아직 모르겠음</option>
+        </select>
+        <div class="field-tooltip" data-field="purpose">참여 목적을 선택해주세요.</div>
+      </div>
+
+      <div class="field">
+        <label for="socialEnergy" class="label">새로운 사람 만나는 것<span class="required-mark">*</span></label>
+        <select id="socialEnergy" name="socialEnergy" class="select" required>
+          <option value="" selected disabled>(선택)</option>
+          <option value="에너지">에너지 받아요</option>
+          <option value="보통">상황에 따라 달라요</option>
+          <option value="지침">조금 지치는 편이에요</option>
+        </select>
+        <div class="field-tooltip" data-field="socialEnergy">성향에 맞는 옵션을 골라주세요.</div>
+      </div>
+
+      <div class="field">
+        <label for="weekendStyle" class="label">주말엔 집 vs 밖에서 약속<span class="required-mark">*</span></label>
+        <select id="weekendStyle" name="weekendPreference" class="select" required>
+          <option value="" selected disabled>(선택)</option>
+          <option value="집순이/집돌이">주말엔 집이 좋아요</option>
+          <option value="반반">집/밖 반반 즐겨요</option>
+          <option value="바깥형">약속 잡는 걸 좋아해요</option>
+        </select>
+        <div class="field-tooltip" data-field="weekendStyle">주말 스타일을 선택해주세요.</div>
+      </div>
+
+      <div class="divider" aria-hidden="true"></div>
+
+      <div class="section-heading">모임 규칙 & 정책 동의</div>
+      <p class="notice">모임의 건전한 운영과 참가자 안전을 위해 필수로 확인해주세요.</p>
+
+      <div class="field" style="grid-column:1/-1">
+        <div class="consent-all-row">
+          <input type="checkbox" id="consentAll" />
+          <label for="consentAll">전부 동의합니다</label>
+        </div>
+        <p class="policy-info-hint">전체 동의를 선택하면 아래 필수 동의 항목이 모두 체크됩니다.</p>
+      </div>
+
+      <div class="field policy-field" style="grid-column:1/-1">
+        <button type="button" class="policy-toggle-btn" data-target="policyRules" aria-expanded="false">
+          <span class="policy-toggle-label">
+            모임 규칙 동의<span class="required-mark">*</span>
+          </span>
+          <span class="policy-toggle-icon" aria-hidden="true">▼</span>
+        </button>
+        <div id="policyRules" class="policy-card" hidden>
+          <ul>
+            <li>번호 직접 요구 금지</li>
+            <li>상대방에게 불쾌/부담을 줄 수 있는 언행 시 퇴장 가능</li>
+            <li>사후 매칭은 ‘서로 호감 있을 때만’ 전달</li>
+          </ul>
+        </div>
+        <div class="agree">
+          <div class="checkbox-row">
+            <input type="checkbox" id="rulesAgree" class="consent-check" required />
+            <label for="rulesAgree">동의합니다</label>
+          </div>
+          <div class="field-tooltip" data-field="rulesAgree">모임 규칙에 동의해주세요.</div>
+        </div>
+      </div>
+
+      <div class="field policy-field" style="grid-column:1/-1">
+        <button type="button" class="policy-toggle-btn" data-target="policyInfo" aria-expanded="false">
+          <span class="policy-toggle-label">
+            개인정보 수집·이용 동의<span class="required-mark">*</span>
+          </span>
+          <span class="policy-toggle-icon" aria-hidden="true">▼</span>
+        </button>
+        <div id="policyInfo" class="policy-card" hidden>
+          <p><strong>수집 항목</strong>: 이름, 연락처, 기본 프로필</p>
+          <p><strong>이용 목적</strong>: 모임 운영·사후 매칭 안내 용도로만 사용</p>
+          <p><strong>보유·파기</strong>: 일정 기간 후 안전하게 파기</p>
+        </div>
+        <div class="agree">
+          <div class="checkbox-row">
+            <input type="checkbox" id="agree" class="consent-check" required />
+            <label for="agree">동의합니다</label>
+          </div>
+          <div class="field-tooltip" data-field="agree">개인정보 이용에 동의해주세요.</div>
+        </div>
+      </div>
+
+      <div class="field policy-field" style="grid-column:1/-1">
+        <button type="button" class="policy-toggle-btn" data-target="policyRefund" aria-expanded="false">
+          <span class="policy-toggle-label">
+            노쇼/환불 정책 동의<span class="required-mark">*</span>
+          </span>
+          <span class="policy-toggle-icon" aria-hidden="true">▼</span>
+        </button>
+        <div id="policyRefund" class="policy-card" hidden>
+          <p>전날 취소 시 전액 환불, 이후 환불 불가</p>
+          <p>노쇼 시 향후 참가 제한 가능</p>
+        </div>
+        <div class="agree">
+          <div class="checkbox-row">
+            <input type="checkbox" id="refundAgree" class="consent-check" required />
+            <label for="refundAgree">동의합니다</label>
+          </div>
+          <div class="field-tooltip" data-field="refundAgree">노쇼/환불 정책에 동의해주세요.</div>
+        </div>
+      </div>
+
+      <div class="field" style="grid-column:1/-1">
+        <label class="label">참가비 3만원, 납부 완료하셨나요? 💸</label>
+        <div class="hint">장소 대관비 및 커피 비용을 포함하여 참가비 3만원을 받고 있습니다. 아래 계좌로 입금해주세요.</div>
+        <div class="account-box">
+          기업은행 20314422501012 (공정아)
+          <span>입금자명과 신청자명을 동일하게 해주세요.</span>
+        </div>
+      </div>
+
+      <div class="divider" aria-hidden="true"></div>
+
+      <div style="grid-column:1/-1;display:flex;justify-content:center">
+        <button id="submitBtn" class="btn" type="submit" disabled>모임 신청하기</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+(function(){
+  // 스크롤 진입 시 요소 애니메이션
+  const revealTargets = Array.from(document.querySelectorAll('.consult-form, .consult-form .grid > *, .consult-form .divider, .consult-form .btn'));
+  if (revealTargets.length) {
+    if ('IntersectionObserver' in window) {
+      const revealObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, {
+        threshold: 0.2,
+        rootMargin: '0px 0px -10% 0px'
+      });
+
+      revealTargets.forEach((el) => {
+        el.classList.add('reveal-on-scroll');
+        el.style.setProperty('--reveal-delay', '0ms');
+        revealObserver.observe(el);
+      });
+    } else {
+      revealTargets.forEach(el => {
+        el.classList.add('reveal-on-scroll', 'is-visible');
+      });
+    }
+  }
+
+  // 엘리먼트 참조
+  const form = document.getElementById('contactForm');
+  if(!form) return;
+
+  const phoneEl   = form.querySelector('#phone');
+  const submitBtn = form.querySelector('#submitBtn');
+  const birthEl   = form.querySelector('#birth');
+  const heightEl  = form.querySelector('#height');
+  const consentChecks = Array.from(form.querySelectorAll('.consent-check'));
+  const consentAllToggle = form.querySelector('#consentAll');
+  const policyToggleButtons = form.querySelectorAll('.policy-toggle-btn');
+
+  // 출생년도 입력 안내 (숫자만 허용)
+  if (birthEl) {
+    birthEl.addEventListener('input', () => {
+      birthEl.value = birthEl.value.replace(/[^0-9]/g, '').slice(0, 4);
+    });
+  }
+
+  // 신장 입력: 숫자만 허용하고 항상 cm 접미사를 유지
+  if (heightEl) {
+    const formatHeight = () => {
+      const digits = heightEl.value.replace(/[^0-9]/g, '').slice(0, 3);
+      if (!digits) {
+        heightEl.value = '';
+        return;
+      }
+      const formatted = `${digits}cm`;
+      heightEl.value = formatted;
+      if (document.activeElement === heightEl) {
+        const caretPos = digits.length;
+        requestAnimationFrame(() => {
+          heightEl.setSelectionRange(caretPos, caretPos);
+        });
+      }
+    };
+
+    heightEl.addEventListener('focus', () => {
+      const digits = heightEl.value.replace(/[^0-9]/g, '').slice(0, 3);
+      heightEl.value = digits;
+      requestAnimationFrame(() => {
+        const pos = heightEl.value.length;
+        heightEl.setSelectionRange(pos, pos);
+      });
+    });
+
+    heightEl.addEventListener('input', formatHeight);
+    heightEl.addEventListener('blur', formatHeight);
+  }
+
+  // 연락처 자동 하이픈(숫자만 입력 허용)
+  if (phoneEl) {
+    phoneEl.addEventListener('input', ()=>{
+      let v = phoneEl.value.replace(/[^0-9]/g, '');
+      if (v.length < 4) { phoneEl.value = v; return; }
+      if (v.length < 8) { phoneEl.value = v.replace(/(\d{3})(\d+)/, '$1-$2'); return; }
+      phoneEl.value = v.replace(/(\d{3})(\d{3,4})(\d{0,4}).*/, '$1-$2-$3');
+    });
+  }
+
+  // 드롭다운 외곽선 색상 강제 적용
+  const selects = form.querySelectorAll('.select');
+  selects.forEach(select => {
+    select.addEventListener('mousedown', function() {
+      this.style.borderColor = '#5377f6';
+      this.style.borderWidth = '1px';
+    });
+    select.addEventListener('focus', function() {
+      this.style.borderColor = '#5377f6';
+      this.style.borderWidth = '1px';
+    });
+    select.addEventListener('blur', function() {
+      this.style.borderColor = 'var(--line)';
+    });
+  });
+
+  // 말풍선 표시/숨김 함수
+  const showTooltip = (fieldName, message) => {
+    const tooltip = form.querySelector(`[data-field="${fieldName}"]`);
+    if (tooltip) {
+      tooltip.textContent = message || tooltip.textContent;
+      tooltip.classList.add('show');
+    }
+  };
+  
+  const hideTooltip = (fieldName) => {
+    const tooltip = form.querySelector(`[data-field="${fieldName}"]`);
+    if (tooltip) {
+      tooltip.classList.remove('show');
+    }
+  };
+  
+  // 모든 필드에 대한 입력/변경 이벤트 리스너 추가
+  const setupFieldValidation = () => {
+    const requiredFields = form.querySelectorAll('[required]');
+    requiredFields.forEach(field => {
+      const fieldName = field.id || field.name;
+      
+      // 입력/선택 시 말풍선 숨김
+      const hideHandler = () => {
+        if (field.type === 'checkbox') {
+          if (field.checked) hideTooltip(fieldName);
+        } else if (field.tagName === 'SELECT') {
+          if (field.value && field.value !== '') hideTooltip(fieldName);
+        } else {
+          if (field.value && field.value.trim() !== '') hideTooltip(fieldName);
+        }
+      };
+      
+      if (field.tagName === 'SELECT' || field.type === 'checkbox') {
+        field.addEventListener('change', hideHandler);
+      } else {
+        field.addEventListener('input', hideHandler);
+        field.addEventListener('change', hideHandler);
+        field.addEventListener('focus', hideHandler);
+      }
+    });
+  };
+
+  // 제출 버튼 활성화/비활성 초기 동기화 + 변경 시 동기화
+  const updateConsentAllState = () => {
+    if (!consentAllToggle || !consentChecks.length) return;
+    const requiredChecks = consentChecks.filter((check) => check.required !== false);
+    if (!requiredChecks.length) {
+      consentAllToggle.checked = false;
+      consentAllToggle.indeterminate = false;
+      return;
+    }
+    const checkedCount = requiredChecks.filter((check) => check.checked).length;
+    consentAllToggle.checked = checkedCount === requiredChecks.length;
+    consentAllToggle.indeterminate =
+      checkedCount > 0 && checkedCount < requiredChecks.length;
+  };
+
+  const syncSubmitState = ()=>{
+    if(!submitBtn) return;
+    if(!consentChecks.length){
+      submitBtn.disabled = false;
+      if (consentAllToggle) {
+        consentAllToggle.checked = false;
+        consentAllToggle.indeterminate = false;
+      }
+      return;
+    }
+    const unchecked = consentChecks.some(check => check.required && !check.checked);
+    submitBtn.disabled = unchecked;
+    updateConsentAllState();
+  };
+  syncSubmitState();
+  consentChecks.forEach(check =>
+    check.addEventListener('change', ()=>{
+      syncSubmitState();
+    })
+  );
+
+  if (consentAllToggle) {
+    consentAllToggle.addEventListener('change', ()=>{
+      const isChecked = consentAllToggle.checked;
+      consentChecks.forEach(check => {
+        if (check.checked === isChecked) return;
+        check.checked = isChecked;
+        check.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+    });
+  }
+
+  if (policyToggleButtons.length) {
+    const togglePolicyCard = (button) => {
+      if (!button) return;
+      const targetId = button.getAttribute('data-target');
+      if (!targetId) return;
+      const card = form.querySelector(`#${targetId}`);
+      if (!card) return;
+      const isExpanded = button.getAttribute('aria-expanded') === 'true';
+      const nextState = !isExpanded;
+      button.setAttribute('aria-expanded', String(nextState));
+      button.classList.toggle('is-open', nextState);
+      card.hidden = !nextState;
+    };
+    policyToggleButtons.forEach(button => {
+      button.addEventListener('click', () => togglePolicyCard(button));
+    });
+  }
+
+  // 필드 검증 설정
+  setupFieldValidation();
+
+  // 제출 로직: JSON POST
+  form.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    
+    // 모든 말풍선 숨김
+    form.querySelectorAll('.field-tooltip').forEach(tooltip => {
+      tooltip.classList.remove('show');
+    });
+    
+    // 필수 필드 검증
+    let isValid = true;
+    const requiredFields = form.querySelectorAll('[required]');
+    
+    requiredFields.forEach(field => {
+      const fieldName = field.id || field.name;
+      let fieldValid = false;
+      
+      if (field.type === 'checkbox') {
+        fieldValid = field.checked;
+      } else if (field.tagName === 'SELECT') {
+        fieldValid = field.value && field.value !== '';
+      } else {
+        fieldValid = field.value && field.value.trim() !== '';
+      }
+      
+      if (!fieldValid) {
+        isValid = false;
+        showTooltip(fieldName);
+      }
+    });
+    
+    // 유효성 검사 실패 시 중단
+    if (!isValid) {
+      // 첫 번째 유효하지 않은 필드로 스크롤
+      const firstInvalid = form.querySelector('[required]:invalid, [required]:not(:checked)');
+      if (firstInvalid) {
+        const selectInvalid = Array.from(requiredFields).find(f => {
+          if (f.type === 'checkbox') return !f.checked;
+          if (f.tagName === 'SELECT') return !f.value || f.value === '';
+          return !f.value || f.value.trim() === '';
+        });
+        if (selectInvalid) {
+          selectInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
+      return;
+    }
+
+    if (heightEl) {
+      const digits = heightEl.value.replace(/[^0-9]/g, '').slice(0, 3);
+      heightEl.value = digits ? `${digits}cm` : '';
+    }
+
+    const data = {
+      formType: 'moim',
+      applicationType: 'moim',
+      name:  (form.querySelector('#name')   ?.value || '').trim(),
+      gender:(form.querySelector('#gender') ?.value || ''),
+      phone: (form.querySelector('#phone')  ?.value || ''),
+      birth: (form.querySelector('#birth')  ?.value || ''),
+      education:(form.querySelector('#edu') ?.value || ''),
+      job:   (form.querySelector('#job')    ?.value || '').trim(),
+      height:(form.querySelector('#height') ?.value || ''),
+      district:(form.querySelector('#district') ?.value || '').trim(),
+      workStyle:(form.querySelector('#workStyle') ?.value || ''),
+      relationshipStatus:(form.querySelector('#relationship') ?.value || ''),
+      participationGoal:(form.querySelector('#purpose') ?.value || ''),
+      socialEnergy:(form.querySelector('#socialEnergy') ?.value || ''),
+      weekendPreference:(form.querySelector('#weekendStyle') ?.value || ''),
+      agree: (form.querySelector('#agree')  ?.checked || false),
+      rulesAgree:(form.querySelector('#rulesAgree')  ?.checked || false),
+      refundAgree:(form.querySelector('#refundAgree')  ?.checked || false)
+    };
+
+    if (submitBtn){ submitBtn.disabled = true; submitBtn.textContent = '전송 중…'; }
+
+    try{
+      const backendOrigin = ((window.BACKEND_ORIGIN || '').trim() || 'https://ygsa-backend.onrender.com').replace(/\/$/, '');
+      const fallbackEndpoint = backendOrigin ? `${backendOrigin}/api/consult` : '/api/consult';
+      const endpoint = form.getAttribute('action') || fallbackEndpoint;
+      const res = await fetch(endpoint, {
+        method:'POST',
+        headers:{'Content-Type':'application/json','Accept':'application/json'},
+        body: JSON.stringify(data)
+      });
+
+      if(res.ok){
+        form.reset();
+        syncSubmitState();
+        alert('신청이 접수되었습니다. 매칭 매니저가 곧 연락드립니다.');
+      }else{
+        throw new Error('HTTP '+res.status);
+      }
+    }catch(err){
+      console.error(err);
+      alert('전송에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+    }finally{
+      if (submitBtn){ submitBtn.textContent = '모임 신청하기'; syncSubmitState(); }
+    }
+  });
+})();
+</script>
