@@ -265,6 +265,16 @@
       const variantCopy = VARIANT_CONFIG[APP_VARIANT] || VARIANT_CONFIG.consult
       applyVariantDecor()
       const searchInput = document.getElementById('searchInput')
+      const statusFilter = document.getElementById('statusFilter')
+      const genderStatsEl = document.getElementById('genderStats')
+      const genderChartBtn = document.getElementById('genderChartBtn')
+      const genderChartModal = document.getElementById('genderChartModal')
+      const genderChartCloseBtn = document.getElementById('genderChartCloseBtn')
+      const genderChartCanvas = document.getElementById('genderChartCanvas')
+      const genderChartLegend = document.getElementById('genderChartLegend')
+      const genderChartCenter = document.getElementById('genderChartCenter')
+      const genderChartSummary = document.getElementById('genderChartSummary')
+      const genderChartBars = document.getElementById('genderChartBars')
       const genderFilter = document.getElementById('genderFilter')
       const heightFilter = document.getElementById('heightFilter')
       const sortSelect = document.getElementById('sortSelect')
@@ -324,7 +334,13 @@
       const detailPhotoFullBtn = document.getElementById('detailPhotoFullBtn')
       const detailPhotoFaceInput = document.getElementById('detailPhotoFaceInput')
       const detailPhotoFullInput = document.getElementById('detailPhotoFullInput')
-      const detailPhotoUploadStatus = document.getElementById('detailPhotoUploadStatus')
+      const detailIdCardUploadBtn = document.getElementById('detailIdCardUploadBtn')
+      const detailEmploymentUploadBtn = document.getElementById('detailEmploymentUploadBtn')
+      const detailIdCardUploadInput = document.getElementById('detailIdCardUploadInput')
+      const detailEmploymentUploadInput = document.getElementById('detailEmploymentUploadInput')
+      const detailAttachmentUploadStatus = document.getElementById('detailAttachmentUploadStatus')
+      const detailIdCardDeleteBtn = document.getElementById('detailIdCardDeleteBtn')
+      const detailEmploymentDeleteBtn = document.getElementById('detailEmploymentDeleteBtn')
       const detailDraftLoadBtn = document.getElementById('detailDraftLoadBtn')
       const detailSectionButtons = Array.from(
         document.querySelectorAll('[data-detail-section-target]')
@@ -344,8 +360,14 @@
       let detailRecordId = null
       let detailCurrentRecord = null
       let detailPhotoUploads = []
-      const MAX_PHOTO_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024
-      const PHOTO_UPLOAD_SIZE_LABEL = '10MB'
+      let detailDocumentUploads = {
+        idCard: null,
+        employmentProof: null,
+      }
+      const detailDocumentDirty = new Set()
+      const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024
+      const UPLOAD_SIZE_LABEL = '10MB'
+      const pendingUploadPaths = new Set()
       let firebaseStorageInstance = null
       let firebaseInitPromise = null
       let firebaseInitError = null
@@ -353,11 +375,13 @@
       let activeDetailSectionId = null
       const viewState = {
         search: '',
+        status: 'all',
         gender: 'all',
         height: 'all',
         sort: 'latest',
         weekRange: IS_MOIM_VIEW ? getCurrentWeekRange() : null,
       }
+      let genderStatsData = { male: 0, female: 0 }
       if (IS_MOIM_VIEW) {
         updateWeekFilterLabel()
       } else {
@@ -504,11 +528,39 @@
       detailPhotoFullInput?.addEventListener('change', (event) =>
         handlePhotoUploadInputChange(event, 'full'),
       )
+      detailIdCardUploadBtn?.addEventListener('click', () => detailIdCardUploadInput?.click())
+      detailEmploymentUploadBtn?.addEventListener('click', () =>
+        detailEmploymentUploadInput?.click(),
+      )
+      detailIdCardUploadInput?.addEventListener('change', (event) =>
+        handleDocumentUploadInputChange(event, 'idCard'),
+      )
+      detailEmploymentUploadInput?.addEventListener('change', (event) =>
+        handleDocumentUploadInputChange(event, 'employmentProof'),
+      )
+      detailIdCardDeleteBtn?.addEventListener('click', () => handleDocumentDelete('idCard'))
+      detailEmploymentDeleteBtn?.addEventListener('click', () =>
+        handleDocumentDelete('employmentProof'),
+      )
+      detailPhotosGrid?.addEventListener('click', (event) => {
+        const target = event.target
+        if (!(target instanceof HTMLElement)) return
+        const button = target.closest('.attachment-delete-btn')
+        if (!button) return
+        if (button.dataset.attachmentType !== 'photo') return
+        const attachmentId = button.dataset.attachmentId
+        handlePhotoDelete(attachmentId)
+      })
       if (detailValuesSelect) {
         detailValuesSelect.addEventListener('change', () =>
           enforceMultiSelectLimit(detailValuesSelect, 1),
         )
       }
+      genderChartBtn?.addEventListener('click', () => openGenderChartModal())
+      genderChartCloseBtn?.addEventListener('click', () => closeGenderChartModal())
+      genderChartModal?.addEventListener('click', (event) => {
+        if (event.target === genderChartModal) closeGenderChartModal()
+      })
       detailDraftLoadBtn?.addEventListener('click', () => {
         if (!currentDraftData) {
           showToast('불러올 임시 데이터가 없습니다.')
@@ -611,6 +663,12 @@
         viewState.search = event.target.value.trim()
         render()
       })
+      if (statusFilter) {
+        statusFilter.addEventListener('change', (event) => {
+          viewState.status = event.target.value
+          render()
+        })
+      }
       genderFilter.addEventListener('change', (event) => {
         viewState.gender = event.target.value
         render()
@@ -981,6 +1039,7 @@
       function render() {
         cardsEl.innerHTML = ''
         const prepared = getPreparedItems()
+        updateGenderStatsDisplay(prepared)
         if (!prepared.length) {
           if (emptyEl) {
             emptyEl.textContent =
@@ -1307,7 +1366,17 @@
 
         detailCurrentRecord = record
         detailPhotoUploads = Array.isArray(record.photos) ? record.photos.slice() : []
-        setPhotoUploadStatus('')
+        const currentDocuments =
+          record?.documents && typeof record.documents === 'object' ? record.documents : {}
+        detailDocumentUploads = {
+          idCard: currentDocuments.idCard || null,
+          employmentProof: currentDocuments.employmentProof || null,
+        }
+        detailDocumentDirty.clear()
+        if (!detailCurrentRecord.documents) {
+          detailCurrentRecord.documents = { ...currentDocuments }
+        }
+        setAttachmentUploadStatus('')
 
         const status = PHONE_STATUS_VALUES.includes(record.phoneConsultStatus)
           ? record.phoneConsultStatus
@@ -1379,21 +1448,31 @@
           }
         }
 
-        refreshDetailPhotoAttachments()
+        refreshDetailAttachments()
 
         detailModal.hidden = false
         document.body.classList.add('modal-open')
         if (detailForm) detailForm.scrollTop = 0
       }
 
-      function closeDetailModal() {
+      function closeDetailModal(options = {}) {
+        const keepPendingUploads = Boolean(options.keepPendingUploads)
         detailModal.hidden = true
         document.body.classList.remove('modal-open')
         if (detailForm) detailForm.scrollTop = 0
         detailRecordId = null
         detailCurrentRecord = null
         detailPhotoUploads = []
-        setPhotoUploadStatus('')
+        detailDocumentUploads = { idCard: null, employmentProof: null }
+        detailDocumentDirty.clear()
+        setAttachmentUploadStatus('')
+        if (keepPendingUploads) {
+          pendingUploadPaths.clear()
+        } else {
+          cleanupPendingUploads().catch((error) =>
+            console.warn('[firebase] pending cleanup failed', error),
+          )
+        }
         currentDraftData = null
         if (detailDraftLoadBtn) {
           detailDraftLoadBtn.hidden = true
@@ -1623,8 +1702,18 @@
             urlBox.className = 'attachment-url'
             urlBox.textContent = source
             urlBox.title = source
+            const attachmentId =
+              photo.id || photo.storagePath || `photo-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 6)}`
+            photo.id = attachmentId
+            const deleteBtn = document.createElement('button')
+            deleteBtn.type = 'button'
+            deleteBtn.className = 'attachment-delete-btn'
+            deleteBtn.textContent = '삭제'
+            deleteBtn.dataset.attachmentType = 'photo'
+            deleteBtn.dataset.attachmentId = attachmentId
             item.appendChild(link)
             item.appendChild(urlBox)
+            item.appendChild(deleteBtn)
             container.appendChild(item)
           })
         return container.childElementCount
@@ -1642,6 +1731,10 @@
 
         const hasIdCard = setAttachmentLink(detailIdCardLink, documents.idCard, '신분증')
         if (detailIdCardItem) detailIdCardItem.hidden = !hasIdCard
+        if (detailIdCardDeleteBtn) {
+          detailIdCardDeleteBtn.hidden = !hasIdCard
+          detailIdCardDeleteBtn.disabled = !hasIdCard
+        }
 
         const hasEmployment = setAttachmentLink(
           detailEmploymentLink,
@@ -1649,6 +1742,10 @@
           '재직 증빙'
         )
         if (detailEmploymentItem) detailEmploymentItem.hidden = !hasEmployment
+        if (detailEmploymentDeleteBtn) {
+          detailEmploymentDeleteBtn.hidden = !hasEmployment
+          detailEmploymentDeleteBtn.disabled = !hasEmployment
+        }
 
         const photoCount = renderPhotoAttachments(detailPhotosGrid, photos)
         if (detailPhotosItem) detailPhotosItem.hidden = photoCount === 0
@@ -1659,10 +1756,15 @@
         toggleAttachmentsTab(hasAny || hasUploadControls)
       }
 
-      function refreshDetailPhotoAttachments() {
+      function refreshDetailAttachments() {
         if (!detailAttachmentsSection) return
-        const documents = detailCurrentRecord?.documents || {}
-        updateDetailAttachments(detailCurrentRecord, {
+        const documents = {}
+        Object.entries(detailDocumentUploads || {}).forEach(([key, value]) => {
+          if (value) {
+            documents[key] = value
+          }
+        })
+        updateDetailAttachments(detailCurrentRecord || {}, {
           documents,
           photos: detailPhotoUploads,
         })
@@ -1685,14 +1787,15 @@
         return root.replace(/\/+$/, '') + '/'
       }
 
-      function buildPhotoStoragePath({ phoneKey, role, fileName }) {
+      function buildStoragePath({ phoneKey, subfolder, fileName }) {
         const normalizedPhone = phoneKey || 'unknown'
-        const folder = role === 'full' ? 'photos/full' : 'photos/face'
         const prefix = getStorageRootPrefix()
+        const sanitizedFolder = subfolder ? subfolder.replace(/^\/+|\/+$/g, '') : ''
         const name = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${sanitizeFileName(
           fileName,
         )}`
-        return `${prefix}${normalizedPhone}/${folder}/${name}`
+        const folderSegment = sanitizedFolder ? `${sanitizedFolder}/` : ''
+        return `${prefix}${normalizedPhone}/${folderSegment}${name}`
       }
 
       async function ensureFirebaseStorage() {
@@ -1738,14 +1841,14 @@
         return firebaseInitPromise
       }
 
-      function setPhotoUploadStatus(message, variant = 'info') {
-        if (!detailPhotoUploadStatus) return
-        detailPhotoUploadStatus.textContent = message || ''
-        detailPhotoUploadStatus.classList.remove('is-error', 'is-success')
+      function setAttachmentUploadStatus(message, variant = 'info') {
+        if (!detailAttachmentUploadStatus) return
+        detailAttachmentUploadStatus.textContent = message || ''
+        detailAttachmentUploadStatus.classList.remove('is-error', 'is-success')
         if (variant === 'error') {
-          detailPhotoUploadStatus.classList.add('is-error')
+          detailAttachmentUploadStatus.classList.add('is-error')
         } else if (variant === 'success') {
-          detailPhotoUploadStatus.classList.add('is-success')
+          detailAttachmentUploadStatus.classList.add('is-success')
         }
       }
 
@@ -1753,24 +1856,24 @@
         return role === 'full' ? '전신 사진' : '얼굴 사진'
       }
 
-      async function uploadPhotoFile({ file, role, phoneKey, onProgress }) {
+      async function uploadFileToFirebase({ file, phoneKey, subfolder, metadata = {}, onProgress }) {
         const storage = await ensureFirebaseStorage()
-        const storagePath = buildPhotoStoragePath({
+        const storagePath = buildStoragePath({
           phoneKey,
-          role,
-          fileName: file?.name || 'photo.jpg',
+          subfolder,
+          fileName: file?.name || 'upload',
         })
         const storageRef = storage.ref().child(storagePath)
-        const metadata = {
-          contentType: file?.type || 'application/octet-stream',
+        const uploadMetadata = {
+          contentType: file?.type || metadata.contentType || 'application/octet-stream',
           customMetadata: {
-            role,
             phone: phoneKey,
+            ...(metadata.customMetadata || {}),
           },
         }
 
         return await new Promise((resolve, reject) => {
-          const uploadTask = storageRef.put(file, metadata)
+          const uploadTask = storageRef.put(file, uploadMetadata)
           uploadTask.on(
             'state_changed',
             (snapshot) => {
@@ -1786,20 +1889,11 @@
               try {
                 const downloadURL = await storageRef.getDownloadURL()
                 resolve({
-                  id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-                  name: file?.name || storageRef.name,
-                  size: file?.size || 0,
-                  type: file?.type || metadata.contentType || '',
-                  downloadURL,
-                  url: downloadURL,
                   storagePath,
+                  downloadURL,
                   bucket: storageRef.bucket || storage?.app?.options?.storageBucket || '',
-                  contentType: metadata.contentType,
+                  contentType: uploadMetadata.contentType,
                   uploadedAt: Date.now(),
-                  category: role,
-                  role,
-                  group: 'photos',
-                  persistLevel: 'profile',
                 })
               } catch (error) {
                 reject(error)
@@ -1809,20 +1903,43 @@
         })
       }
 
+      async function deleteAttachmentFile(storagePath) {
+        if (!storagePath) return
+        try {
+          const storage = await ensureFirebaseStorage()
+          const ref = storage.ref().child(storagePath)
+          await ref.delete()
+        } catch (error) {
+          console.warn('[firebase] 파일 삭제 실패', error)
+        }
+      }
+
+      function rememberPendingUpload(storagePath) {
+        if (!storagePath) return
+        pendingUploadPaths.add(storagePath)
+      }
+
+      async function cleanupPendingUploads() {
+        if (!pendingUploadPaths.size) return
+        const targets = Array.from(pendingUploadPaths)
+        pendingUploadPaths.clear()
+        await Promise.all(targets.map((path) => deleteAttachmentFile(path)))
+      }
+
       async function handlePhotoUploadInputChange(event, role) {
         const input = event?.target
         const files = input?.files ? Array.from(input.files) : []
         if (input) input.value = ''
         if (!files.length) return
         if (!detailRecordId || !detailCurrentRecord) {
-          setPhotoUploadStatus('상세 정보를 연 뒤에 업로드할 수 있습니다.', 'error')
+          setAttachmentUploadStatus('상세 정보를 연 뒤에 업로드할 수 있습니다.', 'error')
           showToast('먼저 상세 정보를 연 뒤에 사진을 첨부해주세요.')
           return
         }
         const phoneValue = detailPhoneInput?.value || detailCurrentRecord?.phone || ''
         const phoneKey = normalizePhoneKey(phoneValue)
         if (!phoneKey) {
-          setPhotoUploadStatus('연락처를 입력한 뒤에 업로드해주세요.', 'error')
+          setAttachmentUploadStatus('연락처를 입력한 뒤에 업로드해주세요.', 'error')
           showToast('연락처가 있어야 사진을 올릴 수 있습니다.')
           return
         }
@@ -1834,30 +1951,55 @@
         for (let index = 0; index < files.length; index += 1) {
           const file = files[index]
           if (!file) continue
-          if (file.size > MAX_PHOTO_UPLOAD_SIZE_BYTES) {
-            lastError = new Error(`${file.name} 파일이 ${PHOTO_UPLOAD_SIZE_LABEL}를 초과했습니다.`)
-            setPhotoUploadStatus(lastError.message, 'error')
+          if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+            lastError = new Error(`${file.name} 파일이 ${UPLOAD_SIZE_LABEL}를 초과했습니다.`)
+            setAttachmentUploadStatus(lastError.message, 'error')
             showToast(lastError.message)
             continue
           }
           try {
-            setPhotoUploadStatus(
+            setAttachmentUploadStatus(
               `${label} ${index + 1}/${files.length} 업로드 중...`,
               'info',
             )
-            const uploadResult = await uploadPhotoFile({
+            const uploadResult = await uploadFileToFirebase({
               file,
-              role,
               phoneKey,
+              subfolder: role === 'full' ? 'photos/full' : 'photos/face',
               onProgress: (progress) => {
                 const percent = Math.round(progress * 100)
-                setPhotoUploadStatus(
+                setAttachmentUploadStatus(
                   `${label} ${index + 1}/${files.length} 업로드 중 · ${percent}%`,
                   'info',
                 )
               },
+              metadata: {
+                customMetadata: {
+                  role,
+                  category: role,
+                },
+              },
             })
-            detailPhotoUploads = [...detailPhotoUploads, uploadResult]
+            const record = {
+              id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+              name: file?.name || '사진',
+              size: file?.size || 0,
+              type: file?.type || uploadResult.contentType || '',
+              downloadURL: uploadResult.downloadURL,
+              url: uploadResult.downloadURL,
+              storagePath: uploadResult.storagePath,
+              bucket: uploadResult.bucket,
+              contentType: uploadResult.contentType,
+              uploadedAt: uploadResult.uploadedAt,
+              group: 'photos',
+              category: role,
+              role,
+              persistLevel: 'profile',
+            }
+            rememberPendingUpload(uploadResult.storagePath)
+            detailPhotoUploads = [...detailPhotoUploads, record]
+            if (!detailCurrentRecord.photos) detailCurrentRecord.photos = []
+            detailCurrentRecord.photos.push(record)
             successCount += 1
           } catch (error) {
             console.error('[photo-upload]', error)
@@ -1866,15 +2008,148 @@
         }
 
         if (successCount > 0) {
-          refreshDetailPhotoAttachments()
-          setPhotoUploadStatus('사진 업로드를 완료했습니다.', 'success')
+          if (detailCurrentRecord) {
+            detailCurrentRecord.photos = detailPhotoUploads.slice()
+          }
+          refreshDetailAttachments()
+          setAttachmentUploadStatus('사진 업로드를 완료했습니다.', 'success')
           showToast('사진이 업로드되었습니다.')
         } else if (lastError) {
-          setPhotoUploadStatus(lastError.message, 'error')
+          setAttachmentUploadStatus(lastError.message, 'error')
           showToast(lastError.message)
         } else {
-          setPhotoUploadStatus('업로드된 새 사진이 없습니다.')
+          setAttachmentUploadStatus('업로드된 새 사진이 없습니다.')
         }
+      }
+
+      async function handleDocumentUploadInputChange(event, docKey) {
+        const input = event?.target
+        const files = input?.files ? Array.from(input.files) : []
+        if (input) input.value = ''
+        if (!files.length) return
+        const file = files[0]
+        if (!file) return
+        if (!detailRecordId || !detailCurrentRecord) {
+          setAttachmentUploadStatus('상세 정보를 연 뒤에 업로드할 수 있습니다.', 'error')
+          showToast('먼저 상세 정보를 연 뒤에 증빙 자료를 첨부해주세요.')
+          return
+        }
+        const phoneValue = detailPhoneInput?.value || detailCurrentRecord?.phone || ''
+        const phoneKey = normalizePhoneKey(phoneValue)
+        if (!phoneKey) {
+          setAttachmentUploadStatus('연락처를 입력한 뒤에 업로드해주세요.', 'error')
+          showToast('연락처가 있어야 증빙 자료를 업로드할 수 있습니다.')
+          return
+        }
+        if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+          const message = `${file.name} 파일이 ${UPLOAD_SIZE_LABEL}를 초과했습니다.`
+          setAttachmentUploadStatus(message, 'error')
+          showToast(message)
+          return
+        }
+        const folder = docKey === 'employmentProof' ? 'employment-proof' : 'id-card'
+        const label = docKey === 'employmentProof' ? '재직 증빙' : '신분증'
+        try {
+          setAttachmentUploadStatus(`${label} 업로드 중...`, 'info')
+          const uploadResult = await uploadFileToFirebase({
+            file,
+            phoneKey,
+            subfolder: folder,
+            metadata: {
+              customMetadata: {
+                category: docKey,
+                role: docKey,
+              },
+            },
+            onProgress: (progress) => {
+              const percent = Math.round(progress * 100)
+              setAttachmentUploadStatus(`${label} 업로드 중 · ${percent}%`, 'info')
+            },
+          })
+          const entry = {
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            name: file?.name || label,
+            size: file?.size || 0,
+            type: file?.type || uploadResult.contentType || '',
+            downloadURL: uploadResult.downloadURL,
+            url: uploadResult.downloadURL,
+            storagePath: uploadResult.storagePath,
+            bucket: uploadResult.bucket,
+            contentType: uploadResult.contentType,
+            uploadedAt: uploadResult.uploadedAt,
+            group: 'documents',
+            category: docKey,
+            role: docKey,
+            persistLevel: 'profile',
+          }
+          rememberPendingUpload(uploadResult.storagePath)
+          detailDocumentUploads = {
+            ...detailDocumentUploads,
+            [docKey]: entry,
+          }
+          detailDocumentDirty.add(docKey)
+          if (!detailCurrentRecord.documents) detailCurrentRecord.documents = {}
+          detailCurrentRecord.documents[docKey] = entry
+          refreshDetailAttachments()
+          setAttachmentUploadStatus(`${label} 업로드를 완료했습니다.`, 'success')
+          showToast(`${label}을 업로드했습니다.`)
+        } catch (error) {
+          console.error('[document-upload]', error)
+          const message =
+            error instanceof Error ? error.message : `${label} 업로드에 실패했습니다.`
+          setAttachmentUploadStatus(message, 'error')
+          showToast(message)
+        }
+      }
+
+      async function handleDocumentDelete(docKey) {
+        const entry = detailDocumentUploads?.[docKey]
+        const label = docKey === 'employmentProof' ? '재직 증빙' : '신분증'
+        if (!entry) {
+          showToast(`${label} 자료가 없습니다.`)
+          return
+        }
+        if (!window.confirm(`${label}을 삭제할까요?`)) return
+        if (entry.storagePath) {
+          await deleteAttachmentFile(entry.storagePath)
+          pendingUploadPaths.delete(entry.storagePath)
+        }
+        detailDocumentUploads = {
+          ...detailDocumentUploads,
+          [docKey]: null,
+        }
+        detailDocumentDirty.add(docKey)
+        if (detailCurrentRecord) {
+          if (!detailCurrentRecord.documents) detailCurrentRecord.documents = {}
+          delete detailCurrentRecord.documents[docKey]
+        }
+        refreshDetailAttachments()
+        setAttachmentUploadStatus(`${label}을 삭제했습니다.`, 'success')
+        showToast(`${label}을 삭제했습니다.`)
+      }
+
+      async function handlePhotoDelete(attachmentId) {
+        if (!attachmentId) return
+        const index = detailPhotoUploads.findIndex((photo) => {
+          const photoId = photo?.id || photo?.storagePath
+          return photoId === attachmentId
+        })
+        if (index === -1) return
+        const target = detailPhotoUploads[index]
+        if (!window.confirm('선택한 사진을 삭제할까요?')) return
+        if (target?.storagePath) {
+          await deleteAttachmentFile(target.storagePath)
+          pendingUploadPaths.delete(target.storagePath)
+        }
+        detailPhotoUploads = [
+          ...detailPhotoUploads.slice(0, index),
+          ...detailPhotoUploads.slice(index + 1),
+        ]
+        if (Array.isArray(detailCurrentRecord?.photos)) {
+          detailCurrentRecord.photos = detailPhotoUploads.slice()
+        }
+        refreshDetailAttachments()
+        showToast('사진을 삭제했습니다.')
       }
 
       function getDraftForPhone(phone) {
@@ -2195,6 +2470,12 @@
           notes: detailNotesInput.value?.trim() || '',
         }
         const existingRecord = items.find((item) => item.id === detailRecordId) || {}
+        if (detailDocumentDirty.size) {
+          payload.documents = {}
+          detailDocumentDirty.forEach((key) => {
+            payload.documents[key] = detailDocumentUploads[key] || null
+          })
+        }
         payload.photos = Array.isArray(detailPhotoUploads)
           ? detailPhotoUploads.slice()
           : existingRecord.photos || []
@@ -2221,7 +2502,16 @@
             }
             detailCurrentRecord = updated
             detailPhotoUploads = Array.isArray(updated.photos) ? updated.photos.slice() : []
-            refreshDetailPhotoAttachments()
+            const updatedDocuments =
+              updated?.documents && typeof updated.documents === 'object'
+                ? updated.documents
+                : {}
+            detailDocumentUploads = {
+              idCard: updatedDocuments.idCard || null,
+              employmentProof: updatedDocuments.employmentProof || null,
+            }
+            detailDocumentDirty.clear()
+            refreshDetailAttachments()
           }
           syncFilterOptions()
           syncSelectionWithItems()
@@ -2231,7 +2521,7 @@
             refreshCalendar(true)
           }
           showToast('상세 정보를 저장했습니다.')
-          closeDetailModal()
+          closeDetailModal({ keepPendingUploads: true })
         } catch (error) {
           suppressUpdateToast = false
           console.error(error)
@@ -2851,6 +3141,11 @@
               .some((value) => value.includes(term))
           )
         }
+        if (viewState.status !== 'all') {
+          result = result.filter(
+            (item) => (item.phoneConsultStatus || 'pending') === viewState.status,
+          )
+        }
         if (viewState.gender !== 'all') {
           result = result.filter((item) => (item.gender || '') === viewState.gender)
         }
@@ -2938,12 +3233,130 @@
         if (selectEl === heightFilter) {
           viewState.height = selectEl.value
         }
+        if (selectEl === statusFilter) {
+          viewState.status = selectEl.value
+        }
+      }
+      if (statusFilter) {
+        statusFilter.value = viewState.status || 'all'
       }
 
       function uniqueSorted(values) {
         return Array.from(
           new Set(values.filter((value) => value && value.trim()))
         ).sort((a, b) => a.localeCompare(b, 'ko-KR'))
+      }
+
+      function normalizeGenderValue(value) {
+        const normalized = String(value || '')
+          .trim()
+          .toLowerCase()
+        if (!normalized) return ''
+        if (normalized.startsWith('남')) return 'male'
+        if (normalized.startsWith('여')) return 'female'
+        return ''
+      }
+
+      function openGenderChartModal() {
+        if (!genderChartModal) return
+        genderChartModal.hidden = false
+        drawGenderChart()
+      }
+
+      function closeGenderChartModal() {
+        if (!genderChartModal) return
+        genderChartModal.hidden = true
+      }
+
+      function drawGenderChart() {
+        if (!genderChartCanvas || !genderChartLegend) return
+        const ctx = genderChartCanvas.getContext('2d')
+        const width = genderChartCanvas.width
+        const height = genderChartCanvas.height
+        ctx.clearRect(0, 0, width, height)
+        const { male, female, malePercent = 0, femalePercent = 0 } = genderStatsData
+        const total = male + female
+        if (!total) {
+          ctx.fillStyle = '#8b949e'
+          ctx.font = '16px Pretendard, sans-serif'
+          ctx.textAlign = 'center'
+          ctx.fillText('표시할 데이터가 없습니다.', width / 2, height / 2)
+          genderChartLegend.textContent = '데이터 없음'
+          if (genderChartCenter) {
+            genderChartCenter.innerHTML = `<span style="color:#8b949e;font-size:13px;">데이터 없음</span>`
+          }
+          return
+        }
+        const dominant =
+          male === female ? '균형' : male > female ? '남성 비중이 더 높음' : '여성 비중이 더 높음'
+        if (genderChartSummary) {
+          genderChartSummary.textContent = `${dominant} · 남 ${malePercent}% / 여 ${femalePercent}%`
+        }
+        const data = [
+          { value: male, color: '#3b82f6', label: `남 ${male}명 (${malePercent}%)` },
+          { value: female, color: '#ec4899', label: `여 ${female}명 (${femalePercent}%)` },
+        ]
+        let startAngle = -Math.PI / 2
+        const centerX = width / 2
+        const centerY = height / 2
+        const radius = Math.min(width, height) / 2 - 10
+        data.forEach(({ value, color }) => {
+          const sliceAngle = (value / total) * Math.PI * 2
+          ctx.beginPath()
+          ctx.moveTo(centerX, centerY)
+          ctx.fillStyle = color
+          ctx.arc(centerX, centerY, radius, startAngle, startAngle + sliceAngle)
+          ctx.closePath()
+          ctx.fill()
+          startAngle += sliceAngle
+        })
+        ctx.beginPath()
+        ctx.fillStyle = '#101010'
+        ctx.arc(centerX, centerY, radius * 0.55, 0, Math.PI * 2)
+        ctx.fill()
+        if (genderChartCenter) {
+          genderChartCenter.innerHTML = `
+            <strong style="color:#3b82f6">남 ${malePercent}%</strong>
+            <strong style="color:#ec4899">여 ${femalePercent}%</strong>
+            <span style="font-size:12px;color:#9da4b0;">남 ${male}명 · 여 ${female}명</span>
+          `
+        }
+        genderChartLegend.innerHTML = data
+          .map((item) => `<span style="color:${item.color}">${item.label}</span>`)
+          .join('')
+        if (genderChartBars) {
+          genderChartBars.innerHTML = data
+            .map(
+              (item) => `
+              <div class="gender-chart-bar">
+                <span style="color:${item.color}">${item.label}</span>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:${Math.min(
+                    100,
+                    Math.max(0, (item.value / total) * 100),
+                  )}%;background:${item.color};"></div>
+                </div>
+              </div>
+            `,
+            )
+            .join('')
+        }
+      }
+
+      function updateGenderStatsDisplay(list) {
+        if (!genderStatsEl) return
+        let male = 0
+        let female = 0
+        list.forEach((item) => {
+          const type = normalizeGenderValue(item.gender)
+          if (type === 'male') male += 1
+          if (type === 'female') female += 1
+        })
+        const total = male + female
+        const malePercent = total ? Math.round((male / total) * 100) : 0
+        const femalePercent = total ? Math.round((female / total) * 100) : 0
+        genderStatsData = { male, female, malePercent, femalePercent }
+        genderStatsEl.textContent = `남 ${male}명 (${malePercent}%) · 여 ${female}명 (${femalePercent}%)`
       }
 
       function syncSelectionWithItems() {

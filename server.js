@@ -401,21 +401,24 @@ app.patch('/api/consult/:id', async (req, res) => {
 
   if (req.body && typeof req.body.documents === 'object') {
     const documentsRaw = req.body.documents
-    const nextDocuments = {
-      idCard: sanitizeUploadEntry(documentsRaw.idCard, {
-        fallbackName: '신분증',
-        defaultRole: 'idCard',
-      }),
-      employmentProof: sanitizeUploadEntry(documentsRaw.employmentProof, {
-        fallbackName: '재직 증빙',
-        defaultRole: 'employmentProof',
-      }),
-    }
-    const documentEntries = Object.entries(nextDocuments).filter(([, value]) => Boolean(value))
-    if (documentEntries.length) {
-      updates.documents = Object.fromEntries(documentEntries)
-    } else if (documentsRaw && Object.keys(documentsRaw).length === 0) {
-      updates.documents = {}
+    const nextDocuments = {}
+    let hasDocumentPatch = false
+    ;['idCard', 'employmentProof'].forEach((key) => {
+      if (Object.prototype.hasOwnProperty.call(documentsRaw, key)) {
+        hasDocumentPatch = true
+        const sanitized = sanitizeUploadEntry(documentsRaw[key], {
+          fallbackName: key === 'employmentProof' ? '재직 증빙' : '신분증',
+          defaultRole: key,
+        })
+        if (sanitized) {
+          nextDocuments[key] = sanitized
+        } else {
+          nextDocuments[key] = null
+        }
+      }
+    })
+    if (hasDocumentPatch) {
+      updates.documents = nextDocuments
     }
   }
 

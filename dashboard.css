@@ -10,7 +10,7 @@
       body {
         margin: 0;
         font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", Roboto, "Helvetica Neue", Arial, sans-serif;
-        background: #0d1117;
+        background: #101010;
         color: #c9d1d9;
       }
       body.auth-locked {
@@ -240,7 +240,7 @@
       .scheduler-panel {
         margin: 24px clamp(24px, 5vw, 72px) 16px;
         padding: 20px 24px;
-        background: #111620;
+        background: transparent;
         border: 1px solid #30363d !important;
         border-radius: 18px;
         box-shadow: 0 20px 60px rgba(5, 8, 13, 0.4);
@@ -327,7 +327,7 @@
         align-items: center;
         justify-content: space-between;
         gap: 12px;
-        background: #0d1117;
+        background: transparent;
         min-height: 96px;
         transition: border-color 0.2s ease, transform 0.2s ease;
       }
@@ -337,7 +337,7 @@
       }
       .scheduler-card.is-today {
         border-color: #3b82f6;
-        box-shadow: 0 10px 26px rgba(59, 130, 246, 0.25);
+        box-shadow: none;
       }
       .scheduler-date {
         display: flex;
@@ -369,11 +369,38 @@
         gap: 12px;
         margin: 16px clamp(24px, 5vw, 72px) 8px;
       }
-      .toolbar-title {
+      .toolbar-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
         margin: 12px 0 0 0;
+      }
+      .gender-stats-wrap {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .toolbar-title {
+        margin: 0;
         font-size: 20px;
         font-weight: 700;
         color: #f0f6fc;
+      }
+      .gender-stats {
+        font-size: 14px;
+        color: #8b949e;
+      }
+      .gender-chart-btn {
+        border: 1px solid rgba(201, 209, 217, 0.35);
+        background: transparent;
+        color: #c9d1d9;
+        border-radius: 8px;
+        padding: 6px 12px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .gender-chart-btn:hover {
+        border-color: rgba(201, 209, 217, 0.65);
       }
       .toolbar-filters {
         display: flex;
@@ -403,6 +430,12 @@
       }
       .toolbar select {
         min-width: 150px;
+        background-color: #101010;
+        color: #f0f6fc;
+      }
+      .toolbar select option {
+        background-color: #101010;
+        color: #f0f6fc;
       }
       .week-filter-label {
         color: #8b949e;
@@ -560,7 +593,7 @@
       .calendar-overlay {
         position: fixed;
         inset: 0;
-        background: rgba(2, 6, 12, 0.68);
+        background: transparent;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -574,10 +607,10 @@
         width: min(1080px, 100%);
         height: min(90vh, 880px);
         max-height: 90vh;
-        background: linear-gradient(160deg, rgba(13, 17, 23, 0.92), rgba(13, 17, 23, 0.98));
+        background: #101010;
         border: 1px solid #30363d;
         border-radius: 28px;
-        box-shadow: 0 40px 120px rgba(1, 4, 9, 0.6);
+        box-shadow: none;
         padding: 32px clamp(24px, 4vw, 40px);
         display: flex;
         flex-direction: column;
@@ -820,9 +853,9 @@
         border-radius: 999px;
       }
       .calendar-panel {
-        border: 1px solid rgba(48, 54, 61, 0.6);
+        border: none;
         border-radius: 18px;
-        background: rgba(13, 17, 23, 0.95);
+        background: transparent;
         padding: 20px;
         display: flex;
         flex-direction: column;
@@ -852,7 +885,7 @@
         border: 1px solid rgba(48, 54, 61, 0.6);
         border-radius: 16px;
         padding: 12px 14px;
-        background: rgba(22, 27, 34, 0.92);
+        background: transparent;
         display: flex;
         flex-direction: column;
         gap: 6px;
@@ -888,7 +921,7 @@
       .modal-overlay {
         position: fixed;
         inset: 0;
-        background: rgba(2, 6, 12, 0.65);
+        background: transparent;
         display: flex;
         align-items: flex-start;
         justify-content: center;
@@ -902,10 +935,10 @@
         width: min(1080px, 95vw);
         min-height: calc(100vh - 72px);
         max-height: calc(100vh - 72px);
-        background: #05070d;
+        background: #101010;
         border: 1px solid #30363d;
         border-radius: 20px;
-        box-shadow: 0 30px 80px rgba(1, 4, 9, 0.55);
+        box-shadow: none;
         padding: 28px;
         display: flex;
         flex-direction: column;
@@ -1248,13 +1281,34 @@
         gap: 6px;
       }
       .attachment-upload-controls {
-        border: 1px dashed #30363d;
-        border-radius: 12px;
-        padding: 14px;
+        border: none;
+        border-radius: 0;
+        padding: 0;
         margin-bottom: 18px;
-        background: rgba(13, 17, 23, 0.6);
+        background: transparent;
         display: grid;
         gap: 10px;
+      }
+      .attachment-item-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 8px;
+      }
+      .attachment-delete-btn {
+        border: 1px solid rgba(239, 68, 68, 0.6);
+        background: transparent;
+        color: #f87171;
+        border-radius: 8px;
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .attachment-delete-btn:hover {
+        border-color: rgba(248, 113, 113, 0.9);
+        color: #fca5a5;
       }
       .attachment-upload-hint {
         margin: 0;
@@ -1279,6 +1333,7 @@
       }
       .attachment-upload-buttons button:hover {
         border-color: rgba(201, 209, 217, 0.65);
+        background: transparent;
       }
       .attachment-upload-status {
         min-height: 18px;
@@ -1308,6 +1363,153 @@
         width: 100%;
         height: 120px;
         object-fit: cover;
+      }
+      .attachment-photo-item .attachment-delete-btn {
+        margin-top: 6px;
+        justify-self: start;
+      }
+      .simple-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: transparent;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 200;
+        backdrop-filter: none;
+      }
+      .simple-modal-overlay[hidden] {
+        display: none;
+      }
+      .simple-modal {
+        background: linear-gradient(160deg, rgba(16, 16, 16, 0.95), rgba(10, 10, 10, 0.92));
+        border: 1px solid rgba(48, 54, 61, 0.75);
+        border-radius: 24px;
+        padding: 32px 36px 40px;
+        width: min(520px, 92vw);
+        color: #f0f6fc;
+        box-shadow: 0 40px 120px rgba(0, 0, 0, 0.65);
+        overflow: hidden;
+        animation: modalPop 0.3s ease forwards;
+      }
+      .simple-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin: 0 0 12px 0;
+        padding: 0 8px 0 0;
+        border-bottom: none;
+      }
+      .simple-modal-header h3 {
+        margin: 0;
+        font-size: 18px;
+      }
+      .simple-modal-header button {
+        border: none;
+        background: transparent;
+        color: #f0f6fc;
+        font-size: 22px;
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 50%;
+        transition: background 0.2s ease, transform 0.2s ease;
+      }
+      .simple-modal-header button:hover {
+        background: rgba(240, 246, 252, 0.08);
+        transform: rotate(90deg);
+      }
+      .gender-chart-body {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        align-items: center;
+      }
+      .gender-chart-canvas {
+        position: relative;
+      }
+      .gender-chart-summary {
+        font-size: 15px;
+        color: #c9d1d9;
+        text-align: center;
+      }
+      .gender-chart-bars {
+        align-self: stretch;
+        display: grid;
+        gap: 10px;
+      }
+      .gender-chart-bar {
+        display: grid;
+        gap: 6px;
+      }
+      .gender-chart-bar span {
+        font-size: 13px;
+        color: #9da4b0;
+      }
+      .gender-chart-bar .bar-track {
+        width: 100%;
+        height: 8px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+        overflow: hidden;
+      }
+      .gender-chart-bar .bar-fill {
+        height: 100%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, rgba(59, 130, 246, 0.85), rgba(59, 130, 246, 0.45));
+        transform-origin: left;
+        transition: width 0.35s ease;
+      }
+      .gender-chart-legend {
+        display: flex;
+        gap: 12px;
+        font-size: 14px;
+        color: #c9d1d9;
+      }
+      .gender-chart-legend span {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .gender-chart-legend span::before {
+        content: '';
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+        background: currentColor;
+      }
+      .gender-chart-center {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        color: #f0f6fc;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        pointer-events: none;
+      }
+      .gender-chart-center strong {
+        font-size: 18px;
+      }
+      @keyframes modalPop {
+        from {
+          transform: translateY(20px) scale(0.95);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0) scale(1);
+          opacity: 1;
+        }
+      }
+      @keyframes overlayFadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
       }
       .modal-actions {
         display: flex;
@@ -1348,7 +1550,6 @@
         display: flex;
         flex-direction: column;
         gap: 16px;
-        box-shadow: 0 18px 36px rgba(1, 4, 9, 0.4);
       }
       .card h2 {
         margin: 0;
