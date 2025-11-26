@@ -20,6 +20,9 @@
     </style>
 
     <script src="backend-config.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
   </head>
   <body class="auth-locked" data-app-variant="consult">
     <div id="authOverlay" class="auth-overlay" role="dialog" aria-modal="true">
@@ -56,6 +59,7 @@
         <a href="https://www.notion.so/29ef5285ecb6807cb866c135f877c7a3?source=copy_link" target="_blank" rel="noopener noreferrer">Notion</a>
             <a href="https://dashboard.render.com/web/srv-d47j4nshg0os73fnnhd0/deploys/dep-d48ish3e5dus73c7t7ng" target="_blank" rel="noopener noreferrer">Render</a>
         <a href="https://github.com/wowonjin/ygsa" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="https://console.firebase.google.com/u/0/project/ygsa-bee32/overview?hl=ko&fb_gclid=Cj0KCQiAxJXJBhD_ARIsAH_JGji1x4qCrSF6CNI5ryYncmLs0B2vwQ-HMa7gdO-X1PEPOBht3i3wXkcaAjzDEALw_wcB" target="_blank" rel="noopener noreferrer">Firebase</a>
       </div>
         </div>
       </div>
@@ -792,6 +796,16 @@
             hidden
           >
             <h3>증빙 자료 및 사진</h3>
+            <div class="attachment-upload-controls" id="detailPhotoUploadControls">
+              <p class="attachment-upload-hint">사진은 Firebase Storage에 저장되며 파일당 최대 10MB까지 지원합니다.</p>
+              <div class="attachment-upload-buttons">
+                <button type="button" id="detailPhotoFaceBtn">얼굴 사진 업로드</button>
+                <button type="button" id="detailPhotoFullBtn">전신 사진 업로드</button>
+              </div>
+              <input type="file" id="detailPhotoFaceInput" accept="image/*" multiple hidden />
+              <input type="file" id="detailPhotoFullInput" accept="image/*" multiple hidden />
+              <p id="detailPhotoUploadStatus" class="attachment-upload-status" aria-live="polite"></p>
+            </div>
             <div class="attachment-items">
               <div class="attachment-item" id="detailIdCardItem" hidden>
                 <h4>신분증</h4>

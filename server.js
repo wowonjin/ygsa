@@ -399,6 +399,39 @@ app.patch('/api/consult/:id', async (req, res) => {
     updates.depositStatus = status
   }
 
+  if (req.body && typeof req.body.documents === 'object') {
+    const documentsRaw = req.body.documents
+    const nextDocuments = {
+      idCard: sanitizeUploadEntry(documentsRaw.idCard, {
+        fallbackName: '신분증',
+        defaultRole: 'idCard',
+      }),
+      employmentProof: sanitizeUploadEntry(documentsRaw.employmentProof, {
+        fallbackName: '재직 증빙',
+        defaultRole: 'employmentProof',
+      }),
+    }
+    const documentEntries = Object.entries(nextDocuments).filter(([, value]) => Boolean(value))
+    if (documentEntries.length) {
+      updates.documents = Object.fromEntries(documentEntries)
+    } else if (documentsRaw && Object.keys(documentsRaw).length === 0) {
+      updates.documents = {}
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(req.body || {}, 'photos')) {
+    const photosRaw = Array.isArray(req.body.photos) ? req.body.photos : []
+    const sanitizedPhotos = photosRaw
+      .map((photo) =>
+        sanitizeUploadEntry(photo, {
+          fallbackName: '사진',
+          defaultRole: sanitizeText(photo?.role || photo?.category || photo?.meta?.type || ''),
+        }),
+      )
+      .filter(Boolean)
+    updates.photos = sanitizedPhotos
+  }
+
   if (!Object.keys(updates).length) {
     return res.status(400).json({ ok: false, message: '변경할 항목이 없습니다.' })
   }

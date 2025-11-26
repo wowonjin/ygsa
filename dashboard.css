@@ -1247,6 +1247,50 @@
         display: grid;
         gap: 6px;
       }
+      .attachment-upload-controls {
+        border: 1px dashed #30363d;
+        border-radius: 12px;
+        padding: 14px;
+        margin-bottom: 18px;
+        background: rgba(13, 17, 23, 0.6);
+        display: grid;
+        gap: 10px;
+      }
+      .attachment-upload-hint {
+        margin: 0;
+        font-size: 13px;
+        color: #9da4b0;
+      }
+      .attachment-upload-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      .attachment-upload-buttons button {
+        border: 1px solid rgba(201, 209, 217, 0.35);
+        background: transparent;
+        color: #c9d1d9;
+        border-radius: 10px;
+        padding: 8px 14px;
+        font-weight: 600;
+        font-size: 13px;
+        cursor: pointer;
+        transition: border-color 0.2s ease, color 0.2s ease;
+      }
+      .attachment-upload-buttons button:hover {
+        border-color: rgba(201, 209, 217, 0.65);
+      }
+      .attachment-upload-status {
+        min-height: 18px;
+        font-size: 13px;
+        color: #9da4b0;
+      }
+      .attachment-upload-status.is-error {
+        color: #ef4444;
+      }
+      .attachment-upload-status.is-success {
+        color: #34d399;
+      }
       .attachment-photo-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));

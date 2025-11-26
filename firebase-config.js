@@ -147,7 +147,7 @@
       globalScope.FIREBASE_STORAGE_ROOT.trim()) ||
     configStorageRoot ||
     parseMetaString('firebase-storage-root') ||
-    'profile-uploads'
+    'profiles'
 
   Object.defineProperty(globalScope, 'FIREBASE_STORAGE_ROOT', {
     configurable: true,

@@ -320,6 +320,11 @@
       const detailEmploymentLink = document.getElementById('detailEmploymentLink')
       const detailPhotosItem = document.getElementById('detailPhotosItem')
       const detailPhotosGrid = document.getElementById('detailPhotosGrid')
+      const detailPhotoFaceBtn = document.getElementById('detailPhotoFaceBtn')
+      const detailPhotoFullBtn = document.getElementById('detailPhotoFullBtn')
+      const detailPhotoFaceInput = document.getElementById('detailPhotoFaceInput')
+      const detailPhotoFullInput = document.getElementById('detailPhotoFullInput')
+      const detailPhotoUploadStatus = document.getElementById('detailPhotoUploadStatus')
       const detailDraftLoadBtn = document.getElementById('detailDraftLoadBtn')
       const detailSectionButtons = Array.from(
         document.querySelectorAll('[data-detail-section-target]')
@@ -337,6 +342,13 @@
       let suppressDeleteToast = false
       let suppressUpdateToast = false
       let detailRecordId = null
+      let detailCurrentRecord = null
+      let detailPhotoUploads = []
+      const MAX_PHOTO_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024
+      const PHOTO_UPLOAD_SIZE_LABEL = '10MB'
+      let firebaseStorageInstance = null
+      let firebaseInitPromise = null
+      let firebaseInitError = null
       let depositStatusUpdating = false
       let activeDetailSectionId = null
       const viewState = {
@@ -484,6 +496,14 @@
       detailDateInput.addEventListener('change', handleDetailDateChange)
       detailTimeSelect.addEventListener('change', handleDetailTimeChange)
       detailClearScheduleBtn.addEventListener('click', handleClearSchedule)
+      detailPhotoFaceBtn?.addEventListener('click', () => detailPhotoFaceInput?.click())
+      detailPhotoFullBtn?.addEventListener('click', () => detailPhotoFullInput?.click())
+      detailPhotoFaceInput?.addEventListener('change', (event) =>
+        handlePhotoUploadInputChange(event, 'face'),
+      )
+      detailPhotoFullInput?.addEventListener('change', (event) =>
+        handlePhotoUploadInputChange(event, 'full'),
+      )
       if (detailValuesSelect) {
         detailValuesSelect.addEventListener('change', () =>
           enforceMultiSelectLimit(detailValuesSelect, 1),
@@ -1285,6 +1305,10 @@
           return
         }
 
+        detailCurrentRecord = record
+        detailPhotoUploads = Array.isArray(record.photos) ? record.photos.slice() : []
+        setPhotoUploadStatus('')
+
         const status = PHONE_STATUS_VALUES.includes(record.phoneConsultStatus)
           ? record.phoneConsultStatus
           : 'pending'
@@ -1355,7 +1379,7 @@
           }
         }
 
-        updateDetailAttachments(record)
+        refreshDetailPhotoAttachments()
 
         detailModal.hidden = false
         document.body.classList.add('modal-open')
@@ -1367,6 +1391,9 @@
         document.body.classList.remove('modal-open')
         if (detailForm) detailForm.scrollTop = 0
         detailRecordId = null
+        detailCurrentRecord = null
+        detailPhotoUploads = []
+        setPhotoUploadStatus('')
         currentDraftData = null
         if (detailDraftLoadBtn) {
           detailDraftLoadBtn.hidden = true
@@ -1603,10 +1630,15 @@
         return container.childElementCount
       }
 
-      function updateDetailAttachments(record) {
+      function updateDetailAttachments(record, options = {}) {
         if (!detailAttachmentsSection) return
-        const documents = record?.documents || {}
-        const photos = Array.isArray(record?.photos) ? record.photos : []
+        const documents =
+          options.documents !== undefined ? options.documents : record?.documents || {}
+        const photos = Array.isArray(options?.photos)
+          ? options.photos
+          : Array.isArray(record?.photos)
+          ? record.photos
+          : []
 
         const hasIdCard = setAttachmentLink(detailIdCardLink, documents.idCard, '신분증')
         if (detailIdCardItem) detailIdCardItem.hidden = !hasIdCard
@@ -1622,8 +1654,227 @@
         if (detailPhotosItem) detailPhotosItem.hidden = photoCount === 0
 
         const hasAny = hasIdCard || hasEmployment || photoCount > 0
-        detailAttachmentsSection.hidden = !hasAny
-        toggleAttachmentsTab(hasAny)
+        const hasUploadControls = Boolean(detailPhotoFaceBtn || detailPhotoFullBtn)
+        detailAttachmentsSection.hidden = !hasAny && !hasUploadControls
+        toggleAttachmentsTab(hasAny || hasUploadControls)
+      }
+
+      function refreshDetailPhotoAttachments() {
+        if (!detailAttachmentsSection) return
+        const documents = detailCurrentRecord?.documents || {}
+        updateDetailAttachments(detailCurrentRecord, {
+          documents,
+          photos: detailPhotoUploads,
+        })
+      }
+
+      function sanitizeFileName(name) {
+        return String(name || 'upload')
+          .replace(/[^0-9a-zA-Z._-]/g, '_')
+          .replace(/_+/g, '_')
+          .slice(-80)
+      }
+
+      function getStorageRootPrefix() {
+        const root =
+          typeof window.FIREBASE_STORAGE_ROOT === 'string' &&
+          window.FIREBASE_STORAGE_ROOT.trim()
+            ? window.FIREBASE_STORAGE_ROOT.trim()
+            : ''
+        if (!root) return ''
+        return root.replace(/\/+$/, '') + '/'
+      }
+
+      function buildPhotoStoragePath({ phoneKey, role, fileName }) {
+        const normalizedPhone = phoneKey || 'unknown'
+        const folder = role === 'full' ? 'photos/full' : 'photos/face'
+        const prefix = getStorageRootPrefix()
+        const name = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${sanitizeFileName(
+          fileName,
+        )}`
+        return `${prefix}${normalizedPhone}/${folder}/${name}`
+      }
+
+      async function ensureFirebaseStorage() {
+        if (firebaseStorageInstance) return firebaseStorageInstance
+        if (firebaseInitError) throw firebaseInitError
+        if (firebaseInitPromise) return firebaseInitPromise
+
+        firebaseInitPromise = (async () => {
+          if (typeof firebase === 'undefined' || typeof firebase.initializeApp !== 'function') {
+            throw new Error('Firebase SDK를 불러오지 못했습니다.')
+          }
+          let config = window.FIREBASE_CONFIG
+          if (!config || !config.apiKey) {
+            const configPromise = window.__FIREBASE_CONFIG_PROMISE__
+            if (configPromise && typeof configPromise.then === 'function') {
+              config = await configPromise
+            }
+          }
+          if (!config || !config.apiKey) {
+            throw new Error('Firebase 설정을 불러오지 못했습니다.')
+          }
+          if (!firebase.apps || !firebase.apps.length) {
+            try {
+              firebase.initializeApp(config)
+            } catch (error) {
+              if (!/already exists/i.test(error?.message || '')) {
+                throw error
+              }
+            }
+          }
+          firebaseStorageInstance = firebase.storage()
+          return firebaseStorageInstance
+        })()
+          .catch((error) => {
+            firebaseInitError =
+              error instanceof Error ? error : new Error('Firebase 초기화에 실패했습니다.')
+            throw firebaseInitError
+          })
+          .finally(() => {
+            firebaseInitPromise = null
+          })
+
+        return firebaseInitPromise
+      }
+
+      function setPhotoUploadStatus(message, variant = 'info') {
+        if (!detailPhotoUploadStatus) return
+        detailPhotoUploadStatus.textContent = message || ''
+        detailPhotoUploadStatus.classList.remove('is-error', 'is-success')
+        if (variant === 'error') {
+          detailPhotoUploadStatus.classList.add('is-error')
+        } else if (variant === 'success') {
+          detailPhotoUploadStatus.classList.add('is-success')
+        }
+      }
+
+      function getPhotoRoleLabel(role) {
+        return role === 'full' ? '전신 사진' : '얼굴 사진'
+      }
+
+      async function uploadPhotoFile({ file, role, phoneKey, onProgress }) {
+        const storage = await ensureFirebaseStorage()
+        const storagePath = buildPhotoStoragePath({
+          phoneKey,
+          role,
+          fileName: file?.name || 'photo.jpg',
+        })
+        const storageRef = storage.ref().child(storagePath)
+        const metadata = {
+          contentType: file?.type || 'application/octet-stream',
+          customMetadata: {
+            role,
+            phone: phoneKey,
+          },
+        }
+
+        return await new Promise((resolve, reject) => {
+          const uploadTask = storageRef.put(file, metadata)
+          uploadTask.on(
+            'state_changed',
+            (snapshot) => {
+              if (typeof onProgress === 'function' && snapshot?.totalBytes) {
+                const progress = snapshot.totalBytes
+                  ? snapshot.bytesTransferred / snapshot.totalBytes
+                  : 0
+                onProgress(progress)
+              }
+            },
+            (error) => reject(error),
+            async () => {
+              try {
+                const downloadURL = await storageRef.getDownloadURL()
+                resolve({
+                  id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                  name: file?.name || storageRef.name,
+                  size: file?.size || 0,
+                  type: file?.type || metadata.contentType || '',
+                  downloadURL,
+                  url: downloadURL,
+                  storagePath,
+                  bucket: storageRef.bucket || storage?.app?.options?.storageBucket || '',
+                  contentType: metadata.contentType,
+                  uploadedAt: Date.now(),
+                  category: role,
+                  role,
+                  group: 'photos',
+                  persistLevel: 'profile',
+                })
+              } catch (error) {
+                reject(error)
+              }
+            },
+          )
+        })
+      }
+
+      async function handlePhotoUploadInputChange(event, role) {
+        const input = event?.target
+        const files = input?.files ? Array.from(input.files) : []
+        if (input) input.value = ''
+        if (!files.length) return
+        if (!detailRecordId || !detailCurrentRecord) {
+          setPhotoUploadStatus('상세 정보를 연 뒤에 업로드할 수 있습니다.', 'error')
+          showToast('먼저 상세 정보를 연 뒤에 사진을 첨부해주세요.')
+          return
+        }
+        const phoneValue = detailPhoneInput?.value || detailCurrentRecord?.phone || ''
+        const phoneKey = normalizePhoneKey(phoneValue)
+        if (!phoneKey) {
+          setPhotoUploadStatus('연락처를 입력한 뒤에 업로드해주세요.', 'error')
+          showToast('연락처가 있어야 사진을 올릴 수 있습니다.')
+          return
+        }
+
+        const label = getPhotoRoleLabel(role)
+        let successCount = 0
+        let lastError = null
+
+        for (let index = 0; index < files.length; index += 1) {
+          const file = files[index]
+          if (!file) continue
+          if (file.size > MAX_PHOTO_UPLOAD_SIZE_BYTES) {
+            lastError = new Error(`${file.name} 파일이 ${PHOTO_UPLOAD_SIZE_LABEL}를 초과했습니다.`)
+            setPhotoUploadStatus(lastError.message, 'error')
+            showToast(lastError.message)
+            continue
+          }
+          try {
+            setPhotoUploadStatus(
+              `${label} ${index + 1}/${files.length} 업로드 중...`,
+              'info',
+            )
+            const uploadResult = await uploadPhotoFile({
+              file,
+              role,
+              phoneKey,
+              onProgress: (progress) => {
+                const percent = Math.round(progress * 100)
+                setPhotoUploadStatus(
+                  `${label} ${index + 1}/${files.length} 업로드 중 · ${percent}%`,
+                  'info',
+                )
+              },
+            })
+            detailPhotoUploads = [...detailPhotoUploads, uploadResult]
+            successCount += 1
+          } catch (error) {
+            console.error('[photo-upload]', error)
+            lastError = error instanceof Error ? error : new Error('사진 업로드에 실패했습니다.')
+          }
+        }
+
+        if (successCount > 0) {
+          refreshDetailPhotoAttachments()
+          setPhotoUploadStatus('사진 업로드를 완료했습니다.', 'success')
+          showToast('사진이 업로드되었습니다.')
+        } else if (lastError) {
+          setPhotoUploadStatus(lastError.message, 'error')
+          showToast(lastError.message)
+        } else {
+          setPhotoUploadStatus('업로드된 새 사진이 없습니다.')
+        }
       }
 
       function getDraftForPhone(phone) {
@@ -1944,8 +2195,9 @@
           notes: detailNotesInput.value?.trim() || '',
         }
         const existingRecord = items.find((item) => item.id === detailRecordId) || {}
-        payload.documents = existingRecord.documents || {}
-        payload.photos = existingRecord.photos || []
+        payload.photos = Array.isArray(detailPhotoUploads)
+          ? detailPhotoUploads.slice()
+          : existingRecord.photos || []
 
         suppressUpdateToast = true
         try {
@@ -1967,6 +2219,9 @@
             } else {
               items.push(updated)
             }
+            detailCurrentRecord = updated
+            detailPhotoUploads = Array.isArray(updated.photos) ? updated.photos.slice() : []
+            refreshDetailPhotoAttachments()
           }
           syncFilterOptions()
           syncSelectionWithItems()
