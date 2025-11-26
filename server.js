@@ -385,6 +385,61 @@ app.patch('/api/consult/:id', async (req, res) => {
     }
   }
 
+  const optionalDetailTextFields = {
+    mbti: sanitizeText,
+    university: sanitizeText,
+    salaryRange: sanitizeText,
+    smoking: sanitizeText,
+    religion: sanitizeText,
+    longDistance: sanitizeText,
+    dink: sanitizeText,
+    lastRelationship: sanitizeText,
+    marriageTiming: sanitizeText,
+    relationshipCount: sanitizeText,
+    carOwnership: sanitizeText,
+    tattoo: sanitizeText,
+    divorceStatus: sanitizeText,
+    preferredAppearance: sanitizeText,
+  }
+
+  Object.entries(optionalDetailTextFields).forEach(([field, sanitizer]) => {
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, field)) {
+      updates[field] = sanitizer(req.body[field])
+    }
+  })
+
+  const optionalDetailNoteFields = {
+    jobDetail: sanitizeNotes,
+    profileAppeal: sanitizeNotes,
+    sufficientCondition: sanitizeNotes,
+    necessaryCondition: sanitizeNotes,
+    likesDislikes: sanitizeNotes,
+    valuesCustom: sanitizeNotes,
+    aboutMe: sanitizeNotes,
+  }
+
+  Object.entries(optionalDetailNoteFields).forEach(([field, sanitizer]) => {
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, field)) {
+      updates[field] = sanitizer(req.body[field])
+    }
+  })
+
+  if (Object.prototype.hasOwnProperty.call(req.body || {}, 'preferredHeights')) {
+    updates.preferredHeights = sanitizeStringArray(req.body.preferredHeights)
+  }
+
+  if (Object.prototype.hasOwnProperty.call(req.body || {}, 'preferredAges')) {
+    updates.preferredAges = sanitizeStringArray(req.body.preferredAges)
+  }
+
+  if (Object.prototype.hasOwnProperty.call(req.body || {}, 'preferredLifestyle')) {
+    updates.preferredLifestyle = sanitizeStringArray(req.body.preferredLifestyle)
+  }
+
+  if (Object.prototype.hasOwnProperty.call(req.body || {}, 'values')) {
+    updates.values = sanitizeStringArray(req.body.values).slice(0, 2)
+  }
+
   if (Object.prototype.hasOwnProperty.call(req.body || {}, 'height')) {
     updates.height = normalizeHeight(req.body.height)
   } else if (Object.prototype.hasOwnProperty.call(req.body || {}, 'region')) {
