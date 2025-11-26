@@ -1449,6 +1449,14 @@
         }
 
         refreshDetailAttachments()
+        const hasBasicSection = detailSectionButtons.some(
+          (button) => button.dataset.detailSectionTarget === 'basic',
+        )
+        if (hasBasicSection) {
+          setActiveDetailSection('basic')
+        } else {
+          resetDetailSectionTabs()
+        }
 
         detailModal.hidden = false
         document.body.classList.add('modal-open')

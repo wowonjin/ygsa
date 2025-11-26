@@ -989,6 +989,12 @@
         border: none;
         box-shadow: none;
       }
+      .detail-divider {
+        grid-column: 1 / -1;
+        border: none;
+        border-top: 1px solid rgba(48, 54, 61, 0.6);
+        margin: 0;
+      }
       .detail-priority .field {
         display: flex;
         flex-direction: column;
@@ -1005,7 +1011,15 @@
         display: flex;
         flex-wrap: wrap;
         gap: 10px;
-        margin: 4px 0 6px;
+        margin: 8px 0 6px;
+        align-items: center;
+      }
+      .detail-tabs-label {
+        flex-basis: 100%;
+        margin: 0 0 4px;
+        font-size: 20px;
+        font-weight: 700;
+        color: #ffffff;
       }
       .detail-section-tab {
         border: 1px solid rgba(240, 246, 252, 0.2);
@@ -1178,13 +1192,13 @@
         background: #30363d;
       }
       .detail-attachments {
-        margin-top: 24px;
-        padding: 18px 0;
+        margin-top: 12px;
+        padding: 12px 0;
         border-radius: 0;
         border: none;
         background: transparent;
         display: grid;
-        gap: 16px;
+        gap: 14px;
       }
       .detail-attachments h3 {
         margin: 0;
