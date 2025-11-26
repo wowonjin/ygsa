@@ -1934,6 +1934,101 @@
         await Promise.all(targets.map((path) => deleteAttachmentFile(path)))
       }
 
+      function collectRecordStoragePaths(record) {
+        const paths = []
+        if (!record || typeof record !== 'object') return paths
+        const documents =
+          record.documents && typeof record.documents === 'object' ? record.documents : {}
+        Object.values(documents).forEach((entry) => {
+          const path =
+            typeof entry?.storagePath === 'string' && entry.storagePath.trim()
+              ? entry.storagePath.trim()
+              : ''
+          if (path) paths.push(path)
+        })
+        const photos = Array.isArray(record.photos) ? record.photos : []
+        photos.forEach((photo) => {
+          const path =
+            typeof photo?.storagePath === 'string' && photo.storagePath.trim()
+              ? photo.storagePath.trim()
+              : ''
+          if (path) paths.push(path)
+        })
+        return paths
+      }
+
+      function buildPhoneUsageMap(list) {
+        const usage = new Map()
+        if (!Array.isArray(list)) return usage
+        list.forEach((record) => {
+          const phoneKey = normalizePhoneKey(record?.phone)
+          if (!phoneKey) return
+          usage.set(phoneKey, (usage.get(phoneKey) || 0) + 1)
+        })
+        return usage
+      }
+
+      async function deleteFolderRecursively(folderRef) {
+        try {
+          const snapshot = await folderRef.listAll()
+          const deleteItems = snapshot.items.map((itemRef) =>
+            itemRef.delete().catch((error) => {
+              console.warn('[firebase] 개별 파일 삭제 실패', error)
+            }),
+          )
+          const deletePrefixes = snapshot.prefixes.map((childRef) => deleteFolderRecursively(childRef))
+          await Promise.allSettled([...deleteItems, ...deletePrefixes])
+        } catch (error) {
+          if (error?.code === 'storage/object-not-found') {
+            return
+          }
+          throw error
+        }
+      }
+
+      async function deleteFirebaseFolderForPhone(phoneKey) {
+        if (!phoneKey) return
+        try {
+          const storage = await ensureFirebaseStorage()
+          const prefix = getStorageRootPrefix()
+          const folderPath = `${prefix}${phoneKey}`.replace(/\/+$/, '')
+          if (!folderPath) return
+          const folderRef = storage.ref().child(folderPath)
+          await deleteFolderRecursively(folderRef)
+        } catch (error) {
+          if (error?.code === 'storage/object-not-found') return
+          console.warn('[firebase] 회원 폴더 삭제 실패', error)
+        }
+      }
+
+      async function cleanupFirebaseForDeletedRecords(records, usageBeforeDelete) {
+        if (!Array.isArray(records) || !records.length) return
+        const storagePaths = new Set()
+        const phoneDeleteCounts = new Map()
+        records.forEach((record) => {
+          collectRecordStoragePaths(record).forEach((path) => storagePaths.add(path))
+          const phoneKey = normalizePhoneKey(record?.phone)
+          if (phoneKey) {
+            phoneDeleteCounts.set(phoneKey, (phoneDeleteCounts.get(phoneKey) || 0) + 1)
+          }
+        })
+        const usageMap = usageBeforeDelete instanceof Map ? usageBeforeDelete : buildPhoneUsageMap(items)
+        const folderTargets = Array.from(phoneDeleteCounts.entries())
+          .filter(([phoneKey, deleteCount]) => {
+            if (!phoneKey) return false
+            const currentUsage = usageMap.get(phoneKey) || 0
+            return deleteCount >= currentUsage
+          })
+          .map(([phoneKey]) => phoneKey)
+
+        const tasks = [
+          ...Array.from(storagePaths).map((path) => deleteAttachmentFile(path)),
+          ...folderTargets.map((phoneKey) => deleteFirebaseFolderForPhone(phoneKey)),
+        ]
+        if (!tasks.length) return
+        await Promise.allSettled(tasks)
+      }
+
       async function handlePhotoUploadInputChange(event, role) {
         const input = event?.target
         const files = input?.files ? Array.from(input.files) : []
@@ -3522,6 +3617,9 @@
       async function deleteRecords(ids) {
         const unique = Array.from(new Set((ids || []).filter(Boolean)))
         if (!unique.length) return
+        const itemMap = new Map(items.map((item) => [item.id, item]))
+        const recordsToDelete = unique.map((id) => itemMap.get(id)).filter(Boolean)
+        const phoneUsageBeforeDelete = buildPhoneUsageMap(items)
         suppressDeleteToast = true
         try {
           const res = await fetch(API_URL, {
@@ -3546,6 +3644,13 @@
             refreshCalendar(true)
           }
           showToast(`${body.count ?? unique.length}건을 삭제했습니다.`)
+          if (recordsToDelete.length) {
+            cleanupFirebaseForDeletedRecords(recordsToDelete, phoneUsageBeforeDelete).catch(
+              (error) => {
+                console.warn('[firebase] 삭제된 회원 파일 정리 실패', error)
+              },
+            )
+          }
         } catch (error) {
           suppressDeleteToast = false
           console.error(error)
