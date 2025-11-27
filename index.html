@@ -936,14 +936,34 @@
                 </div>
               </div>
             </div>
+            <div class="match-selection-panel">
+              <div class="match-selection-head">
+                <h4>선택된 후보</h4>
+                <span id="matchSelectionCount">0명</span>
+              </div>
+              <p id="matchSelectionEmpty" class="match-selection-empty">아직 선택한 후보가 없습니다.</p>
+              <ul id="matchSelectionList" class="match-selection-list"></ul>
+            </div>
           </section>
           <section class="match-right">
             <div class="match-results-panel">
               <div class="match-results-head">
-                <h4>추천 후보</h4>
+                <div class="match-results-head-actions">
+                  <h4>추천 후보</h4>
+                  <span id="matchScoreHint" class="match-score-hint">점수는 선호 조건 적합도입니다.</span>
+                </div>
                 <p id="matchStatus" class="match-status">대상자를 선택하면 추천 리스트가 표시됩니다.</p>
               </div>
               <ul id="matchResultsList" class="match-results-list"></ul>
+            </div>
+          </section>
+          <section class="match-history">
+            <div class="match-history-panel">
+              <div class="match-history-head">
+                <h4>매칭 기록</h4>
+                <span id="matchHistorySummary">0명</span>
+              </div>
+              <div id="matchHistoryList" class="match-history-list"></div>
             </div>
           </section>
         </div>

@@ -287,6 +287,11 @@
       const matchPreferredLifestyleEl = document.getElementById('matchPreferredLifestyle')
       const matchStatusEl = document.getElementById('matchStatus')
       const matchResultsList = document.getElementById('matchResultsList')
+      const matchSelectionCountEl = document.getElementById('matchSelectionCount')
+      const matchSelectionList = document.getElementById('matchSelectionList')
+      const matchSelectionEmptyEl = document.getElementById('matchSelectionEmpty')
+      const matchHistoryList = document.getElementById('matchHistoryList')
+      const matchHistorySummaryEl = document.getElementById('matchHistorySummary')
       const genderFilter = document.getElementById('genderFilter')
       const heightFilter = document.getElementById('heightFilter')
       const sortSelect = document.getElementById('sortSelect')
@@ -386,7 +391,13 @@
       let depositStatusUpdating = false
       let activeDetailSectionId = null
       let matchSelectedMemberId = null
+      let matchSelectionTargetId = null
       let matchModalHideTimer = null
+      let matchSelectedCandidates = []
+      let matchHistory = loadMatchHistory()
+      const matchedCandidateIds = new Set(
+        matchHistory.map((entry) => entry.candidateId).filter(Boolean),
+      )
       const viewState = {
         search: '',
         status: 'all',
@@ -413,6 +424,7 @@
       ]
       const MATCH_RESULT_LIMIT = 6
       const MATCH_SCORE_MAX = 3
+      const MATCH_HISTORY_STORAGE_KEY = 'ygsa_match_history_v1'
       let genderStatsData = { male: 0, female: 0 }
       if (IS_MOIM_VIEW) {
         updateWeekFilterLabel()
@@ -425,6 +437,8 @@
         }
       }
       initializeDetailSectionTabs()
+      updateMatchSelectionSummary()
+      updateMatchHistoryUI()
       const calendarState = {
         current: new Date(),
         selectedDate: '',
@@ -610,6 +624,9 @@
         }
       })
       matchTargetInput?.addEventListener('blur', () => handleMatchTargetSelection(false))
+      matchResultsList?.addEventListener('click', handleMatchResultsClick)
+      matchSelectionList?.addEventListener('click', handleMatchSelectionClick)
+      matchHistoryList?.addEventListener('click', handleMatchHistoryClick)
       matchResetBtn?.addEventListener('click', () => clearMatchTarget())
       detailDraftLoadBtn?.addEventListener('click', () => {
         if (!currentDraftData) {
@@ -3670,6 +3687,11 @@
         if (record && matchTargetInput) {
           matchTargetInput.value = buildMatchOptionLabel(record)
         }
+        if (record?.id !== matchSelectionTargetId) {
+          matchSelectionTargetId = record?.id || null
+          matchSelectedCandidates = []
+          updateMatchSelectionSummary()
+        }
         renderMatchTargetInfo(record)
         updateMatchResetVisibility(Boolean(matchSelectedMemberId))
       }
@@ -3776,7 +3798,7 @@
               .filter(Boolean)
               .join(' · ')
             return `
-              <li class="match-result-card">
+              <li class="match-result-card" data-id="${escapeHtml(entry.candidate.id || '')}">
                 <div class="match-result-head">
                   <div>
                     <strong>${escapeHtml(entry.candidate.name || '이름 미입력')}</strong>
@@ -3791,7 +3813,10 @@
                       }
                     </div>
                   </div>
-                  <span class="match-score">점수 ${entry.score}/${MATCH_SCORE_MAX}</span>
+                  <div class="match-result-head-actions">
+                    <span class="match-score">점수 ${entry.score}/${MATCH_SCORE_MAX}</span>
+                    <button type="button" class="match-result-add-btn match-select-btn">선택하기</button>
+                  </div>
                 </div>
                 <ul class="match-reasons">
                   ${entry.reasons.map((reason) => `<li>${escapeHtml(reason)}</li>`).join('')}
@@ -3821,6 +3846,11 @@
 
       function evaluateMatchCandidate(target, candidate) {
         if (!target || !candidate || target.id === candidate.id) return null
+        if (isCandidateMatched(candidate.id)) return null
+        if (matchSelectedCandidates.some((entry) => entry.id === candidate.id)) return null
+        const targetGender = normalizeMatchGender(target.gender)
+        const candidateGender = normalizeMatchGender(candidate.gender)
+        if (targetGender && candidateGender && targetGender === candidateGender) return null
         let score = 0
         const reasons = []
         const candidateHeight = parseHeightValue(candidate.height)
@@ -3957,9 +3987,323 @@
         }
         return fallback
       }
+      function normalizeMatchGender(value) {
+        const normalized = String(value || '')
+          .trim()
+          .toLowerCase()
+        if (!normalized) return ''
+        if (normalized.startsWith('남')) return 'male'
+        if (normalized.startsWith('여')) return 'female'
+        return ''
+      }
+
+      function isCandidateMatched(candidateId) {
+        if (!candidateId) return false
+        return matchedCandidateIds.has(candidateId)
+      }
+
+      function addCandidateToSelectionById(candidateId) {
+        if (!candidateId) return
+        const record = items.find((item) => item.id === candidateId)
+        if (!record) {
+          showToast('대상 회원 정보를 찾을 수 없습니다.')
+          return
+        }
+        addCandidateToSelection(record)
+      }
+
+      function addCandidateToSelection(record) {
+        if (!matchSelectionTargetId || !matchSelectedMemberId) {
+          showToast('대상자를 먼저 선택해주세요.')
+          return
+        }
+        if (!record?.id) {
+          showToast('후보 정보가 올바르지 않습니다.')
+          return
+        }
+        if (record.id === matchSelectedMemberId) {
+          showToast('대상자 본인은 후보로 선택할 수 없습니다.')
+          return
+        }
+        if (isCandidateMatched(record.id)) {
+          showToast('이미 매칭된 회원입니다.')
+          return
+        }
+        if (matchSelectedCandidates.some((entry) => entry.id === record.id)) {
+          showToast('이미 선택된 후보입니다.')
+          return
+        }
+        matchSelectedCandidates.push({
+          id: record.id,
+          snapshot: buildCandidateSnapshot(record),
+          createdAt: Date.now(),
+        })
+        updateMatchSelectionSummary()
+        showToast(`${record.name || '이름 미입력'} 님을 후보에 추가했습니다.`)
+        runMatchRecommendation()
+      }
+
+      function handleMatchSelectionClick(event) {
+        const card = event.target.closest('.match-selection-card')
+        if (!card) return
+        const candidateId = card.dataset.id
+        if (!candidateId) return
+        if (event.target.closest('.match-selection-remove')) {
+          removeCandidateFromSelection(candidateId)
+          return
+        }
+        if (event.target.closest('.match-selection-confirm')) {
+          confirmCandidateSelection(candidateId)
+        }
+      }
+
+      function removeCandidateFromSelection(candidateId) {
+        const index = matchSelectedCandidates.findIndex((entry) => entry.id === candidateId)
+        if (index === -1) return
+        matchSelectedCandidates.splice(index, 1)
+        updateMatchSelectionSummary()
+        runMatchRecommendation()
+      }
+
+      function confirmCandidateSelection(candidateId) {
+        const index = matchSelectedCandidates.findIndex((entry) => entry.id === candidateId)
+        if (index === -1) return
+        const [entry] = matchSelectedCandidates.splice(index, 1)
+        const candidateRecord = items.find((item) => item.id === candidateId)
+        const targetRecord = items.find((item) => item.id === matchSelectionTargetId)
+        const historyEntry = buildMatchHistoryEntry(entry.snapshot || candidateRecord, targetRecord)
+        matchHistory.unshift(historyEntry)
+        if (historyEntry.candidateId) {
+          matchedCandidateIds.add(historyEntry.candidateId)
+        }
+        saveMatchHistory()
+        updateMatchSelectionSummary()
+        updateMatchHistoryUI()
+        runMatchRecommendation()
+        showToast(`${historyEntry.candidate?.name || '후보'} 님을 매칭 기록에 추가했습니다.`)
+      }
+
+      function updateMatchSelectionSummary() {
+        if (!matchSelectionList || !matchSelectionCountEl || !matchSelectionEmptyEl) return
+        matchSelectionCountEl.textContent = `${matchSelectedCandidates.length}명`
+        matchSelectionEmptyEl.hidden = matchSelectedCandidates.length > 0
+        if (!matchSelectedCandidates.length) {
+          matchSelectionList.innerHTML = ''
+          return
+        }
+        matchSelectionList.innerHTML = matchSelectedCandidates
+          .map((entry) => {
+            const snapshot = entry.snapshot || {}
+            return `
+              <li class="match-selection-card" data-id="${escapeHtml(entry.id || '')}">
+                <div class="match-selection-name-row">
+                  <strong>${escapeHtml(snapshot.name || '이름 미입력')}</strong>
+                  <div class="match-selection-actions">
+                    <button type="button" class="match-selection-confirm">확정</button>
+                    <button type="button" class="match-selection-remove">제거</button>
+                  </div>
+                </div>
+                <p class="match-selection-meta">${escapeHtml(
+                  buildCandidateMetaLine(snapshot),
+                )}</p>
+              </li>
+            `
+          })
+          .join('')
+      }
+
+      function buildCandidateMetaLine(snapshot) {
+        const ageLabel = snapshot.ageLabel || ''
+        const parts = [
+          snapshot.gender || '',
+          ageLabel,
+          snapshot.job || '',
+          snapshot.height ? `${snapshot.height}` : '',
+        ].filter(Boolean)
+        return parts.length ? parts.join(' · ') : '추가 정보 없음'
+      }
+
+      function handleMatchResultsClick(event) {
+        const card = event.target.closest('.match-result-card')
+        if (!card) return
+        const candidateId = card.dataset.id
+        if (!candidateId) return
+        if (event.target.closest('.match-result-add-btn')) {
+          addCandidateToSelectionById(candidateId)
+          event.stopPropagation()
+          return
+        }
+        openDetailModal(candidateId)
+      }
+
+      function buildCandidateSnapshot(record) {
+        if (!record) return {}
+        const age = getAgeFromBirth(record.birth)
+        return {
+          id: record.id || '',
+          name: record.name || '',
+          gender: record.gender || '',
+          ageLabel: age ? `${age}세` : '',
+          job: record.job || '',
+          height: record.height || '',
+          phone: record.phone || '',
+        }
+      }
+
+      function buildMatchHistoryEntry(candidateRecord, targetRecord) {
+        const now = Date.now()
+        const candidateSnapshot = buildCandidateSnapshot(candidateRecord)
+        const targetSnapshot = buildCandidateSnapshot(targetRecord)
+        const weekInfo = getWeekInfo(new Date(now))
+        return {
+          id: `${candidateSnapshot.id || 'candidate'}-${now}`,
+          candidateId: candidateSnapshot.id || '',
+          candidate: candidateSnapshot,
+          target: targetRecord ? targetSnapshot : null,
+          matchedAt: now,
+          week: {
+            label: weekInfo.label,
+            startTime: weekInfo.start.getTime(),
+            endTime: weekInfo.end.getTime(),
+            year: weekInfo.year,
+            week: weekInfo.week,
+          },
+        }
+      }
+
+      function updateMatchHistoryUI() {
+        if (!matchHistoryList || !matchHistorySummaryEl) return
+        matchHistorySummaryEl.textContent = `${matchHistory.length}명`
+        if (!matchHistory.length) {
+          matchHistoryList.innerHTML = '<p class="match-history-empty">아직 기록된 매칭이 없습니다.</p>'
+          return
+        }
+        const groups = buildMatchHistoryGroups(matchHistory)
+        matchHistoryList.innerHTML = groups.length
+          ? groups
+          .map(
+            (group) => `
+              <div class="match-history-group">
+                <div class="match-history-group-title">
+                  <strong>${escapeHtml(group.label)}</strong>
+                  <span>${escapeHtml(group.rangeLabel)}</span>
+                </div>
+                <div class="match-history-items">
+                  ${group.items
+                    .map((item) => {
+                      const name = item.candidate?.name || '이름 미입력'
+                      const partner = item.target?.name ? `· 대상 ${item.target.name}` : ''
+                      const dateLabel = formatDate(item.matchedAt)
+                      return `<div class="match-history-item" data-id="${escapeHtml(
+                        item.id || '',
+                      )}"><div class="match-history-item-row"><span>${escapeHtml(
+                        name,
+                      )} ${escapeHtml(
+                        partner,
+                      )}</span><div class="match-history-item-actions"><small>${escapeHtml(
+                        dateLabel,
+                      )}</small><button type="button" class="match-history-remove" aria-label="기록 삭제">×</button></div></div></div>`
+                    })
+                    .join('')}
+                </div>
+              </div>
+            `,
+          )
+          .join('')
+          : '<p class="match-history-empty">아직 기록된 매칭이 없습니다.</p>'
+      }
+
+      function buildMatchHistoryGroups(history) {
+        const map = new Map()
+        history.forEach((entry) => {
+          const weekKey = entry.week ? `${entry.week.year}-W${entry.week.week}` : ''
+          const startDate =
+            entry.week && entry.week.startTime ? new Date(entry.week.startTime) : null
+          const endDate =
+            entry.week && entry.week.endTime ? new Date(entry.week.endTime) : null
+          if (!map.has(weekKey)) {
+            map.set(weekKey, {
+              key: weekKey,
+              label: entry.week?.label || '기록',
+              rangeLabel:
+                startDate && endDate ? formatWeekRange(startDate, endDate) : '기간 정보 없음',
+              items: [],
+            })
+          }
+          map.get(weekKey).items.push(entry)
+        })
+        return Array.from(map.values())
+      }
+
+      function loadMatchHistory() {
+        try {
+          const raw = localStorage.getItem(MATCH_HISTORY_STORAGE_KEY)
+          if (!raw) return []
+          const parsed = JSON.parse(raw)
+          if (!Array.isArray(parsed)) return []
+          return parsed
+            .map((entry) => {
+              const matchedAt = entry.matchedAt || Date.now()
+              const weekData = entry.week && entry.week.startTime
+                ? entry.week
+                : (() => {
+                    const info = getWeekInfo(new Date(matchedAt))
+                    return {
+                      label: info.label,
+                      startTime: info.start.getTime(),
+                      endTime: info.end.getTime(),
+                      year: info.year,
+                      week: info.week,
+                    }
+                  })()
+              return {
+                ...entry,
+                matchedAt,
+                week: weekData,
+              }
+            })
+            .sort((a, b) => (b.matchedAt || 0) - (a.matchedAt || 0))
+        } catch (error) {
+          console.warn('[match] 기록 불러오기 실패', error)
+          return []
+        }
+      }
+
+      function saveMatchHistory() {
+        try {
+          localStorage.setItem(MATCH_HISTORY_STORAGE_KEY, JSON.stringify(matchHistory))
+        } catch (error) {
+          console.warn('[match] 기록 저장 실패', error)
+        }
+      }
+
+      function handleMatchHistoryClick(event) {
+        const button = event.target.closest('.match-history-remove')
+        if (!button) return
+        const container = button.closest('.match-history-item')
+        if (!container) return
+        const entryId = container.dataset.id
+        if (!entryId) return
+        removeMatchHistoryEntry(entryId)
+      }
+
+      function removeMatchHistoryEntry(entryId) {
+        const index = matchHistory.findIndex((entry) => entry.id === entryId)
+        if (index === -1) return
+        const [removed] = matchHistory.splice(index, 1)
+        if (removed?.candidateId) {
+          matchedCandidateIds.delete(removed.candidateId)
+        }
+        saveMatchHistory()
+        updateMatchHistoryUI()
+        runMatchRecommendation()
+        showToast('매칭 기록에서 제거했습니다.')
+      }
 
       function clearMatchTarget() {
         matchSelectedMemberId = null
+        matchSelectionTargetId = null
+        matchSelectedCandidates = []
         if (matchTargetInput) {
           matchTargetInput.value = ''
         }
@@ -3969,6 +4313,7 @@
           matchStatusEl.textContent = '대상자를 선택하면 추천 리스트가 표시됩니다.'
         }
         updateMatchResetVisibility(false)
+        updateMatchSelectionSummary()
       }
 
       function updateMatchResetVisibility(isActive) {
