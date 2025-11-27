@@ -353,6 +353,9 @@
       const detailPhotoFullInput = document.getElementById('detailPhotoFullInput')
       const detailIdCardUploadBtn = document.getElementById('detailIdCardUploadBtn')
       const detailEmploymentUploadBtn = document.getElementById('detailEmploymentUploadBtn')
+      const profileCardModal = document.getElementById('profileCardModal')
+      const profileCardPreviewEl = document.getElementById('profileCardPreview')
+      const profileCardCloseBtn = document.getElementById('profileCardCloseBtn')
       const detailIdCardUploadInput = document.getElementById('detailIdCardUploadInput')
       const detailEmploymentUploadInput = document.getElementById('detailEmploymentUploadInput')
       const detailAttachmentUploadStatus = document.getElementById('detailAttachmentUploadStatus')
@@ -393,11 +396,13 @@
       let matchSelectedMemberId = null
       let matchSelectionTargetId = null
       let matchModalHideTimer = null
+      let profileCardHideTimer = null
       let matchSelectedCandidates = []
       let matchHistory = loadMatchHistory()
       const matchedCandidateIds = new Set(
         matchHistory.map((entry) => entry.candidateId).filter(Boolean),
       )
+      let profileCardRecord = null
       const viewState = {
         search: '',
         status: 'all',
@@ -597,6 +602,12 @@
         const attachmentId = button.dataset.attachmentId
         handlePhotoDelete(attachmentId)
       })
+      profileCardCloseBtn?.addEventListener('click', closeProfileCardModal)
+      profileCardModal?.addEventListener('click', (event) => {
+        if (event.target === profileCardModal) {
+          closeProfileCardModal()
+        }
+      })
       if (detailValuesSelect) {
         detailValuesSelect.addEventListener('change', () =>
           enforceMultiSelectLimit(detailValuesSelect, 1),
@@ -662,6 +673,10 @@
         }
         if (!detailModal.hidden) {
           closeDetailModal()
+          return
+        }
+        if (profileCardModal && !profileCardModal.hidden) {
+          closeProfileCardModal()
           return
         }
         if (matchModal && !matchModal.hidden) {
@@ -1180,6 +1195,7 @@
             ${entries}
           </dl>
           ${renderCardAttachments(item)}
+          ${renderProfileCardButtonSection(item.id)}
         `
         return card
       }
@@ -1228,8 +1244,21 @@
           </div>
           ${basicSection}
           ${profileSection}
+          ${renderProfileCardButtonSection(item.id)}
         `
         return card
+      }
+
+      function renderProfileCardButtonSection(id) {
+        if (!id) return ''
+        const safeId = escapeHtml(id)
+        return `
+          <div class="card-actions">
+            <button type="button" class="profile-card-btn" data-profile-card-id="${safeId}">
+              프로필 카드 보기
+            </button>
+          </div>
+        `
       }
 
       function buildMoimSection(title, entries) {
@@ -1653,6 +1682,133 @@
             </ul>
           </div>
         `
+      }
+
+      function renderProfileCard(record) {
+        if (!record) {
+          return `
+            <div class="profile-card-meta-line">
+              <span>정보 없음</span>
+              <span>-</span>
+            </div>
+            <h2>연결사 회원</h2>
+            <p class="profile-card-tagline">표시할 데이터를 찾지 못했습니다.</p>
+          `
+        }
+        const chips =
+          getProfileCardChips(record)
+            .map((chip) => `<span class="profile-chip">${escapeHtml(chip)}</span>`)
+            .join('') || '<span class="profile-chip muted">정보 준비 중</span>'
+        const stats =
+          getProfileCardStats(record)
+            .map(
+              ({ label, value }) => `
+                <div class="profile-card-stat">
+                  <span>${escapeHtml(label)}</span>
+                  <strong>${escapeHtml(value || '-')}</strong>
+                </div>
+              `,
+            )
+            .join('') || `
+            <div class="profile-card-stat">
+              <span>INFO</span>
+              <strong>업데이트 예정</strong>
+            </div>
+          `
+        const lifestyle =
+          getProfileCardLifestyle(record)
+            .map((item) => `<span class="profile-chip">${escapeHtml(item)}</span>`)
+            .join('') || '<span class="profile-chip muted">라이프스타일 업데이트 예정</span>'
+        return `
+          <div class="profile-card-meta-line">
+            <span>${escapeHtml(formatProfileCardDate(record.createdAt))}</span>
+            <span>${escapeHtml(record.gender || '성별 비공개')}</span>
+          </div>
+          <h2>${escapeHtml(record.name || '연결사 회원')}</h2>
+          <p class="profile-card-tagline">${escapeHtml(getProfileCardTagline(record))}</p>
+          <div class="profile-chip-row">
+            ${chips}
+          </div>
+          <div class="profile-card-stats">
+            ${stats}
+          </div>
+          <div class="profile-card-lifestyle">
+            <span class="label">선호 라이프스타일</span>
+            <div class="profile-chip-row">
+              ${lifestyle}
+            </div>
+          </div>
+          <div class="profile-card-footer-line">
+            <span>YGSA PREMIUM</span>
+            <span>${escapeHtml(record.district || '서울 · 수도권')}</span>
+          </div>
+        `
+      }
+
+      function getProfileCardTagline(record) {
+        if (record?.profileAppeal) return record.profileAppeal
+        if (record?.aboutMe) return record.aboutMe
+        if (record?.sufficientCondition) return record.sufficientCondition
+        return '연결사가 엄선한 프리미엄 인연'
+      }
+
+      function getProfileCardChips(record) {
+        const chips = []
+        if (record?.job) chips.push(record.job)
+        if (record?.education) chips.push(record.education)
+        if (record?.district) chips.push(record.district)
+        if (record?.university) chips.push(record.university)
+        return chips.slice(0, 3)
+      }
+
+      function getProfileCardStats(record) {
+        if (!record) return []
+        const stats = [
+          { label: 'BIRTH', value: formatProfileBirthLabel(record.birth) },
+          { label: 'HEIGHT', value: normalizeHeightValue(record.height || record.region) || '-' },
+          { label: 'CAREER', value: record.job || '-' },
+          { label: 'MBTI', value: (record.mbti || '-').toUpperCase() },
+        ]
+        const salaryLabel = formatSalaryRange(record.salaryRange)
+        if (salaryLabel) {
+          stats.push({ label: 'SALARY', value: salaryLabel })
+        } else if (record.education) {
+          stats.push({ label: 'EDU', value: record.education })
+        }
+        return stats
+      }
+
+      function getProfileCardLifestyle(record) {
+        if (!record) return []
+        const preferred = Array.isArray(record.preferredLifestyle)
+          ? record.preferredLifestyle.filter(Boolean)
+          : []
+        if (preferred.length) {
+          return preferred.slice(0, 3)
+        }
+        if (record.likesDislikes) {
+          return record.likesDislikes
+            .split(/[,·]/)
+            .map((value) => value.trim())
+            .filter(Boolean)
+            .slice(0, 3)
+        }
+        return []
+      }
+
+      function formatProfileBirthLabel(value) {
+        const digits = String(value || '').replace(/[^0-9]/g, '')
+        if (digits.length >= 4) {
+          return `${digits.slice(0, 4)}`
+        }
+        return value || '-'
+      }
+
+      function formatProfileCardDate(value) {
+        if (!value) return '신청 대기'
+        const date = new Date(value)
+        if (Number.isNaN(date.getTime())) return '신청 대기'
+        return date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
       }
 
       function renderAttachmentListItem(label, file, fallbackName) {
@@ -4335,12 +4491,75 @@
       }
 
       function handleCardButtonClick(event) {
+        const profileButton = event.target.closest('[data-profile-card-id]')
+        if (profileButton) {
+          event.preventDefault()
+          const targetId = profileButton.dataset.profileCardId
+          if (targetId) {
+            openProfileCardById(targetId)
+          }
+          return
+        }
         const card = event.target.closest('.card')
         if (!card) return
         const checkbox = event.target.closest('.select-checkbox')
         if (checkbox) return
         const { id } = card.dataset
         if (id) openDetailModal(id)
+      }
+
+      function openProfileCardById(id) {
+        if (!id) return
+        const record = items.find((item) => item.id === id)
+        if (!record) {
+          showToast('대상 정보를 찾지 못했습니다.')
+          return
+        }
+        openProfileCardModal(record)
+      }
+
+      function openProfileCardModal(record) {
+        if (!profileCardModal || !profileCardPreviewEl) return
+        if (profileCardHideTimer) {
+          clearTimeout(profileCardHideTimer)
+          profileCardHideTimer = null
+        }
+        profileCardRecord = record
+        applyProfileCardTheme(record)
+        profileCardPreviewEl.innerHTML = renderProfileCard(record)
+        profileCardModal.hidden = false
+        requestAnimationFrame(() => profileCardModal.classList.add('visible'))
+      }
+
+      function closeProfileCardModal() {
+        if (!profileCardModal || profileCardModal.hidden) return
+        profileCardModal.classList.remove('visible')
+        profileCardHideTimer = window.setTimeout(() => {
+          profileCardModal.hidden = true
+          profileCardHideTimer = null
+          profileCardRecord = null
+          if (profileCardPreviewEl) {
+            profileCardPreviewEl.className = 'profile-card-preview'
+            profileCardPreviewEl.innerHTML = ''
+          }
+        }, 180)
+      }
+
+      function applyProfileCardTheme(record) {
+        if (!profileCardPreviewEl) return
+        const theme = getProfileCardTheme(record)
+        profileCardPreviewEl.className = 'profile-card-preview'
+        if (theme) {
+          profileCardPreviewEl.classList.add(theme)
+        }
+      }
+
+      function getProfileCardTheme(record) {
+        const gender = String(record?.gender || '').trim().toLowerCase()
+        if (!gender) return ''
+        if (gender.startsWith('여')) return 'profile-card-preview-female'
+        if (gender.startsWith('남')) return 'profile-card-preview-male'
+        return ''
       }
 
       function handleDepositActionClick(event) {

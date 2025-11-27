@@ -986,6 +986,35 @@
         </div>
       </div>
     </div>
+    <div class="profile-card-overlay" id="profileCardModal" hidden>
+      <div
+        class="profile-card-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="profileCardTitle"
+      >
+        <header class="profile-card-header">
+          <div>
+            <p class="profile-card-eyebrow">Instagram Ready</p>
+            <h3 id="profileCardTitle">프로필 카드 프리뷰</h3>
+          </div>
+          <button
+            type="button"
+            class="profile-card-close"
+            id="profileCardCloseBtn"
+            aria-label="프로필 카드 닫기"
+          >
+            ×
+          </button>
+        </header>
+        <div class="profile-card-canvas-wrap">
+          <div class="profile-card-preview" id="profileCardPreview" aria-live="polite"></div>
+        </div>
+        <p class="profile-card-hint">
+          팝업을 그대로 캡처하거나 저장해 인스타 카드로 활용해 보세요.
+        </p>
+      </div>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
         <script src="dashboard.js"></script>
     </div>
