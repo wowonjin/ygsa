@@ -275,6 +275,18 @@
       const genderChartCenter = document.getElementById('genderChartCenter')
       const genderChartSummary = document.getElementById('genderChartSummary')
       const genderChartBars = document.getElementById('genderChartBars')
+      const matchBtn = document.getElementById('matchBtn')
+      const matchModal = document.getElementById('matchModal')
+      const matchCloseBtn = document.getElementById('matchCloseBtn')
+      const matchTargetInput = document.getElementById('matchTargetInput')
+      const matchResetBtn = document.getElementById('matchResetBtn')
+      const matchMemberOptions = document.getElementById('matchMemberOptions')
+      const matchTargetInfo = document.getElementById('matchTargetInfo')
+      const matchPreferredHeightEl = document.getElementById('matchPreferredHeight')
+      const matchPreferredAgeEl = document.getElementById('matchPreferredAge')
+      const matchPreferredLifestyleEl = document.getElementById('matchPreferredLifestyle')
+      const matchStatusEl = document.getElementById('matchStatus')
+      const matchResultsList = document.getElementById('matchResultsList')
       const genderFilter = document.getElementById('genderFilter')
       const heightFilter = document.getElementById('heightFilter')
       const sortSelect = document.getElementById('sortSelect')
@@ -373,6 +385,8 @@
       let firebaseInitError = null
       let depositStatusUpdating = false
       let activeDetailSectionId = null
+      let matchSelectedMemberId = null
+      let matchModalHideTimer = null
       const viewState = {
         search: '',
         status: 'all',
@@ -381,6 +395,24 @@
         sort: 'latest',
         weekRange: IS_MOIM_VIEW ? getCurrentWeekRange() : null,
       }
+      const HEIGHT_PREFERENCE_MAP = [
+        { label: '160cm 이하', min: 0, max: 160 },
+        { label: '161-165cm', min: 161, max: 165 },
+        { label: '166-170cm', min: 166, max: 170 },
+        { label: '171-175cm', min: 171, max: 175 },
+        { label: '176-180cm', min: 176, max: 180 },
+        { label: '181cm 이상', min: 181, max: Infinity },
+      ]
+      const AGE_PREFERENCE_MAP = [
+        { label: '20대 초반', min: 20, max: 24 },
+        { label: '20대 중반', min: 25, max: 27 },
+        { label: '20대 후반', min: 28, max: 29 },
+        { label: '30대 초반', min: 30, max: 33 },
+        { label: '30대 중반', min: 34, max: 36 },
+        { label: '30대 후반 이상', min: 37, max: 80 },
+      ]
+      const MATCH_RESULT_LIMIT = 6
+      const MATCH_SCORE_MAX = 3
       let genderStatsData = { male: 0, female: 0 }
       if (IS_MOIM_VIEW) {
         updateWeekFilterLabel()
@@ -561,6 +593,24 @@
       genderChartModal?.addEventListener('click', (event) => {
         if (event.target === genderChartModal) closeGenderChartModal()
       })
+      matchBtn?.addEventListener('click', () => openMatchModal())
+      matchCloseBtn?.addEventListener('click', closeMatchModal)
+      matchModal?.addEventListener('click', (event) => {
+        if (event.target === matchModal) closeMatchModal()
+      })
+      matchTargetInput?.addEventListener('change', () => {
+        handleMatchTargetSelection()
+        runMatchRecommendation()
+      })
+      matchTargetInput?.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault()
+          handleMatchTargetSelection()
+          runMatchRecommendation()
+        }
+      })
+      matchTargetInput?.addEventListener('blur', () => handleMatchTargetSelection(false))
+      matchResetBtn?.addEventListener('click', () => clearMatchTarget())
       detailDraftLoadBtn?.addEventListener('click', () => {
         if (!currentDraftData) {
           showToast('불러올 임시 데이터가 없습니다.')
@@ -578,6 +628,16 @@
       })
       stickyNoteCloseBtn?.addEventListener('click', closeStickyNote)
       document.addEventListener('keydown', (event) => {
+        const key = typeof event.key === 'string' ? event.key.toLowerCase() : ''
+        if ((event.ctrlKey || event.metaKey) && !event.altKey && key === 'q') {
+          event.preventDefault()
+          if (matchModal?.hidden) {
+            openMatchModal()
+          } else {
+            closeMatchModal()
+          }
+          return
+        }
         if (event.key !== 'Escape') return
         if (weeklyModal && !weeklyModal.hidden) {
           closeWeeklyModal()
@@ -585,6 +645,10 @@
         }
         if (!detailModal.hidden) {
           closeDetailModal()
+          return
+        }
+        if (matchModal && !matchModal.hidden) {
+          closeMatchModal()
           return
         }
         if (stickyNoteEl && stickyNoteEl.classList.contains('visible')) {
@@ -693,6 +757,7 @@
           items = filterByVariant((body.data || []).map(normalizeRecord))
           syncSelectionWithItems()
           syncFilterOptions()
+          syncMatchMemberOptions()
           updateStats()
           render()
           if (!calendarModal.hidden) {
@@ -2617,6 +2682,7 @@
             refreshDetailAttachments()
           }
           syncFilterOptions()
+          syncMatchMemberOptions()
           syncSelectionWithItems()
           updateStats()
           render()
@@ -3350,6 +3416,26 @@
         ).sort((a, b) => a.localeCompare(b, 'ko-KR'))
       }
 
+      function syncMatchMemberOptions() {
+        if (!matchMemberOptions) return
+        const fragment = document.createDocumentFragment()
+        const sorted = items
+          .slice()
+          .filter((item) => item?.name)
+          .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'ko-KR'))
+        sorted.forEach((item) => {
+          const option = document.createElement('option')
+          option.value = buildMatchOptionLabel(item)
+          if (item.id) {
+            option.dataset.id = item.id
+          }
+          option.dataset.phone = item.phone || ''
+          fragment.appendChild(option)
+        })
+        matchMemberOptions.innerHTML = ''
+        matchMemberOptions.appendChild(fragment)
+      }
+
       function normalizeGenderValue(value) {
         const normalized = String(value || '')
           .trim()
@@ -3501,6 +3587,395 @@
         setTimeout(() => toastEl.classList.remove('show'), 2500)
       }
 
+      function openMatchModal(initialId) {
+        if (!matchModal || !isAuthenticated) return
+        if (matchModalHideTimer) {
+          clearTimeout(matchModalHideTimer)
+          matchModalHideTimer = null
+        }
+        syncMatchMemberOptions()
+        matchModal.hidden = false
+        requestAnimationFrame(() => matchModal.classList.add('visible'))
+        const targetId = initialId || matchSelectedMemberId
+        if (targetId) {
+          const record = items.find((item) => item.id === targetId)
+          if (record) {
+            setMatchTarget(record)
+            runMatchRecommendation()
+          }
+        } else {
+          renderMatchTargetInfo(null)
+          renderMatchResults([])
+          if (matchStatusEl) {
+            matchStatusEl.textContent = '대상자를 선택하면 추천 리스트가 표시됩니다.'
+          }
+          updateMatchResetVisibility(false)
+        }
+        if (matchTargetInput) {
+          matchTargetInput.focus()
+          matchTargetInput.select?.()
+        }
+      }
+
+      function closeMatchModal() {
+        if (!matchModal || matchModal.hidden) return
+        matchModal.classList.remove('visible')
+        matchModalHideTimer = window.setTimeout(() => {
+          matchModal.hidden = true
+          matchModalHideTimer = null
+        }, 180)
+      }
+
+      function handleMatchTargetSelection(shouldRun = true) {
+        if (!matchTargetInput) return
+        const value = matchTargetInput.value.trim()
+        if (!value) {
+          clearMatchTarget()
+          return
+        }
+        const record = resolveMatchTargetValue(value)
+        if (!record) {
+          updateMatchResetVisibility(Boolean(matchSelectedMemberId))
+          return
+        }
+        setMatchTarget(record)
+        if (shouldRun) {
+          runMatchRecommendation()
+        }
+      }
+
+      function resolveMatchTargetValue(value) {
+        if (!value) return null
+        if (matchMemberOptions) {
+          const optionNode = Array.from(matchMemberOptions.children || []).find(
+            (option) => option.value === value,
+          )
+          if (optionNode?.dataset?.id) {
+            const byId = items.find((item) => item.id === optionNode.dataset.id)
+            if (byId) return byId
+          }
+        }
+        const normalized = value.toLowerCase()
+        return (
+          items.find((item) =>
+            [item.name, item.phone]
+              .map((field) => String(field || '').toLowerCase())
+              .some((field) => field.includes(normalized)),
+          ) || null
+        )
+      }
+
+      function setMatchTarget(record) {
+        matchSelectedMemberId = record?.id || null
+        if (record && matchTargetInput) {
+          matchTargetInput.value = buildMatchOptionLabel(record)
+        }
+        renderMatchTargetInfo(record)
+        updateMatchResetVisibility(Boolean(matchSelectedMemberId))
+      }
+
+      function renderMatchTargetInfo(record) {
+        if (!matchTargetInfo) return
+        if (!record) {
+          matchTargetInfo.innerHTML =
+            '<p class="match-placeholder">대상자를 선택하면 기본 정보와 선호 조건이 표시됩니다.</p>'
+          updateMatchPreferenceSummary(null)
+          return
+        }
+        const age = getAgeFromBirth(record.birth)
+        const metaPieces = [
+          record.gender || '',
+          age ? `${age}세` : '',
+          record.height || '',
+          record.mbti ? `MBTI ${record.mbti}` : '',
+          record.job || '',
+        ].filter(Boolean)
+        const metaHtml = metaPieces.length
+          ? metaPieces.map((text) => `<span>${escapeHtml(text)}</span>`).join('')
+          : '<span class="match-placeholder">추가 정보가 없습니다.</span>'
+        matchTargetInfo.innerHTML = `
+          <h5>${escapeHtml(record.name || '이름 미입력')}</h5>
+          <div class="match-target-meta">
+            ${metaHtml}
+          </div>
+        `
+        updateMatchPreferenceSummary(record)
+      }
+
+      function updateMatchPreferenceSummary(record) {
+        if (matchPreferredHeightEl) {
+          matchPreferredHeightEl.textContent = formatPreferenceText(
+            record?.preferredHeights,
+            '선호 키 정보가 없습니다.',
+          )
+        }
+        if (matchPreferredAgeEl) {
+          matchPreferredAgeEl.textContent = formatPreferenceText(
+            record?.preferredAges,
+            '선호 나이 정보가 없습니다.',
+          )
+        }
+        if (matchPreferredLifestyleEl) {
+          if (Array.isArray(record?.preferredLifestyle) && record.preferredLifestyle.length) {
+            matchPreferredLifestyleEl.innerHTML = record.preferredLifestyle
+              .map((value) => `<span class="match-chip">${escapeHtml(value)}</span>`)
+              .join('')
+          } else {
+            matchPreferredLifestyleEl.textContent = '선호 라이프스타일 정보가 없습니다.'
+          }
+        }
+      }
+
+      function runMatchRecommendation() {
+        if (!matchStatusEl || !matchResultsList) return
+        const target = matchSelectedMemberId
+          ? items.find((item) => item.id === matchSelectedMemberId)
+          : null
+        if (!target) {
+          matchStatusEl.textContent = '대상자를 먼저 선택해주세요.'
+          renderMatchResults([])
+          return
+        }
+        const hasPreferences =
+          (Array.isArray(target.preferredHeights) && target.preferredHeights.length) ||
+          (Array.isArray(target.preferredAges) && target.preferredAges.length) ||
+          (Array.isArray(target.preferredLifestyle) && target.preferredLifestyle.length)
+        if (!hasPreferences) {
+          matchStatusEl.textContent = '선호 키/나이/라이프스타일을 입력하면 추천을 받을 수 있습니다.'
+          renderMatchResults([])
+          return
+        }
+        const { list, total } = computeMatchResults(target)
+        if (!total) {
+          matchStatusEl.textContent = '조건에 맞는 추천 후보가 없습니다.'
+          renderMatchResults([])
+          return
+        }
+        if (total > MATCH_RESULT_LIMIT) {
+          matchStatusEl.textContent = `${total}명 중 상위 ${MATCH_RESULT_LIMIT}명만 표시합니다.`
+        } else {
+          matchStatusEl.textContent = `${total}명 추천되었습니다.`
+        }
+        renderMatchResults(list)
+      }
+
+      function renderMatchResults(results) {
+        if (!matchResultsList) return
+        if (!results.length) {
+          matchResultsList.innerHTML =
+            '<li class="match-placeholder">조건에 맞는 후보가 없습니다.</li>'
+          return
+        }
+        matchResultsList.innerHTML = results
+          .map((entry) => {
+            const metaParts = [
+              entry.meta.gender,
+              entry.meta.ageLabel,
+              entry.meta.heightLabel,
+            ]
+              .filter(Boolean)
+              .join(' · ')
+            return `
+              <li class="match-result-card">
+                <div class="match-result-head">
+                  <div>
+                    <strong>${escapeHtml(entry.candidate.name || '이름 미입력')}</strong>
+                    <div class="match-meta-row">
+                      ${metaParts ? `<span>${escapeHtml(metaParts)}</span>` : ''}
+                      ${
+                        entry.meta.statusLabel
+                          ? `<span class="match-state-badge ${escapeHtml(
+                              entry.meta.statusClass,
+                            )}">${escapeHtml(entry.meta.statusLabel)}</span>`
+                          : ''
+                      }
+                    </div>
+                  </div>
+                  <span class="match-score">점수 ${entry.score}/${MATCH_SCORE_MAX}</span>
+                </div>
+                <ul class="match-reasons">
+                  ${entry.reasons.map((reason) => `<li>${escapeHtml(reason)}</li>`).join('')}
+                </ul>
+              </li>
+            `
+          })
+          .join('')
+      }
+
+      function computeMatchResults(target) {
+        const evaluated = items
+          .map((candidate) => evaluateMatchCandidate(target, candidate))
+          .filter(Boolean)
+          .sort((a, b) => {
+            if (b.score !== a.score) return b.score - a.score
+            if (b.meta.lifestyleOverlapCount !== a.meta.lifestyleOverlapCount) {
+              return b.meta.lifestyleOverlapCount - a.meta.lifestyleOverlapCount
+            }
+            return (b.meta.createdAt || 0) - (a.meta.createdAt || 0)
+          })
+        return {
+          list: evaluated.slice(0, MATCH_RESULT_LIMIT),
+          total: evaluated.length,
+        }
+      }
+
+      function evaluateMatchCandidate(target, candidate) {
+        if (!target || !candidate || target.id === candidate.id) return null
+        let score = 0
+        const reasons = []
+        const candidateHeight = parseHeightValue(candidate.height)
+        const heightMatch = getHeightMatch(target.preferredHeights, candidateHeight)
+        if (heightMatch.matched) {
+          score += 1
+          reasons.push(
+            `${candidate.height || (candidateHeight ? `${candidateHeight}cm` : '키 정보 미입력')}이(가) ${heightMatch.label} 선호 범위에 속합니다.`,
+          )
+        }
+        const candidateAge = getAgeFromBirth(candidate.birth)
+        const ageMatch = getAgeMatch(target.preferredAges, candidateAge)
+        if (ageMatch.matched) {
+          score += 1
+          const ageText = candidateAge ? `${candidateAge}세` : '나이 정보'
+          reasons.push(`${ageText}가 ${ageMatch.label} 조건과 일치합니다.`)
+        }
+        const lifestyleOverlap = getLifestyleOverlap(
+          target.preferredLifestyle,
+          candidate.preferredLifestyle,
+        )
+        if (lifestyleOverlap.length) {
+          score += 1
+          reasons.push(`라이프스타일 공통분모: ${lifestyleOverlap.join(', ')}`)
+        }
+        if (!score) return null
+        const createdAt = candidate.createdAt ? new Date(candidate.createdAt).getTime() : 0
+        const statusKey = PHONE_STATUS_VALUES.includes(candidate.phoneConsultStatus)
+          ? candidate.phoneConsultStatus
+          : 'pending'
+        return {
+          candidate,
+          score,
+          reasons,
+          meta: {
+            gender: candidate.gender || '',
+            ageLabel: formatAgeLabel(candidateAge),
+            heightLabel: candidateHeight ? `${candidateHeight}cm` : candidate.height || '',
+            lifestyleOverlapCount: lifestyleOverlap.length,
+            createdAt,
+            statusLabel: PHONE_STATUS_LABELS[statusKey] || '',
+            statusClass: STATUS_CLASS_NAMES[statusKey] || '',
+          },
+        }
+      }
+
+      function getHeightMatch(preferences, heightValue) {
+        if (!Array.isArray(preferences) || !preferences.length || !Number.isFinite(heightValue)) {
+          return { matched: false, label: '' }
+        }
+        for (const label of preferences) {
+          const range = HEIGHT_PREFERENCE_MAP.find((entry) => entry.label === label)
+          if (!range) continue
+          const minOk = heightValue >= range.min
+          const maxOk = heightValue <= range.max
+          if (minOk && maxOk) {
+            return { matched: true, label: range.label }
+          }
+        }
+        return { matched: false, label: '' }
+      }
+
+      function getAgeMatch(preferences, ageValue) {
+        if (!Array.isArray(preferences) || !preferences.length || !Number.isFinite(ageValue)) {
+          return { matched: false, label: '' }
+        }
+        for (const label of preferences) {
+          const range = AGE_PREFERENCE_MAP.find((entry) => entry.label === label)
+          if (!range) continue
+          const minOk = ageValue >= range.min
+          const maxOk = ageValue <= range.max
+          if (minOk && maxOk) {
+            return { matched: true, label: range.label }
+          }
+        }
+        return { matched: false, label: '' }
+      }
+
+      function getBirthYear(value) {
+        if (!value) return null
+        const match = String(value).match(/(19|20)\d{2}/)
+        return match ? Number(match[0]) : null
+      }
+
+      function getAgeFromBirth(value) {
+        const year = getBirthYear(value)
+        if (!year) return null
+        const now = new Date()
+        const age = now.getFullYear() - year
+        if (age < 15 || age > 90) return null
+        return age
+      }
+
+      function formatAgeLabel(age) {
+        if (!Number.isFinite(age)) return ''
+        const bracket = getAgeBracket(age)
+        return bracket ? `${age}세 (${bracket})` : `${age}세`
+      }
+
+      function getAgeBracket(age) {
+        const found = AGE_PREFERENCE_MAP.find((entry) => age >= entry.min && age <= entry.max)
+        return found ? found.label : ''
+      }
+
+      function parseHeightValue(value) {
+        if (!value) return null
+        const match = String(value).match(/(\d{2,3})/)
+        return match ? Number(match[1]) : null
+      }
+
+      function getLifestyleOverlap(source, target) {
+        if (!Array.isArray(source) || !source.length) return []
+        if (!Array.isArray(target) || !target.length) return []
+        const set = new Set(target.map((item) => item?.trim()).filter(Boolean))
+        return source.filter((item) => set.has(item))
+      }
+
+      function buildMatchOptionLabel(item) {
+        if (!item) return ''
+        const descriptor = [
+          item.name || '',
+          item.gender || '',
+          item.height || '',
+          item.phone || '',
+        ]
+          .filter(Boolean)
+          .join(' · ')
+        return descriptor || String(item.name || '')
+      }
+
+      function formatPreferenceText(values, fallback) {
+        if (Array.isArray(values) && values.length) {
+          return values.join(', ')
+        }
+        return fallback
+      }
+
+      function clearMatchTarget() {
+        matchSelectedMemberId = null
+        if (matchTargetInput) {
+          matchTargetInput.value = ''
+        }
+        renderMatchTargetInfo(null)
+        renderMatchResults([])
+        if (matchStatusEl) {
+          matchStatusEl.textContent = '대상자를 선택하면 추천 리스트가 표시됩니다.'
+        }
+        updateMatchResetVisibility(false)
+      }
+
+      function updateMatchResetVisibility(isActive) {
+        if (!matchResetBtn) return
+        matchResetBtn.hidden = !isActive
+      }
+
       function handleCardChange(event) {
         const target = event.target
         if (!target.classList.contains('select-checkbox')) return
@@ -3585,6 +4060,7 @@
             }
           }
           syncFilterOptions()
+          syncMatchMemberOptions()
           syncSelectionWithItems()
           updateStats()
           render()
@@ -3638,6 +4114,7 @@
           unique.forEach((id) => selectedIds.delete(id))
           syncSelectionWithItems()
           syncFilterOptions()
+          syncMatchMemberOptions()
           updateStats()
           render()
           if (!calendarModal.hidden) {
@@ -3674,6 +4151,7 @@
               if (!matchesVariant(incoming)) return
               items.push(incoming)
               syncFilterOptions()
+              syncMatchMemberOptions()
               syncSelectionWithItems()
               updateStats()
               render()
@@ -3686,6 +4164,7 @@
               selectedIds.clear()
               syncSelectionWithItems()
               syncFilterOptions()
+              syncMatchMemberOptions()
               updateStats()
               render()
               if (!calendarModal.hidden) refreshCalendar(true)
@@ -3706,6 +4185,7 @@
               }
               syncSelectionWithItems()
               syncFilterOptions()
+              syncMatchMemberOptions()
               updateStats()
               render()
               if (!calendarModal.hidden) refreshCalendar(true)
@@ -3723,6 +4203,7 @@
               ids.forEach((id) => selectedIds.delete(id))
               syncSelectionWithItems()
               syncFilterOptions()
+              syncMatchMemberOptions()
               updateStats()
               render()
               if (!calendarModal.hidden) refreshCalendar(true)

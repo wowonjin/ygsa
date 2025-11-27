@@ -10,6 +10,10 @@
     <meta property="og:image" content="image2.png" />
     <meta property="og:image:alt" content="연결사 상담 센터 대표 이미지" />
     <meta name="twitter:card" content="summary_large_image" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,0,0"
+    />
     <meta name="twitter:image" content="image2.png" />
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
         <link rel="stylesheet" href="dashboard.css" />
@@ -87,6 +91,7 @@
             <div class="gender-stats-wrap">
               <div class="gender-stats" id="genderStats" aria-live="polite">남 0명 · 여 0명 (0% : 0%)</div>
               <button type="button" id="genderChartBtn" class="gender-chart-btn">성비 보기</button>
+              <button type="button" id="matchBtn" class="match-btn">매칭하기</button>
             </div>
           </div>
           <div class="toolbar-filters">
@@ -882,6 +887,66 @@
         [구글 아이디 비번 비밀번호] <br />
         ID: yeongyeolsa@gmail.com <br />
         PS: 10aksghldnjs
+      </div>
+    </div>
+    <div class="match-overlay" id="matchModal" hidden>
+      <div class="match-dialog" role="dialog" aria-modal="true" aria-labelledby="matchModalTitle">
+        <header class="match-header">
+          <div>
+            <h3 id="matchModalTitle">맞춤 매칭 프로그램</h3>
+            <p class="match-subtitle">Ctrl + Q로도 바로 열 수 있어요.</p>
+          </div>
+          <button type="button" id="matchCloseBtn" class="match-close-btn" aria-label="매칭 창 닫기">×</button>
+        </header>
+        <div class="match-body">
+          <section class="match-left">
+            <div class="match-field-group">
+              <label for="matchTargetInput">대상자</label>
+              <div class="match-input-row">
+                <input
+                  id="matchTargetInput"
+                  type="text"
+                  list="matchMemberOptions"
+                  placeholder="이름, 연락처 검색"
+                  autocomplete="off"
+                />
+                <button type="button" id="matchResetBtn" class="match-reset-btn" hidden aria-label="대상자 초기화">
+                  <span class="material-symbols-rounded" aria-hidden="true">delete</span>
+                </button>
+              </div>
+              <datalist id="matchMemberOptions"></datalist>
+            </div>
+            <div id="matchTargetInfo" class="match-target-card">
+              <p class="match-placeholder">대상자를 선택하면 기본 정보와 선호 조건이 표시됩니다.</p>
+            </div>
+            <div class="match-conditions inline">
+              <h4>선호 조건 요약</h4>
+              <div class="match-condition-grid">
+                <div>
+                  <span class="label">키</span>
+                  <div id="matchPreferredHeight" class="value">-</div>
+                </div>
+                <div>
+                  <span class="label">나이</span>
+                  <div id="matchPreferredAge" class="value">-</div>
+                </div>
+                <div class="full">
+                  <span class="label">라이프스타일</span>
+                  <div id="matchPreferredLifestyle" class="value match-chip-row">-</div>
+                </div>
+              </div>
+            </div>
+          </section>
+          <section class="match-right">
+            <div class="match-results-panel">
+              <div class="match-results-head">
+                <h4>추천 후보</h4>
+                <p id="matchStatus" class="match-status">대상자를 선택하면 추천 리스트가 표시됩니다.</p>
+              </div>
+              <ul id="matchResultsList" class="match-results-list"></ul>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
     <div class="simple-modal-overlay" id="genderChartModal" hidden>
