@@ -2,6 +2,29 @@
       const ADMIN_PASSWORD = 'admin'
       const AUTH_STORAGE_KEY = 'ygsa_admin_auth'
       const AUTH_DURATION_MS = 60 * 60 * 1000
+      const PROFILE_CARD_CHARACTER_NAMES = [
+        '루나',
+        '카이',
+        '아린',
+        '라온',
+        '세라',
+        '레온',
+        '이든',
+        '소라',
+        '리안',
+        '제이드',
+        '하린',
+        '도윤',
+        '미카',
+        '유나',
+        '지안',
+        '네로',
+        '하루',
+        '라일라',
+        '준호',
+        '세이',
+      ]
+      const profileCardNameCache = new WeakMap()
       const authOverlay = document.getElementById('authOverlay')
       const authForm = document.getElementById('authForm')
       const authIdInput = document.getElementById('authId')
@@ -1685,14 +1708,122 @@
       }
 
       function renderProfileCard(record) {
+        const slides = buildProfileCardSlides(record)
+        const slideCount = slides.length || 1
+        return `
+          <div
+            class="profile-card-slider"
+            data-profile-card-slider
+            data-slide-count="${slideCount}"
+          >
+            ${slides
+              .map(
+                (slide, index) => `
+              <div
+                class="profile-card-slide ${slide.className} ${index === 0 ? 'is-active' : ''}"
+                data-profile-card-slide
+                data-slide-index="${index}"
+              >
+                ${slide.content}
+              </div>
+            `,
+              )
+              .join('')}
+            ${slideCount > 1 ? renderProfileCardSliderExtras(slideCount) : ''}
+          </div>
+        `
+      }
+
+      function buildProfileCardSlides(record) {
+        const slides = []
+        const facePhotos = getProfileCardPhotos(record, 'face')
+        facePhotos.forEach((photo, index) => {
+          slides.push({
+            className: 'profile-card-slide-photo',
+            content: renderProfileCardPhotoSlide(
+              photo,
+              `얼굴 사진 ${index + 1}`,
+            ),
+          })
+        })
+        const fullPhotos = getProfileCardPhotos(record, 'full')
+        fullPhotos.forEach((photo, index) => {
+          slides.push({
+            className: 'profile-card-slide-photo',
+            content: renderProfileCardPhotoSlide(photo, `전신 사진 ${index + 1}`),
+          })
+        })
+        const infoContent = renderProfileCardInfoSection(record)
+        if (infoContent) {
+          slides.push({
+            className: 'profile-card-slide-info',
+            content: infoContent,
+          })
+        }
+        const appealContent = renderProfileCardAppealSection(record)
+        if (appealContent) {
+          slides.push({
+            className: 'profile-card-slide-info profile-card-slide-appeal',
+            content: appealContent,
+          })
+        }
+        return slides
+      }
+
+      function renderProfileCardSliderExtras(count) {
+        return `
+          <div class="profile-card-slider-hint" aria-hidden="true">탭/클릭 →</div>
+          <div class="profile-card-slider-controls" role="group" aria-label="슬라이드 제어">
+            <button
+              type="button"
+              class="profile-card-slider-arrow profile-card-slider-arrow-prev"
+              data-slide-action="prev"
+              aria-label="이전 슬라이드"
+            >
+              ‹
+            </button>
+            <button
+              type="button"
+              class="profile-card-slider-arrow profile-card-slider-arrow-next"
+              data-slide-action="next"
+              aria-label="다음 슬라이드"
+            >
+              ›
+            </button>
+          </div>
+          <div class="profile-card-slider-dots" data-profile-card-dots role="tablist">
+            ${Array.from({ length: count })
+              .map(
+                (_, index) => `
+              <button
+                type="button"
+                class="profile-card-slider-dot ${index === 0 ? 'is-active' : ''}"
+                data-slide-to="${index}"
+                aria-label="${index + 1}번째 슬라이드 보기"
+              ></button>
+            `,
+              )
+              .join('')}
+          </div>
+        `
+      }
+
+      function renderProfileCardInfoSection(record) {
         if (!record) {
           return `
-            <div class="profile-card-meta-line">
-              <span>정보 없음</span>
-              <span>-</span>
+            <div class="profile-card-info">
+              <span class="profile-card-info-label">회원 정보</span>
+              <h2>연결사 회원</h2>
+              <div class="profile-chip-row">
+                <span class="profile-chip muted">정보 준비 중</span>
+              </div>
+              <div class="profile-card-stats">
+                <div class="profile-card-stat">
+                  <span>INFO</span>
+                  <strong>업데이트 예정</strong>
+                </div>
+              </div>
             </div>
-            <h2>연결사 회원</h2>
-            <p class="profile-card-tagline">표시할 데이터를 찾지 못했습니다.</p>
           `
         }
         const chips =
@@ -1720,29 +1851,225 @@
             .map((item) => `<span class="profile-chip">${escapeHtml(item)}</span>`)
             .join('') || '<span class="profile-chip muted">라이프스타일 업데이트 예정</span>'
         return `
-          <div class="profile-card-meta-line">
-            <span>${escapeHtml(formatProfileCardDate(record.createdAt))}</span>
-            <span>${escapeHtml(record.gender || '성별 비공개')}</span>
-          </div>
-          <h2>${escapeHtml(record.name || '연결사 회원')}</h2>
-          <p class="profile-card-tagline">${escapeHtml(getProfileCardTagline(record))}</p>
-          <div class="profile-chip-row">
-            ${chips}
-          </div>
-          <div class="profile-card-stats">
-            ${stats}
-          </div>
-          <div class="profile-card-lifestyle">
-            <span class="label">선호 라이프스타일</span>
+          <div class="profile-card-info">
+            <span class="profile-card-info-label">회원 정보</span>
+            <h2>${escapeHtml(getProfileCardDisplayName(record))}</h2>
             <div class="profile-chip-row">
-              ${lifestyle}
+              ${chips}
+            </div>
+            <div class="profile-card-stats">
+              ${stats}
+            </div>
+            <div class="profile-card-lifestyle">
+              <span class="label">선호 라이프스타일</span>
+              <div class="profile-chip-row">
+                ${lifestyle}
+              </div>
             </div>
           </div>
-          <div class="profile-card-footer-line">
-            <span>YGSA PREMIUM</span>
-            <span>${escapeHtml(record.district || '서울 · 수도권')}</span>
+        `
+      }
+
+      function renderProfileCardAppealSection(record) {
+        const blocks = getProfileCardAppealBlocks(record)
+        const body =
+          blocks.length > 0
+            ? blocks
+                .map(
+                  ({ label, value }) => `
+                <section class="profile-card-appeal-block">
+                  <span class="label">${escapeHtml(label)}</span>
+                  <p>${formatProfileCardAppealValue(value)}</p>
+                </section>
+              `,
+                )
+                .join('')
+            : `<p class="profile-card-appeal-empty">추가 어필 정보가 준비 중입니다.</p>`
+        return `
+          <div class="profile-card-info profile-card-info-appeal">
+            <div class="profile-card-appeal-header">
+              <span class="profile-card-info-label">추가 어필</span>
+              <span class="profile-card-appeal-pill">연결사 추천</span>
+            </div>
+            <div class="profile-card-appeal-body">
+              ${body}
+            </div>
           </div>
         `
+      }
+
+      function getProfileCardDisplayName(record) {
+        if (!record || typeof record !== 'object') {
+          return '연결사 회원'
+        }
+        if (record.characterName) {
+          return record.characterName
+        }
+        if (profileCardNameCache.has(record)) {
+          return profileCardNameCache.get(record)
+        }
+        const seedSource =
+          record.id ||
+          record.uuid ||
+          record.key ||
+          record.phoneNumber ||
+          record.phone ||
+          record.email ||
+          record.createdAt ||
+          record.consultingDate
+        const alias = getRandomProfileCardName(seedSource)
+        profileCardNameCache.set(record, alias)
+        return alias
+      }
+
+      function getRandomProfileCardName(seedSource) {
+        const pool = Array.isArray(PROFILE_CARD_CHARACTER_NAMES)
+          ? PROFILE_CARD_CHARACTER_NAMES
+          : []
+        if (!pool.length) {
+          return '연결사 회원'
+        }
+        if (seedSource !== undefined && seedSource !== null) {
+          const seedString = String(seedSource).trim()
+          if (seedString) {
+            const hash = seedString
+              .split('')
+              .reduce((acc, char) => acc + char.charCodeAt(0), 0)
+            return pool[hash % pool.length]
+          }
+        }
+        const randomIndex = Math.floor(Math.random() * pool.length)
+        return pool[randomIndex]
+      }
+
+      function renderProfileCardPhotoSlide(photo, fallbackLabel) {
+        if (!photo?.source) return ''
+        const label = fallbackLabel || '프로필 사진'
+        return `
+          <div class="profile-card-photo">
+            <img src="${escapeHtml(photo.source)}" alt="${escapeHtml(label)}" loading="lazy" />
+            <span class="profile-card-photo-label">${escapeHtml(label)}</span>
+          </div>
+        `
+      }
+
+      function getProfileCardPhotos(record, preferredType) {
+        if (!record) return []
+        const normalized = preferredType === 'full' ? 'full' : 'face'
+        const photos = Array.isArray(record.photos) ? record.photos : []
+        const seen = new Set()
+        return photos
+          .map((photo) => {
+            const role = getProfilePhotoRole(photo)
+            if (!isProfilePhotoRoleMatch(role, normalized)) return null
+            const source = getFileSource(photo)
+            if (!source || seen.has(source)) return null
+            seen.add(source)
+            return {
+              source,
+              label: photo.name || (normalized === 'face' ? '얼굴 사진' : '전신 사진'),
+            }
+          })
+          .filter(Boolean)
+      }
+
+      function getProfilePhotoRole(photo) {
+        const meta = photo?.meta || {}
+        return String(
+          photo?.role || meta.type || meta.category || meta.tag || meta.label || '',
+        )
+          .trim()
+          .toLowerCase()
+      }
+
+      function isProfilePhotoRoleMatch(role, preferredType) {
+        if (!role) return false
+        if (preferredType === 'full') {
+          return /full|body|전신/.test(role)
+        }
+        return /face|프로필|상반|portrait/.test(role)
+      }
+
+      function initProfileCardSlider(previewEl) {
+        if (!previewEl) return
+        const slider = previewEl.querySelector('[data-profile-card-slider]')
+        if (!slider || slider.dataset.initialized === 'true') return
+        slider.dataset.initialized = 'true'
+        slider.dataset.currentIndex = '0'
+        slider.tabIndex = 0
+        slider.addEventListener('click', handleProfileCardSliderClick)
+        slider.addEventListener('keydown', handleProfileCardSliderKeydown)
+      }
+
+      function handleProfileCardSliderClick(event) {
+        const slider = event.currentTarget
+        const dot = event.target.closest('[data-slide-to]')
+        if (dot) {
+          event.stopPropagation()
+          setProfileCardSliderIndex(slider, Number(dot.dataset.slideTo || 0))
+          return
+        }
+        const arrow = event.target.closest('[data-slide-action]')
+        if (arrow) {
+          event.stopPropagation()
+          const action = arrow.dataset.slideAction
+          advanceProfileCardSlider(slider, action === 'prev' ? -1 : 1)
+          return
+        }
+        const interactive = event.target.closest('button, a')
+        if (interactive && !interactive.dataset.slideTo && !interactive.dataset.slideAction) return
+        const rect = slider.getBoundingClientRect?.()
+        if (rect && Number.isFinite(rect.width) && rect.width > 0) {
+          const clickX = event.clientX ?? rect.left
+          const relativeX = clickX - rect.left
+          const goPrev = relativeX < rect.width / 2
+          advanceProfileCardSlider(slider, goPrev ? -1 : 1)
+        } else {
+          advanceProfileCardSlider(slider)
+        }
+      }
+
+      function handleProfileCardSliderKeydown(event) {
+        if (event.key === 'ArrowRight') {
+          event.preventDefault()
+          advanceProfileCardSlider(event.currentTarget, 1)
+          return
+        }
+        if (event.key === 'ArrowLeft') {
+          event.preventDefault()
+          advanceProfileCardSlider(event.currentTarget, -1)
+          return
+        }
+        if (event.key === ' ' || event.key === 'Enter') {
+          event.preventDefault()
+          advanceProfileCardSlider(event.currentTarget, 1)
+        }
+      }
+
+      function advanceProfileCardSlider(slider, step = 1) {
+        if (!slider) return
+        const slides = slider.querySelectorAll('[data-profile-card-slide]')
+        const count = slides.length
+        if (!count) return
+        const current = Number(slider.dataset.currentIndex || 0)
+        const next = (current + step + count) % count
+        setProfileCardSliderIndex(slider, next)
+      }
+
+      function setProfileCardSliderIndex(slider, index) {
+        if (!slider) return
+        const slides = slider.querySelectorAll('[data-profile-card-slide]')
+        const dots = slider.querySelectorAll('[data-slide-to]')
+        const count = slides.length
+        if (!count) return
+        const nextIndex = Math.max(0, Math.min(count - 1, Number(index) || 0))
+        slides.forEach((slide, idx) => {
+          slide.classList.toggle('is-active', idx === nextIndex)
+        })
+        dots.forEach((dot) => {
+          dot.classList.toggle('is-active', Number(dot.dataset.slideTo) === nextIndex)
+        })
+        slider.dataset.currentIndex = String(nextIndex)
       }
 
       function getProfileCardTagline(record) {
@@ -1750,6 +2077,35 @@
         if (record?.aboutMe) return record.aboutMe
         if (record?.sufficientCondition) return record.sufficientCondition
         return '연결사가 엄선한 프리미엄 인연'
+      }
+
+      function getProfileCardAppealBlocks(record) {
+        if (!record) return []
+        const blocks = []
+        const addBlock = (label, value) => {
+          const text = typeof value === 'string' ? value.trim() : ''
+          if (!text) return
+          blocks.push({ label, value: text })
+        }
+        if (record.profileAppeal || record.aboutMe || record.sufficientCondition) {
+          addBlock('대표 어필', getProfileCardTagline(record))
+        }
+        addBlock('충분 조건', record.sufficientCondition)
+        addBlock('필수 조건', record.necessaryCondition)
+        addBlock('선호 / 비선호', record.likesDislikes)
+        const values = Array.isArray(record.values) ? record.values.filter(Boolean) : []
+        if (values.length) {
+          addBlock('가치관', values.join(' · '))
+        }
+        addBlock('가치관 (기타)', record.valuesCustom)
+        addBlock('자기 소개', record.aboutMe)
+        addBlock('노트', record.notes)
+        return blocks
+      }
+
+      function formatProfileCardAppealValue(value) {
+        const safe = typeof value === 'string' ? value : String(value || '')
+        return escapeHtml(safe).replace(/\n/g, '<br />')
       }
 
       function getProfileCardChips(record) {
@@ -4527,6 +4883,7 @@
         profileCardRecord = record
         applyProfileCardTheme(record)
         profileCardPreviewEl.innerHTML = renderProfileCard(record)
+        initProfileCardSlider(profileCardPreviewEl)
         profileCardModal.hidden = false
         requestAnimationFrame(() => profileCardModal.classList.add('visible'))
       }
