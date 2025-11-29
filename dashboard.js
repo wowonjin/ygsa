@@ -818,7 +818,7 @@
           syncMatchMemberOptions()
           updateStats()
           render()
-          attemptMatchHistoryResync()
+          await refreshMatchHistoryFromServer()
           if (!calendarModal.hidden) {
             refreshCalendar(true)
           }
@@ -4791,6 +4791,81 @@
           localStorage.setItem(MATCH_HISTORY_STORAGE_KEY, JSON.stringify(matchHistory))
         } catch (error) {
           console.warn('[match] 기록 저장 실패', error)
+        }
+      }
+
+      function rebuildMatchedCandidateIds() {
+        matchedCandidateIds.clear()
+        matchHistory.forEach((entry) => {
+          if (entry?.candidateId) {
+            matchedCandidateIds.add(entry.candidateId)
+          }
+        })
+      }
+
+      async function refreshMatchHistoryFromServer() {
+        if (!MATCH_HISTORY_API_URL || typeof fetch !== 'function') {
+          attemptMatchHistoryResync()
+          return
+        }
+        try {
+          const serverEntries = await fetchMatchHistoryFromServerRaw()
+          if (!serverEntries.length) {
+            attemptMatchHistoryResync()
+            return
+          }
+          const merged = mergeMatchHistoryEntries(serverEntries, matchHistory)
+          matchHistory = merged
+          rebuildMatchedCandidateIds()
+          saveMatchHistory()
+          updateMatchHistoryUI()
+        } catch (error) {
+          console.warn('[match] 서버 매칭 기록 불러오기 실패', error)
+        } finally {
+          attemptMatchHistoryResync()
+        }
+      }
+
+      async function fetchMatchHistoryFromServerRaw() {
+        const response = await fetch(MATCH_HISTORY_API_URL)
+        const body = await response.json().catch(() => ({}))
+        if (!response.ok || body?.ok === false) {
+          throw new Error(body?.message || `HTTP ${response.status}`)
+        }
+        return Array.isArray(body?.data) ? body.data : []
+      }
+
+      function mergeMatchHistoryEntries(serverEntries, localEntries) {
+        const localMap = new Map()
+        localEntries.forEach((entry) => {
+          if (!entry?.id) return
+          localMap.set(entry.id, entry)
+        })
+        serverEntries
+          .map((entry) => hydrateMatchHistoryEntry(entry))
+          .filter(Boolean)
+          .forEach((entry) => {
+            const existing = localMap.get(entry.id) || {}
+            localMap.set(entry.id, {
+              ...existing,
+              ...entry,
+              candidate: entry.candidate || existing.candidate || null,
+              target: entry.target || existing.target || null,
+            })
+          })
+        return Array.from(localMap.values()).sort(
+          (a, b) => (b.matchedAt || 0) - (a.matchedAt || 0),
+        )
+      }
+
+      function hydrateMatchHistoryEntry(entry) {
+        if (!entry?.candidateId) return null
+        const candidateRecord = items.find((item) => item.id === entry.candidateId)
+        const targetRecord = items.find((item) => item.id === entry.targetId)
+        return {
+          ...entry,
+          candidate: candidateRecord ? buildCandidateSnapshot(candidateRecord) : entry.candidate || null,
+          target: targetRecord ? buildCandidateSnapshot(targetRecord) : entry.target || null,
         }
       }
 

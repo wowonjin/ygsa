@@ -284,6 +284,16 @@ app.post('/api/profile-share/verify', async (req, res) => {
   }
 })
 
+app.get('/api/match-history', async (_req, res) => {
+  try {
+    const history = await readMatchHistory()
+    res.json({ ok: true, data: history })
+  } catch (error) {
+    console.error('[match-history:list]', error)
+    res.status(500).json({ ok: false, message: '매칭 기록을 불러오지 못했습니다.' })
+  }
+})
+
 app.post('/api/match-history', async (req, res) => {
   const entry = sanitizeMatchHistoryPayload(req.body)
   if (!entry) {
