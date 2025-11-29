@@ -426,6 +426,7 @@
       const matchedCandidateIds = new Set(
         matchHistory.map((entry) => entry.candidateId).filter(Boolean),
       )
+      let matchSelectionTargetPhoneKey = ''
       let profileCardRecord = null
       const viewState = {
         search: '',
@@ -4203,10 +4204,16 @@
         if (record && matchTargetInput) {
           matchTargetInput.value = buildMatchOptionLabel(record)
         }
-        if (record?.id !== matchSelectionTargetId) {
-          matchSelectionTargetId = record?.id || null
+        const nextTargetId = record?.id || null
+        const nextPhoneKey = normalizePhoneKey(record?.phone)
+        const targetChanged =
+          nextTargetId !== matchSelectionTargetId || nextPhoneKey !== matchSelectionTargetPhoneKey
+        matchSelectionTargetId = nextTargetId
+        matchSelectionTargetPhoneKey = nextPhoneKey
+        if (targetChanged) {
           matchSelectedCandidates = []
           updateMatchSelectionSummary()
+          updateMatchHistoryUI()
         }
         renderMatchTargetInfo(record)
         updateMatchResetVisibility(Boolean(matchSelectedMemberId))
@@ -4670,13 +4677,16 @@
       function buildMatchHistoryEntry(candidateRecord, targetRecord) {
         const now = Date.now()
         const candidateSnapshot = buildCandidateSnapshot(candidateRecord)
-        const targetSnapshot = buildCandidateSnapshot(targetRecord)
+        const targetSnapshot = targetRecord ? buildCandidateSnapshot(targetRecord) : null
+        const targetPhoneKey = normalizePhoneKey(targetSnapshot?.phone)
         const weekInfo = getWeekInfo(new Date(now))
         return {
           id: `${candidateSnapshot.id || 'candidate'}-${now}`,
           candidateId: candidateSnapshot.id || '',
           candidate: candidateSnapshot,
-          target: targetRecord ? targetSnapshot : null,
+          target: targetSnapshot,
+          targetId: targetSnapshot?.id || targetRecord?.id || '',
+          targetPhone: targetPhoneKey,
           matchedAt: now,
           week: {
             label: weekInfo.label,
@@ -4690,16 +4700,23 @@
 
       function updateMatchHistoryUI() {
         if (!matchHistoryList || !matchHistorySummaryEl) return
-        matchHistorySummaryEl.textContent = `${matchHistory.length}명`
-        if (!matchHistory.length) {
-          matchHistoryList.innerHTML = '<p class="match-history-empty">아직 기록된 매칭이 없습니다.</p>'
+        const activeEntries = getActiveMatchHistoryEntries()
+        matchHistorySummaryEl.textContent = `${activeEntries.length}명`
+        if (!matchSelectionTargetId && !matchSelectionTargetPhoneKey) {
+          matchHistoryList.innerHTML =
+            '<p class="match-history-empty">대상자를 선택하면 매칭 기록이 표시됩니다.</p>'
           return
         }
-        const groups = buildMatchHistoryGroups(matchHistory)
+        if (!activeEntries.length) {
+          matchHistoryList.innerHTML =
+            '<p class="match-history-empty">이 대상자에 대한 매칭 기록이 없습니다.</p>'
+          return
+        }
+        const groups = buildMatchHistoryGroups(activeEntries)
         matchHistoryList.innerHTML = groups.length
           ? groups
-          .map(
-            (group) => `
+              .map(
+                (group) => `
               <div class="match-history-group">
                 <div class="match-history-group-title">
                   <strong>${escapeHtml(group.label)}</strong>
@@ -4725,9 +4742,22 @@
                 </div>
               </div>
             `,
-          )
-          .join('')
-          : '<p class="match-history-empty">아직 기록된 매칭이 없습니다.</p>'
+              )
+              .join('')
+          : '<p class="match-history-empty">이 대상자에 대한 매칭 기록이 없습니다.</p>'
+      }
+
+      function getActiveMatchHistoryEntries() {
+        if (!matchSelectionTargetId && !matchSelectionTargetPhoneKey) {
+          return []
+        }
+        const normalizedKey = matchSelectionTargetPhoneKey
+        return matchHistory.filter((entry) => {
+          if (matchSelectionTargetId && entry.targetId === matchSelectionTargetId) return true
+          if (!normalizedKey) return false
+          const entryPhone = normalizePhoneKey(entry.targetPhone || entry.target?.phone || '')
+          return entryPhone && entryPhone === normalizedKey
+        })
       }
 
       function buildMatchHistoryGroups(history) {
@@ -4988,6 +5018,7 @@
       function clearMatchTarget() {
         matchSelectedMemberId = null
         matchSelectionTargetId = null
+        matchSelectionTargetPhoneKey = ''
         matchSelectedCandidates = []
         if (matchTargetInput) {
           matchTargetInput.value = ''
@@ -4999,6 +5030,7 @@
         }
         updateMatchResetVisibility(false)
         updateMatchSelectionSummary()
+        updateMatchHistoryUI()
       }
 
       function updateMatchResetVisibility(isActive) {
