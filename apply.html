@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>YGSA 매칭 미리보기</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
+      crossorigin
+    />
+    <style>
+      :root {
+        font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+          'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+        color-scheme: light;
+        --bg: radial-gradient(circle at top, #fdf2ff, #f1f5f9 45%, #e2e8f0 100%);
+        --ink: #0f172a;
+        --ink-subtle: #475569;
+        --panel: rgba(255, 255, 255, 0.82);
+        --line: rgba(15, 23, 42, 0.08);
+        --accent: #9333ea;
+        --accent-strong: #7e22ce;
+        --success: #0f9d58;
+        --danger: #dc2626;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--ink);
+        padding: clamp(24px, 5vw, 48px);
+      }
+
+      main.apply-layout {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: grid;
+        gap: clamp(20px, 3vw, 32px);
+      }
+
+      .panel {
+        background: var(--panel);
+        border-radius: 32px;
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        backdrop-filter: blur(12px);
+        padding: clamp(24px, 4vw, 40px);
+        box-shadow: 0 30px 80px rgba(15, 23, 42, 0.12);
+      }
+
+      .hero {
+        display: grid;
+        gap: 24px;
+      }
+
+      .hero-eyebrow {
+        font-size: 13px;
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+        color: #a855f7;
+        margin: 0;
+      }
+
+      .hero h1 {
+        margin: 0;
+        font-size: clamp(28px, 6vw, 44px);
+        line-height: 1.2;
+      }
+
+      .hero p.description {
+        margin: 0;
+        font-size: 16px;
+        line-height: 1.7;
+        color: var(--ink-subtle);
+      }
+
+      form.lookup-form {
+        display: grid;
+        gap: 16px;
+        max-width: 420px;
+      }
+
+      .input-group {
+        display: grid;
+        gap: 8px;
+      }
+
+      label {
+        font-weight: 600;
+        color: var(--ink-subtle);
+      }
+
+      input[type='tel'] {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 16px 18px;
+        font-size: 16px;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      input[type='tel']:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.18);
+      }
+
+      button {
+        border: none;
+        border-radius: 999px;
+        font-size: 16px;
+        font-weight: 700;
+        padding: 16px;
+        cursor: pointer;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+      }
+
+      button.primary {
+        background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+        color: #fff;
+        box-shadow: 0 18px 40px rgba(147, 51, 234, 0.35);
+      }
+
+      button.primary:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        box-shadow: none;
+      }
+
+      button.primary:not(:disabled):hover {
+        transform: translateY(-1px);
+      }
+
+      button.ghost {
+        background: transparent;
+        color: var(--ink-subtle);
+        border: 1px solid rgba(148, 163, 184, 0.4);
+      }
+
+      .message {
+        margin: 0;
+        padding: 12px 14px;
+        border-radius: 16px;
+        font-size: 14px;
+        line-height: 1.5;
+        display: none;
+      }
+
+      .message.is-visible {
+        display: block;
+      }
+
+      .message.is-error {
+        background: rgba(220, 38, 38, 0.08);
+        color: var(--danger);
+      }
+
+      .message.is-success {
+        background: rgba(16, 185, 129, 0.12);
+        color: #0f9d58;
+      }
+
+      .results-head {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+
+      .results-eyebrow {
+        margin: 0;
+        font-size: 12px;
+        letter-spacing: 0.4em;
+        text-transform: uppercase;
+        color: #a855f7;
+      }
+
+      .results-head h2 {
+        margin: 6px 0 4px;
+        font-size: clamp(24px, 5vw, 36px);
+      }
+
+      .results-meta {
+        margin: 0;
+        color: var(--ink-subtle);
+        font-size: 14px;
+      }
+
+      .matches-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 24px;
+      }
+
+      .match-card {
+        display: grid;
+        gap: 18px;
+      }
+
+      .match-card-head {
+        display: grid;
+        gap: 6px;
+      }
+
+      .match-card-eyebrow {
+        margin: 0;
+        font-size: 11px;
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+        color: #94a3b8;
+      }
+
+      .match-card-head h3 {
+        margin: 0;
+        font-size: 20px;
+      }
+
+      .match-card-tagline {
+        margin: 0;
+        color: var(--ink-subtle);
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      .profile-card-preview {
+        width: 100%;
+        aspect-ratio: 4 / 5;
+        border-radius: 32px;
+        border: 1px solid #f1f5f9;
+        overflow: hidden;
+        position: relative;
+        background: #020617;
+      }
+
+      .profile-card-preview.profile-card-preview-female {
+        border-color: #fecdd3;
+      }
+
+      .profile-card-preview.profile-card-preview-male {
+        border-color: #bae6fd;
+      }
+
+      .profile-card-slider {
+        width: 100%;
+        height: 100%;
+        position: relative;
+      }
+
+      .profile-card-slide {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        transition: opacity 0.35s ease;
+        pointer-events: none;
+      }
+
+      .profile-card-slide.is-active {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .profile-card-slide-info {
+        display: flex;
+      }
+
+      .profile-card-info {
+        width: 100%;
+        padding: 32px;
+        background: linear-gradient(135deg, #f8fafc, #ffffff);
+        border-radius: 32px;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        color: #0f172a;
+        height: 100%;
+      }
+
+      .profile-card-info-label {
+        font-size: 11px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: #94a3b8;
+      }
+
+      .profile-card-preview.profile-card-preview-female .profile-card-info {
+        background: linear-gradient(135deg, #fff1f5, #ffe4e8);
+        color: #8b1c3d;
+      }
+
+      .profile-card-preview.profile-card-preview-male .profile-card-info {
+        background: linear-gradient(135deg, #ecfeff, #dbeafe);
+        color: #0f4c81;
+      }
+
+      .profile-card-photo {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        background: #020617;
+      }
+
+      .profile-card-photo img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      .profile-card-photo-label {
+        position: absolute;
+        bottom: 20px;
+        left: 24px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.55);
+        color: #f8fafc;
+        font-size: 12px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .profile-card-slider-dots {
+        position: absolute;
+        bottom: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 8px;
+        z-index: 2;
+      }
+
+      .profile-card-slider-controls {
+        position: absolute;
+        bottom: 70px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 16px;
+        z-index: 2;
+      }
+
+      .profile-card-slider-arrow {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        border: 1px solid rgba(248, 250, 252, 0.6);
+        background: rgba(15, 23, 42, 0.35);
+        color: #f8fafc;
+        font-size: 24px;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+      }
+
+      .profile-card-slider-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        border: none;
+        background: rgba(255, 255, 255, 0.35);
+        cursor: pointer;
+        padding: 0;
+      }
+
+      .profile-card-slider-dot.is-active {
+        background: #ffffff;
+      }
+
+      .profile-card-info h2 {
+        margin: 12px 0 4px;
+        font-size: clamp(26px, 5vw, 38px);
+      }
+
+      .profile-card-tagline {
+        margin: 0;
+        font-size: 14px;
+        line-height: 1.6;
+        color: #334155;
+      }
+
+      .profile-chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .profile-chip {
+        border-radius: 999px;
+        padding: 6px 12px;
+        font-size: 12px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        color: #0f172a;
+      }
+
+      .profile-chip.muted {
+        color: #94a3b8;
+        border-style: dashed;
+      }
+
+      .profile-card-preview-female .profile-chip {
+        border-color: #fecdd3;
+        background: rgba(244, 114, 182, 0.12);
+        color: #be185d;
+      }
+
+      .profile-card-preview-male .profile-chip {
+        border-color: #bae6fd;
+        background: rgba(59, 130, 246, 0.12);
+        color: #0f4c81;
+      }
+
+      .profile-card-stats {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .profile-card-stat {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 14px;
+        border-radius: 20px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+      }
+
+      .profile-card-preview-female .profile-card-stat {
+        background: rgba(244, 114, 182, 0.12);
+        border-color: rgba(244, 114, 182, 0.45);
+      }
+
+      .profile-card-preview-male .profile-card-stat {
+        background: rgba(59, 130, 246, 0.12);
+        border-color: rgba(59, 130, 246, 0.45);
+      }
+
+      .profile-card-stat span {
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #94a3b8;
+      }
+
+      .profile-card-stat strong {
+        font-size: 18px;
+        color: #0f172a;
+      }
+
+      .profile-card-lifestyle {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .profile-card-lifestyle .label {
+        font-size: 11px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: #94a3b8;
+      }
+
+      .profile-card-info-appeal {
+        gap: 16px;
+      }
+
+      .profile-card-appeal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .profile-card-appeal-pill {
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.12);
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #0f172a;
+      }
+
+      .profile-card-appeal-body {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .profile-card-appeal-block {
+        border-radius: 16px;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        padding: 12px;
+        background: rgba(255, 255, 255, 0.85);
+      }
+
+      .profile-card-appeal-block .label {
+        font-size: 11px;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: #94a3b8;
+      }
+
+      .profile-card-appeal-block p {
+        margin: 8px 0 0;
+        font-size: 14px;
+        line-height: 1.6;
+        color: #0f172a;
+        white-space: pre-line;
+      }
+
+      .profile-card-appeal-empty {
+        margin: 0;
+        font-size: 14px;
+        color: #94a3b8;
+      }
+
+      @media (max-width: 720px) {
+        body {
+          padding: 16px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="apply-layout">
+      <section class="panel hero">
+        <div>
+          <p class="hero-eyebrow">YGSA PREMIUM</p>
+          <h1>이번 주에 준비된 매칭을 확인해 보세요</h1>
+          <p class="description">
+            상담 시 등록했던 회원 전화번호를 입력하면, 이번 주차에 선정된 후보 3명의 프로필 카드를
+            확인할 수 있습니다.
+          </p>
+        </div>
+        <form id="lookupForm" class="lookup-form" novalidate>
+          <div class="input-group">
+            <label for="phoneInput">회원 전화번호</label>
+            <input
+              id="phoneInput"
+              type="tel"
+              inputmode="tel"
+              autocomplete="tel"
+              placeholder="예: 010-5633-3105"
+              required
+            />
+          </div>
+          <button type="submit" id="submitButton" class="primary">추천 카드 보기</button>
+          <p id="formMessage" class="message" role="alert"></p>
+        </form>
+      </section>
+      <section class="panel results" id="resultsSection" hidden>
+        <div class="results-head">
+          <div>
+            <p class="results-eyebrow" id="weekLabel">이번 주 추천</p>
+            <h2 id="resultTitle">회원님을 위한 추천</h2>
+            <p class="results-meta" id="resultMeta"></p>
+          </div>
+          <button type="button" class="ghost" id="resetButton">다른 번호 조회</button>
+        </div>
+        <div class="matches-grid" id="matchCards"></div>
+      </section>
+    </main>
+    <script src="backend-config.js"></script>
+    <script>
+      ;(() => {
+        const form = document.getElementById('lookupForm')
+        const phoneInput = document.getElementById('phoneInput')
+        const submitButton = document.getElementById('submitButton')
+        const messageEl = document.getElementById('formMessage')
+        const resultsSection = document.getElementById('resultsSection')
+        const resultTitle = document.getElementById('resultTitle')
+        const resultMeta = document.getElementById('resultMeta')
+        const weekLabel = document.getElementById('weekLabel')
+        const matchCards = document.getElementById('matchCards')
+        const resetButton = document.getElementById('resetButton')
+
+        const resolvedOrigin =
+          (typeof window !== 'undefined' && window.BACKEND_ORIGIN) ||
+          (typeof location !== 'undefined' ? `${location.origin}` : '')
+        const MATCH_LOOKUP_URL = `${(resolvedOrigin || '').replace(/\/$/, '') || ''}/api/match-history/lookup`
+
+        form?.addEventListener('submit', handleSubmit)
+        resetButton?.addEventListener('click', handleReset)
+
+        function handleReset() {
+          resultsSection.hidden = true
+          matchCards.innerHTML = ''
+          if (phoneInput) {
+            phoneInput.value = ''
+            phoneInput.focus()
+          }
+          showMessage('')
+        }
+
+        async function handleSubmit(event) {
+          event.preventDefault()
+          if (!phoneInput) return
+          const phone = phoneInput.value.trim()
+          if (!phone) {
+            showMessage('전화번호를 입력해주세요.', true)
+            return
+          }
+          setLoading(true)
+          showMessage('')
+          try {
+            const payload = await fetchMatches(phone)
+            renderMatches(payload)
+            showMessage('추천 카드를 불러왔습니다.', false)
+            resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          } catch (error) {
+            console.error(error)
+            showMessage(error?.message || '매칭 정보를 불러오지 못했습니다.', true)
+            resultsSection.hidden = true
+          } finally {
+            setLoading(false)
+          }
+        }
+
+        function setLoading(isLoading) {
+          if (submitButton) {
+            submitButton.disabled = Boolean(isLoading)
+            submitButton.textContent = isLoading ? '불러오는 중...' : '추천 카드 보기'
+          }
+        }
+
+        async function fetchMatches(phone) {
+          const response = await fetch(MATCH_LOOKUP_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone, limit: 3 }),
+            cache: 'no-store',
+          })
+          let body = {}
+          try {
+            body = await response.json()
+          } catch (_) {
+            /* noop */
+          }
+          if (!response.ok || body?.ok === false) {
+            const message = body?.message || '조회에 실패했습니다.'
+            throw new Error(message)
+          }
+          return body?.data || {}
+        }
+
+        function renderMatches(data) {
+          const matches = Array.isArray(data?.matches) ? data.matches : []
+          if (!matches.length) {
+            resultsSection.hidden = true
+            throw new Error('표시할 매칭 카드가 없습니다.')
+          }
+          const targetName = data?.target?.name || '회원님'
+          resultTitle.textContent = `${targetName}을 위한 추천`
+          resultMeta.textContent = data?.target?.phoneMasked
+            ? `${data.target.phoneMasked} 인증 완료`
+            : ''
+          weekLabel.textContent = data?.week?.label || '이번 주 추천'
+
+          matchCards.innerHTML = ''
+          matches.forEach((record) => {
+            const card = renderMatchCard(record)
+            if (card) {
+              matchCards.appendChild(card)
+            }
+          })
+          resultsSection.hidden = false
+        }
+
+        function renderMatchCard(record) {
+          if (!record) return null
+          const wrapper = document.createElement('article')
+          wrapper.className = 'match-card'
+          const head = document.createElement('div')
+          head.className = 'match-card-head'
+          head.innerHTML = `
+            <p class="match-card-eyebrow">추천 후보</p>
+            <h3>${escapeHtml(getProfileCardDisplayName(record))}</h3>
+            <p class="match-card-tagline">${escapeHtml(getProfileCardTagline(record))}</p>
+          `
+          const preview = document.createElement('div')
+          const toneClass = getProfileToneClass(record.gender)
+          preview.className = `profile-card-preview ${toneClass}`.trim()
+          preview.innerHTML = renderProfileCard(record)
+          wrapper.appendChild(head)
+          wrapper.appendChild(preview)
+          initProfileCardSlider(preview)
+          return wrapper
+        }
+
+        function showMessage(text, isError = false) {
+          if (!messageEl) return
+          if (!text) {
+            messageEl.textContent = ''
+            messageEl.classList.remove('is-visible', 'is-error', 'is-success')
+            return
+          }
+          messageEl.textContent = text
+          messageEl.classList.add('is-visible')
+          messageEl.classList.toggle('is-error', Boolean(isError))
+          messageEl.classList.toggle('is-success', !isError)
+        }
+
+        function getProfileToneClass(gender) {
+          if (!gender) return ''
+          const normalized = String(gender).trim()
+          if (/여|female|woman/i.test(normalized)) return 'profile-card-preview-female'
+          if (/남|male|man/i.test(normalized)) return 'profile-card-preview-male'
+          return ''
+        }
+
+        const PROFILE_CARD_CHARACTER_NAMES = [
+          '루나',
+          '카이',
+          '아린',
+          '라온',
+          '세라',
+          '레온',
+          '이든',
+          '소라',
+          '리안',
+          '제이드',
+          '하린',
+          '도윤',
+          '미카',
+          '유나',
+          '지안',
+          '네로',
+          '하루',
+          '라일라',
+          '준호',
+          '세이',
+        ]
+
+        const SALARY_RANGE_LABELS = {
+          '1': '3000만원 미만',
+          '2': '3000-4000만원',
+          '3': '4000-6000만원',
+          '4': '6000-8000만원',
+          '5': '8000-1억원',
+          '6': '1-2억원',
+          '7': '2-3억원',
+          '8': '3억원 이상',
+        }
+
+        const profileCardNameCache = new WeakMap()
+
+        function renderProfileCard(record) {
+          const slides = buildProfileCardSlides(record)
+          const slideCount = slides.length || 1
+          return `
+            <div class="profile-card-slider" data-profile-card-slider data-slide-count="${slideCount}">
+              ${slides
+                .map(
+                  (slide, index) => `
+                  <div class="profile-card-slide ${slide.className} ${index === 0 ? 'is-active' : ''}" data-profile-card-slide data-slide-index="${index}">
+                    ${slide.content}
+                  </div>
+                `,
+                )
+                .join('')}
+              ${slideCount > 1 ? renderProfileCardSliderExtras(slideCount) : ''}
+            </div>
+          `
+        }
+
+        function buildProfileCardSlides(record) {
+          const slides = []
+          const facePhotos = getProfileCardPhotos(record, 'face')
+          facePhotos.forEach((photo, index) => {
+            slides.push({
+              className: 'profile-card-slide-photo',
+              content: renderProfileCardPhotoSlide(photo, `얼굴 사진 ${index + 1}`),
+            })
+          })
+          const fullPhotos = getProfileCardPhotos(record, 'full')
+          fullPhotos.forEach((photo, index) => {
+            slides.push({
+              className: 'profile-card-slide-photo',
+              content: renderProfileCardPhotoSlide(photo, `전신 사진 ${index + 1}`),
+            })
+          })
+          const infoContent = renderProfileCardInfoSection(record)
+          if (infoContent) {
+            slides.push({ className: 'profile-card-slide-info', content: infoContent })
+          }
+          const appealContent = renderProfileCardAppealSection(record)
+          if (appealContent) {
+            slides.push({
+              className: 'profile-card-slide-info profile-card-slide-appeal',
+              content: appealContent,
+            })
+          }
+          return slides
+        }
+
+        function renderProfileCardSliderExtras(count) {
+          return `
+            <div class="profile-card-slider-controls" role="group" aria-label="슬라이드 제어">
+              <button type="button" class="profile-card-slider-arrow profile-card-slider-arrow-prev" data-slide-action="prev" aria-label="이전 슬라이드">‹</button>
+              <button type="button" class="profile-card-slider-arrow profile-card-slider-arrow-next" data-slide-action="next" aria-label="다음 슬라이드">›</button>
+            </div>
+            <div class="profile-card-slider-dots" data-profile-card-dots role="tablist">
+              ${Array.from({ length: count })
+                .map(
+                  (_, index) => `
+                  <button type="button" class="profile-card-slider-dot ${index === 0 ? 'is-active' : ''}" data-slide-to="${index}" aria-label="${index + 1}번째 슬라이드 보기"></button>
+                `,
+                )
+                .join('')}
+            </div>
+          `
+        }
+
+        function renderProfileCardPhotoSlide(photo, fallbackLabel) {
+          if (!photo?.source) return ''
+          const label = fallbackLabel || photo.label || '프로필 사진'
+          return `
+            <div class="profile-card-photo">
+              <img src="${escapeHtml(photo.source)}" alt="${escapeHtml(label)}" loading="lazy" />
+              <span class="profile-card-photo-label">${escapeHtml(label)}</span>
+            </div>
+          `
+        }
+
+        function renderProfileCardInfoSection(record) {
+          if (!record) return ''
+          const chips =
+            getProfileCardChips(record)
+              .map((chip) => `<span class="profile-chip">${escapeHtml(chip)}</span>`)
+              .join('') || '<span class="profile-chip muted">정보 준비 중</span>'
+          const stats =
+            getProfileCardStats(record)
+              .map(
+                ({ label, value }) => `
+                  <div class="profile-card-stat">
+                    <span>${escapeHtml(label)}</span>
+                    <strong>${escapeHtml(value || '-')}</strong>
+                  </div>
+                `,
+              )
+              .join('') || `
+              <div class="profile-card-stat">
+                <span>INFO</span>
+                <strong>업데이트 예정</strong>
+              </div>
+            `
+          const lifestyle =
+            getProfileCardLifestyle(record)
+              .map((item) => `<span class="profile-chip">${escapeHtml(item)}</span>`)
+              .join('') || '<span class="profile-chip muted">라이프스타일 업데이트 예정</span>'
+          return `
+            <div class="profile-card-info">
+              <span class="profile-card-info-label">회원 정보</span>
+              <h2>${escapeHtml(getProfileCardDisplayName(record))}</h2>
+              <p class="profile-card-tagline">${escapeHtml(getProfileCardTagline(record))}</p>
+              <div class="profile-chip-row">${chips}</div>
+              <div class="profile-card-stats">${stats}</div>
+              <div class="profile-card-lifestyle">
+                <span class="label">선호 라이프스타일</span>
+                <div class="profile-chip-row">${lifestyle}</div>
+              </div>
+            </div>
+          `
+        }
+
+        function renderProfileCardAppealSection(record) {
+          const blocks = getProfileCardAppealBlocks(record)
+          const body =
+            blocks.length > 0
+              ? blocks
+                  .map(
+                    ({ label, value }) => `
+                <section class="profile-card-appeal-block">
+                  <span class="label">${escapeHtml(label)}</span>
+                  <p>${formatProfileCardAppealValue(value)}</p>
+                </section>
+              `,
+                  )
+                  .join('')
+              : `<p class="profile-card-appeal-empty">추가 어필 정보가 준비 중입니다.</p>`
+          return `
+            <div class="profile-card-info profile-card-info-appeal">
+              <div class="profile-card-appeal-header">
+                <span class="profile-card-info-label">추가 어필</span>
+                <span class="profile-card-appeal-pill">연결사 추천</span>
+              </div>
+              <div class="profile-card-appeal-body">
+                ${body}
+              </div>
+            </div>
+          `
+        }
+
+        function getProfileCardDisplayName(record) {
+          if (!record || typeof record !== 'object') return '연결사 회원'
+          if (record.characterName) return record.characterName
+          if (profileCardNameCache.has(record)) {
+            return profileCardNameCache.get(record)
+          }
+          const seedSource =
+            record.id ||
+            record.uuid ||
+            record.key ||
+            record.phoneNumber ||
+            record.phone ||
+            record.email ||
+            record.createdAt
+          const alias = getRandomProfileCardName(seedSource)
+          profileCardNameCache.set(record, alias)
+          return alias
+        }
+
+        function getRandomProfileCardName(seedSource) {
+          const pool = Array.isArray(PROFILE_CARD_CHARACTER_NAMES)
+            ? PROFILE_CARD_CHARACTER_NAMES
+            : []
+          if (!pool.length) return '연결사 회원'
+          if (seedSource !== undefined && seedSource !== null) {
+            const seedString = String(seedSource).trim()
+            if (seedString) {
+              const hash = seedString.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
+              return pool[hash % pool.length]
+            }
+          }
+          const randomIndex = Math.floor(Math.random() * pool.length)
+          return pool[randomIndex]
+        }
+
+        function getProfileCardTagline(record) {
+          if (record?.profileAppeal) return record.profileAppeal
+          if (record?.aboutMe) return record.aboutMe
+          if (record?.sufficientCondition) return record.sufficientCondition
+          return '연결사가 엄선한 프리미엄 인연'
+        }
+
+        function getProfileCardAppealBlocks(record) {
+          if (!record) return []
+          const blocks = []
+          const addBlock = (label, value) => {
+            const text = typeof value === 'string' ? value.trim() : ''
+            if (!text) return
+            blocks.push({ label, value: text })
+          }
+          if (record.profileAppeal || record.aboutMe || record.sufficientCondition) {
+            addBlock('대표 어필', getProfileCardTagline(record))
+          }
+          addBlock('충분 조건', record.sufficientCondition)
+          addBlock('필수 조건', record.necessaryCondition)
+          addBlock('선호 / 비선호', record.likesDislikes)
+          const values = Array.isArray(record.values) ? record.values.filter(Boolean) : []
+          if (values.length) {
+            addBlock('가치관', values.join(' · '))
+          }
+          addBlock('가치관 (기타)', record.valuesCustom)
+          addBlock('자기 소개', record.aboutMe)
+          addBlock('노트', record.notes)
+          return blocks
+        }
+
+        function formatProfileCardAppealValue(value) {
+          const safe = typeof value === 'string' ? value : String(value || '')
+          return escapeHtml(safe).replace(/\n/g, '<br />')
+        }
+
+        function getProfileCardChips(record) {
+          const chips = []
+          if (record?.job) chips.push(record.job)
+          if (record?.education) chips.push(record.education)
+          if (record?.district) chips.push(record.district)
+          if (record?.university) chips.push(record.university)
+          return chips.slice(0, 3)
+        }
+
+        function getProfileCardStats(record) {
+          if (!record) return []
+          const stats = [
+            { label: 'BIRTH', value: formatProfileBirthLabel(record.birth) },
+            { label: 'HEIGHT', value: normalizeHeightValue(record.height || record.region) || '-' },
+            { label: 'CAREER', value: record.job || '-' },
+            { label: 'MBTI', value: (record.mbti || '-').toUpperCase() },
+          ]
+          const salaryLabel = formatSalaryRange(record.salaryRange)
+          if (salaryLabel) {
+            stats.push({ label: 'SALARY', value: salaryLabel })
+          } else if (record.education) {
+            stats.push({ label: 'EDU', value: record.education })
+          }
+          return stats
+        }
+
+        function getProfileCardLifestyle(record) {
+          if (!record) return []
+          const preferred = Array.isArray(record.preferredLifestyle)
+            ? record.preferredLifestyle.filter(Boolean)
+            : []
+          if (preferred.length) {
+            return preferred.slice(0, 3)
+          }
+          if (record.likesDislikes) {
+            return record.likesDislikes
+              .split(/[,·]/)
+              .map((value) => value.trim())
+              .filter(Boolean)
+              .slice(0, 3)
+          }
+          return []
+        }
+
+        function formatProfileBirthLabel(value) {
+          const digits = String(value || '').replace(/[^0-9]/g, '')
+          if (digits.length >= 4) {
+            return `${digits.slice(0, 4)}`
+          }
+          return value || '-'
+        }
+
+        function normalizeHeightValue(raw) {
+          const digits = String(raw || '').replace(/[^0-9]/g, '').slice(0, 3)
+          return digits ? `${digits}cm` : ''
+        }
+
+        function formatSalaryRange(value) {
+          return SALARY_RANGE_LABELS[value] || ''
+        }
+
+        function getProfileCardPhotos(record, preferredType) {
+          if (!record) return []
+          const normalized = preferredType === 'full' ? 'full' : 'face'
+          const photos = Array.isArray(record.photos) ? record.photos : []
+          const seen = new Set()
+          return photos
+            .map((photo) => {
+              const role = getProfilePhotoRole(photo)
+              if (!isProfilePhotoRoleMatch(role, normalized)) return null
+              const source = getFileSource(photo)
+              if (!source || seen.has(source)) return null
+              seen.add(source)
+              return { source, label: photo.name || '' }
+            })
+            .filter(Boolean)
+        }
+
+        function getProfilePhotoRole(photo) {
+          const meta = photo?.meta || {}
+          return String(
+            photo?.role || meta.type || meta.category || meta.tag || meta.label || '',
+          )
+            .trim()
+            .toLowerCase()
+        }
+
+        function isProfilePhotoRoleMatch(role, preferredType) {
+          if (!role) return false
+          if (preferredType === 'full') {
+            return /full|body|전신/.test(role)
+          }
+          return /face|프로필|상반|portrait/.test(role)
+        }
+
+        function initProfileCardSlider(previewEl) {
+          if (!previewEl) return
+          const slider = previewEl.querySelector('[data-profile-card-slider]')
+          if (!slider || slider.dataset.initialized === 'true') return
+          slider.dataset.initialized = 'true'
+          slider.dataset.currentIndex = '0'
+          slider.tabIndex = 0
+          slider.addEventListener('click', handleProfileCardSliderClick)
+          slider.addEventListener('keydown', handleProfileCardSliderKeydown)
+        }
+
+        function handleProfileCardSliderClick(event) {
+          const slider = event.currentTarget
+          const dot = event.target.closest('[data-slide-to]')
+          if (dot) {
+            event.stopPropagation()
+            setProfileCardSliderIndex(slider, Number(dot.dataset.slideTo || 0))
+            return
+          }
+          const arrow = event.target.closest('[data-slide-action]')
+          if (arrow) {
+            event.stopPropagation()
+            const action = arrow.dataset.slideAction
+            advanceProfileCardSlider(slider, action === 'prev' ? -1 : 1)
+            return
+          }
+          const interactive = event.target.closest('button, a')
+          if (interactive && !interactive.dataset.slideTo && !interactive.dataset.slideAction) return
+          const rect = slider.getBoundingClientRect?.()
+          if (rect && Number.isFinite(rect.width) && rect.width > 0) {
+            const clickX = event.clientX ?? rect.left
+            const relativeX = clickX - rect.left
+            const goPrev = relativeX < rect.width / 2
+            advanceProfileCardSlider(slider, goPrev ? -1 : 1)
+          } else {
+            advanceProfileCardSlider(slider)
+          }
+        }
+
+        function handleProfileCardSliderKeydown(event) {
+          if (event.key === 'ArrowRight') {
+            event.preventDefault()
+            advanceProfileCardSlider(event.currentTarget, 1)
+            return
+          }
+          if (event.key === 'ArrowLeft') {
+            event.preventDefault()
+            advanceProfileCardSlider(event.currentTarget, -1)
+            return
+          }
+          if (event.key === ' ' || event.key === 'Enter') {
+            event.preventDefault()
+            advanceProfileCardSlider(event.currentTarget, 1)
+          }
+        }
+
+        function advanceProfileCardSlider(slider, step = 1) {
+          if (!slider) return
+          const slides = slider.querySelectorAll('[data-profile-card-slide]')
+          const count = slides.length
+          if (!count) return
+          const current = Number(slider.dataset.currentIndex || 0)
+          const next = (current + step + count) % count
+          setProfileCardSliderIndex(slider, next)
+        }
+
+        function setProfileCardSliderIndex(slider, index) {
+          if (!slider) return
+          const slides = slider.querySelectorAll('[data-profile-card-slide]')
+          const dots = slider.querySelectorAll('[data-slide-to]')
+          const count = slides.length
+          if (!count) return
+          const nextIndex = Math.max(0, Math.min(count - 1, Number(index) || 0))
+          slides.forEach((slide, idx) => {
+            slide.classList.toggle('is-active', idx === nextIndex)
+          })
+          dots.forEach((dot) => {
+            dot.classList.toggle('is-active', Number(dot.dataset.slideTo) === nextIndex)
+          })
+          slider.dataset.currentIndex = String(nextIndex)
+        }
+
+        function getFileSource(fileData) {
+          if (!fileData) return ''
+          if (typeof fileData === 'string') return fileData
+          if (typeof fileData.dataUrl === 'string' && fileData.dataUrl.trim()) return fileData.dataUrl.trim()
+          if (typeof fileData.downloadURL === 'string' && fileData.downloadURL.trim())
+            return fileData.downloadURL.trim()
+          if (typeof fileData.url === 'string' && fileData.url.trim()) return fileData.url.trim()
+          if (typeof fileData.src === 'string' && fileData.src.trim()) return fileData.src.trim()
+          if (typeof fileData.data === 'string' && fileData.data.trim()) {
+            const data = fileData.data.trim()
+            if (data.startsWith('data:')) return data
+            const mime =
+              typeof fileData.type === 'string' && fileData.type.trim()
+                ? fileData.type.trim()
+                : 'application/octet-stream'
+            return `data:${mime};base64,${data}`
+          }
+          if (typeof fileData.base64 === 'string' && fileData.base64.trim()) {
+            const mime =
+              typeof fileData.type === 'string' && fileData.type.trim()
+                ? fileData.type.trim()
+                : 'application/octet-stream'
+            return `data:${mime};base64,${fileData.base64.trim()}`
+          }
+          return ''
+        }
+
+        function escapeHtml(str) {
+          return String(str || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;')
+        }
+      })()
+    </script>
+  </body>
+</html>
+
+

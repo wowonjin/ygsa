@@ -14,6 +14,8 @@ const DATA_ROOT = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : pa
 const DATA_FILE_NAME = process.env.DATA_FILE || 'consultations.json'
 const DATA_DIR = DATA_ROOT
 const DATA_FILE = path.join(DATA_DIR, DATA_FILE_NAME)
+const MATCH_HISTORY_FILE = path.join(DATA_DIR, 'match-history.json')
+const MATCH_HISTORY_LIMIT = 5000
 const FRONTEND_DIST = path.join(__dirname, 'frontend', 'dist')
 const FRONTEND_INDEX = path.join(FRONTEND_DIST, 'index.html')
 const HAS_FRONTEND_BUILD = fsSync.existsSync(FRONTEND_INDEX)
@@ -279,6 +281,115 @@ app.post('/api/profile-share/verify', async (req, res) => {
     res
       .status(500)
       .json({ ok: false, message: '프로필 카드를 확인하지 못했습니다.' })
+  }
+})
+
+app.post('/api/match-history', async (req, res) => {
+  const entry = sanitizeMatchHistoryPayload(req.body)
+  if (!entry) {
+    return res.status(400).json({ ok: false, message: '유효한 매칭 데이터가 필요합니다.' })
+  }
+
+  try {
+    const history = await readMatchHistory()
+    const index = history.findIndex((item) => item.id === entry.id)
+    if (index !== -1) {
+      history[index] = entry
+    } else {
+      history.unshift(entry)
+    }
+    await writeMatchHistory(history)
+    res.json({ ok: true, data: entry })
+  } catch (error) {
+    console.error('[match-history:create]', error)
+    res.status(500).json({ ok: false, message: '매칭 기록을 저장하지 못했습니다.' })
+  }
+})
+
+app.delete('/api/match-history/:id', async (req, res) => {
+  const id = sanitizeText(req.params?.id)
+  if (!id) {
+    return res.status(400).json({ ok: false, message: '삭제할 매칭 ID가 필요합니다.' })
+  }
+
+  try {
+    const history = await readMatchHistory()
+    const index = history.findIndex((entry) => entry.id === id)
+    if (index === -1) {
+      return res.status(404).json({ ok: false, message: '해당 매칭 기록을 찾을 수 없습니다.' })
+    }
+    const [removed] = history.splice(index, 1)
+    await writeMatchHistory(history)
+    res.json({ ok: true, data: removed })
+  } catch (error) {
+    console.error('[match-history:delete]', error)
+    res.status(500).json({ ok: false, message: '매칭 기록을 삭제하지 못했습니다.' })
+  }
+})
+
+app.post('/api/match-history/lookup', async (req, res) => {
+  const phoneKey = normalizePhoneNumber(req.body?.phone)
+  const requestedWeek = sanitizeText(req.body?.week)
+  const limitRaw = Number(req.body?.limit)
+  const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(Math.trunc(limitRaw), 1), 6) : 3
+
+  if (!phoneKey) {
+    return res.status(400).json({ ok: false, message: '전화번호를 입력해주세요.' })
+  }
+
+  try {
+    const [records, history] = await Promise.all([readConsultations(), readMatchHistory()])
+    const targetRecord = records.find((item) => normalizePhoneNumber(item.phone) === phoneKey)
+    if (!targetRecord) {
+      return res.status(404).json({ ok: false, message: '등록된 회원을 찾지 못했습니다.' })
+    }
+
+    const relevant = history
+      .filter((entry) => entry.targetPhone === phoneKey || entry.targetId === targetRecord.id)
+      .sort((a, b) => (b.matchedAt || 0) - (a.matchedAt || 0))
+
+    if (!relevant.length) {
+      return res.status(404).json({ ok: false, message: '매칭 기록이 없습니다.' })
+    }
+
+    let activeWeekKey = requestedWeek && requestedWeek.trim() ? requestedWeek.trim() : ''
+    if (!activeWeekKey) {
+      activeWeekKey = buildWeekKey(relevant[0]?.week)
+    }
+
+    const weekFiltered = activeWeekKey
+      ? relevant.filter((entry) => buildWeekKey(entry.week) === activeWeekKey)
+      : relevant
+
+    const selection = []
+    const seen = new Set()
+    const sourceList = weekFiltered.length ? weekFiltered : relevant
+
+    for (const entry of sourceList) {
+      if (!entry?.candidateId || seen.has(entry.candidateId)) continue
+      const candidateRecord = records.find((item) => item.id === entry.candidateId)
+      if (!candidateRecord) continue
+      selection.push({ entry, record: candidateRecord })
+      seen.add(entry.candidateId)
+      if (selection.length >= limit) break
+    }
+
+    if (!selection.length) {
+      return res.status(404).json({ ok: false, message: '표시할 매칭 후보를 찾지 못했습니다.' })
+    }
+
+    const responseWeek = selection[0].entry?.week || null
+    res.json({
+      ok: true,
+      data: {
+        target: buildMatchTargetPayload(targetRecord),
+        week: responseWeek,
+        matches: selection.map(({ record }) => buildMatchCardPayload(record)),
+      },
+    })
+  } catch (error) {
+    console.error('[match-history:lookup]', error)
+    res.status(500).json({ ok: false, message: '매칭 정보를 불러오지 못했습니다.' })
   }
 })
 
@@ -635,6 +746,139 @@ async function writeConsultations(data) {
     ? [normalizeStoredRecord(data)]
     : []
   await fs.writeFile(DATA_FILE, JSON.stringify(normalized, null, 2), 'utf-8')
+}
+
+async function readMatchHistory() {
+  try {
+    await fs.mkdir(DATA_DIR, { recursive: true })
+    const raw = await fs.readFile(MATCH_HISTORY_FILE, 'utf-8')
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) {
+      return []
+    }
+    return parsed.map((entry) => normalizeMatchHistoryEntry(entry)).filter(Boolean)
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      await fs.writeFile(MATCH_HISTORY_FILE, '[]', 'utf-8')
+      return []
+    }
+    throw error
+  }
+}
+
+async function writeMatchHistory(data) {
+  const normalized = Array.isArray(data)
+    ? data.map((entry) => normalizeMatchHistoryEntry(entry)).filter(Boolean)
+    : []
+  const limited = normalized.slice(0, MATCH_HISTORY_LIMIT)
+  await fs.mkdir(DATA_DIR, { recursive: true })
+  await fs.writeFile(MATCH_HISTORY_FILE, JSON.stringify(limited, null, 2), 'utf-8')
+}
+
+function sanitizeMatchHistoryPayload(body) {
+  if (!body || typeof body !== 'object') return null
+  return normalizeMatchHistoryEntry(body)
+}
+
+function normalizeMatchHistoryEntry(entry) {
+  if (!entry || typeof entry !== 'object') return null
+  const candidateId = sanitizeText(entry.candidateId)
+  const targetId = sanitizeText(entry.targetId)
+  const targetPhone = normalizePhoneNumber(entry.targetPhone || entry.targetPhoneKey)
+  if (!candidateId || !targetId || !targetPhone) return null
+  const matchedAt = Number(entry.matchedAt)
+  const normalizedMatchedAt =
+    Number.isFinite(matchedAt) && matchedAt > 0 ? matchedAt : Date.now()
+  return {
+    id: sanitizeText(entry.id) || `match_${nanoid()}`,
+    candidateId,
+    targetId,
+    targetPhone,
+    matchedAt: normalizedMatchedAt,
+    week: sanitizeWeekDescriptor(entry.week, normalizedMatchedAt),
+  }
+}
+
+function sanitizeWeekDescriptor(week, fallbackTime) {
+  if (week && typeof week === 'object') {
+    const year = Number(week.year)
+    const weekNo = Number(week.week)
+    const startTime = Number(week.startTime)
+    const endTime = Number(week.endTime)
+    if (Number.isFinite(year) && Number.isFinite(weekNo)) {
+      return {
+        label:
+          sanitizeText(week.label) || `${year}년 ${String(weekNo).padStart(2, '0')}주차`,
+        year,
+        week: weekNo,
+        startTime: Number.isFinite(startTime) ? startTime : undefined,
+        endTime: Number.isFinite(endTime) ? endTime : undefined,
+      }
+    }
+  }
+  const fallback = Number.isFinite(fallbackTime) ? fallbackTime : Date.now()
+  return getWeekInfoFromDate(new Date(fallback))
+}
+
+function getWeekInfoFromDate(dateInput) {
+  const date = new Date(dateInput)
+  const day = date.getDay() || 7
+  const start = new Date(date)
+  start.setHours(0, 0, 0, 0)
+  start.setDate(start.getDate() - (day - 1))
+  const end = new Date(start)
+  end.setDate(start.getDate() + 6)
+
+  const utcDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+  const utcDay = utcDate.getUTCDay() || 7
+  utcDate.setUTCDate(utcDate.getUTCDate() + 4 - utcDay)
+  const isoYear = utcDate.getUTCFullYear()
+  const yearStart = new Date(Date.UTC(isoYear, 0, 1))
+  const weekNo = Math.ceil(((utcDate - yearStart) / 86400000 + 1) / 7)
+
+  return {
+    label: `${isoYear}년 ${String(weekNo).padStart(2, '0')}주차`,
+    year: isoYear,
+    week: weekNo,
+    startTime: start.getTime(),
+    endTime: end.getTime(),
+  }
+}
+
+function buildWeekKey(week) {
+  if (!week || typeof week !== 'object') return ''
+  const year = Number(week.year)
+  const weekNo = Number(week.week)
+  if (!Number.isFinite(year) || !Number.isFinite(weekNo)) return ''
+  return `${year}-W${String(weekNo).padStart(2, '0')}`
+}
+
+function buildMatchCardPayload(record) {
+  const payload = buildSharedProfilePayload(record)
+  delete payload.phone
+  delete payload.email
+  return payload
+}
+
+function buildMatchTargetPayload(record) {
+  if (!record || typeof record !== 'object') return {}
+  return {
+    id: record.id || '',
+    name: record.name || '',
+    gender: record.gender || '',
+    phoneMasked: maskPhoneNumber(record.phone),
+  }
+}
+
+function maskPhoneNumber(value) {
+  const digits = normalizePhoneNumber(value)
+  if (!digits) return ''
+  if (digits.length <= 4) return digits
+  const head = digits.slice(0, 3)
+  const tail = digits.slice(-4)
+  const middleLength = Math.max(3, digits.length - 7)
+  const middle = '*'.repeat(middleLength)
+  return `${head}-${middle}-${tail}`
 }
 
 function sanitizeUploadEntry(entry, { fallbackName = '', defaultRole = '' } = {}) {

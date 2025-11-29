@@ -154,6 +154,7 @@
       const API_URL = `${API_BASE_URL}/api/consult`
       const API_IMPORT_URL = `${API_BASE_URL}/api/consult/import`
       const EVENTS_URL = `${API_BASE_URL}/events`
+      const MATCH_HISTORY_API_URL = `${API_BASE_URL}/api/match-history`
       if (!BACKEND_ORIGIN_RAW) {
         console.info(`[ygsa] BACKEND_ORIGIN 미설정 – 기본값 ${API_BASE_URL} 사용`)
       }
@@ -453,6 +454,8 @@
       const MATCH_RESULT_LIMIT = 6
       const MATCH_SCORE_MAX = 3
       const MATCH_HISTORY_STORAGE_KEY = 'ygsa_match_history_v1'
+      const MATCH_HISTORY_RESYNC_KEY = 'ygsa_match_history_resync_at'
+      const MATCH_HISTORY_RESYNC_INTERVAL_MS = 6 * 60 * 60 * 1000
       let genderStatsData = { male: 0, female: 0 }
       if (IS_MOIM_VIEW) {
         updateWeekFilterLabel()
@@ -815,6 +818,7 @@
           syncMatchMemberOptions()
           updateStats()
           render()
+          attemptMatchHistoryResync()
           if (!calendarModal.hidden) {
             refreshCalendar(true)
           }
@@ -4589,6 +4593,7 @@
           matchedCandidateIds.add(historyEntry.candidateId)
         }
         saveMatchHistory()
+        syncMatchHistoryEntryWithServer(historyEntry, targetRecord)
         updateMatchSelectionSummary()
         updateMatchHistoryUI()
         runMatchRecommendation()
@@ -4789,6 +4794,98 @@
         }
       }
 
+      function attemptMatchHistoryResync() {
+        if (!matchHistory.length || !MATCH_HISTORY_API_URL || typeof fetch !== 'function') {
+          return
+        }
+        const now = Date.now()
+        let lastSync = 0
+        try {
+          lastSync = Number(localStorage.getItem(MATCH_HISTORY_RESYNC_KEY) || 0)
+        } catch (error) {
+          console.warn('[match] 매칭 기록 동기화 시각 확인 실패', error)
+        }
+        if (Number.isFinite(lastSync) && now - lastSync < MATCH_HISTORY_RESYNC_INTERVAL_MS) {
+          return
+        }
+        const targetMap = new Map(items.map((record) => [record.id, record]))
+        matchHistory.forEach((entry) => {
+          const targetId = entry?.target?.id
+          const targetRecord =
+            (targetId && targetMap.get(targetId)) ||
+            (entry?.target?.phone
+              ? items.find(
+                  (record) => normalizePhoneKey(record?.phone) === normalizePhoneKey(entry.target.phone),
+                )
+              : null)
+          syncMatchHistoryEntryWithServer(entry, targetRecord, { silent: true })
+        })
+        try {
+          localStorage.setItem(MATCH_HISTORY_RESYNC_KEY, String(now))
+        } catch (error) {
+          console.warn('[match] 매칭 기록 동기화 시각 저장 실패', error)
+        }
+      }
+
+      function syncMatchHistoryEntryWithServer(entry, targetRecord, options = {}) {
+        if (!entry || !MATCH_HISTORY_API_URL || typeof fetch !== 'function') return
+        const payload = buildMatchHistorySyncPayload(entry, targetRecord)
+        if (!payload) return
+        fetch(MATCH_HISTORY_API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+          .then(async (response) => {
+            if (response.ok) return
+            let message = ''
+            try {
+              const body = await response.json()
+              message = body?.message || ''
+            } catch (_) {}
+            reportMatchHistorySyncError(
+              message || `서버 응답 ${response.status}`,
+              options,
+            )
+          })
+          .catch((error) => {
+            reportMatchHistorySyncError(error?.message, options)
+          })
+      }
+
+      function reportMatchHistorySyncError(message, options = {}) {
+        const text = message || '매칭 기록을 서버에 저장하지 못했습니다.'
+        if (!options?.silent) {
+          showToast(text)
+        }
+        console.warn('[match] 서버 매칭 기록 동기화 실패:', text)
+      }
+
+      function buildMatchHistorySyncPayload(entry, targetRecord) {
+        if (!entry?.candidateId) return null
+        const targetId = entry.target?.id || targetRecord?.id || matchSelectionTargetId
+        const phoneSource = entry.target?.phone || targetRecord?.phone || ''
+        const targetPhone = normalizePhoneKey(phoneSource)
+        if (!targetId || !targetPhone) return null
+        return {
+          id: entry.id,
+          candidateId: entry.candidateId,
+          targetId,
+          targetPhone,
+          matchedAt: entry.matchedAt,
+          week: entry.week,
+        }
+      }
+
+      function deleteMatchHistoryEntryOnServer(entryId) {
+        if (!entryId || !MATCH_HISTORY_API_URL || typeof fetch !== 'function') return
+        fetch(`${MATCH_HISTORY_API_URL}/${encodeURIComponent(entryId)}`, {
+          method: 'DELETE',
+        }).catch((error) => {
+          console.warn('[match] 서버 매칭 기록 삭제 실패', error)
+        })
+      }
+
       function handleMatchHistoryClick(event) {
         const button = event.target.closest('.match-history-remove')
         if (!button) return
@@ -4807,6 +4904,7 @@
           matchedCandidateIds.delete(removed.candidateId)
         }
         saveMatchHistory()
+        deleteMatchHistoryEntryOnServer(removed?.id)
         updateMatchHistoryUI()
         runMatchRecommendation()
         showToast('매칭 기록에서 제거했습니다.')
