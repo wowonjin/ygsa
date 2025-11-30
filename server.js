@@ -948,33 +948,51 @@ function sanitizeUploadEntry(entry, { fallbackName = '', defaultRole = '' } = {}
 
 function sanitizeProfileUpdate(body) {
   const phone = normalizePhoneNumber(body?.phone)
-  const updates = {
-    mbti: sanitizeText(body?.mbti),
-    university: sanitizeText(body?.university),
-    salaryRange: sanitizeText(body?.salaryRange),
-    jobDetail: sanitizeNotes(body?.jobDetail),
-    profileAppeal: sanitizeNotes(body?.profileAppeal),
-    smoking: sanitizeText(body?.smoking),
-    religion: sanitizeText(body?.religion),
-    longDistance: sanitizeText(body?.longDistance),
-    dink: sanitizeText(body?.dink),
-    lastRelationship: sanitizeText(body?.lastRelationship),
-    marriageTiming: sanitizeText(body?.marriageTiming),
-    relationshipCount: sanitizeText(body?.relationshipCount),
-    carOwnership: sanitizeText(body?.carOwnership),
-    tattoo: sanitizeText(body?.tattoo),
-    divorceStatus: sanitizeText(body?.divorceStatus),
-    sufficientCondition: sanitizeNotes(body?.sufficientCondition),
-    necessaryCondition: sanitizeNotes(body?.necessaryCondition),
-    likesDislikes: sanitizeNotes(body?.likesDislikes),
-    valuesCustom: sanitizeNotes(body?.valuesCustom),
-    aboutMe: sanitizeNotes(body?.aboutMe),
-    preferredHeights: sanitizeStringArray(body?.preferredHeights),
-    preferredAges: sanitizeStringArray(body?.preferredAges),
-    preferredLifestyle: sanitizeStringArray(body?.preferredLifestyle),
-    preferredAppearance: sanitizeText(body?.preferredAppearance),
-    values: sanitizeStringArray(body?.values).slice(0, 2),
+  const updates = {}
+  const hasProp = (key) => Object.prototype.hasOwnProperty.call(body || {}, key)
+  const assignText = (key, value, sanitizer = sanitizeText) => {
+    if (!hasProp(key)) return
+    const sanitized = sanitizer(value)
+    if (sanitized) {
+      updates[key] = sanitized
+    }
   }
+  const assignArray = (key, rawValue, limit) => {
+    if (!hasProp(key)) return
+    let sanitized = sanitizeStringArray(rawValue)
+    if (Number.isFinite(limit) && limit > 0) {
+      sanitized = sanitized.slice(0, limit)
+    }
+    if (sanitized.length) {
+      updates[key] = sanitized
+    }
+  }
+
+  assignText('mbti', body?.mbti)
+  assignText('university', body?.university)
+  assignText('salaryRange', body?.salaryRange)
+  assignText('jobDetail', body?.jobDetail, sanitizeNotes)
+  assignText('profileAppeal', body?.profileAppeal, sanitizeNotes)
+  assignText('smoking', body?.smoking)
+  assignText('religion', body?.religion)
+  assignText('longDistance', body?.longDistance)
+  assignText('dink', body?.dink)
+  assignText('lastRelationship', body?.lastRelationship)
+  assignText('marriageTiming', body?.marriageTiming)
+  assignText('relationshipCount', body?.relationshipCount)
+  assignText('carOwnership', body?.carOwnership)
+  assignText('tattoo', body?.tattoo)
+  assignText('divorceStatus', body?.divorceStatus)
+  assignText('sufficientCondition', body?.sufficientCondition, sanitizeNotes)
+  assignText('necessaryCondition', body?.necessaryCondition, sanitizeNotes)
+  assignText('likesDislikes', body?.likesDislikes, sanitizeNotes)
+  assignText('valuesCustom', body?.valuesCustom, sanitizeNotes)
+  assignText('aboutMe', body?.aboutMe, sanitizeNotes)
+  assignText('preferredAppearance', body?.preferredAppearance)
+  assignArray('preferredHeights', body?.preferredHeights)
+  assignArray('preferredAges', body?.preferredAges)
+  assignArray('preferredLifestyle', body?.preferredLifestyle)
+  assignArray('values', body?.values, 2)
   if (Object.prototype.hasOwnProperty.call(body || {}, 'depositStatus')) {
     const nextStatus = sanitizeDepositStatus(body?.depositStatus, '')
     if (nextStatus) {
@@ -983,10 +1001,16 @@ function sanitizeProfileUpdate(body) {
   }
 
   if (Object.prototype.hasOwnProperty.call(body || {}, 'job')) {
-    updates.job = sanitizeText(body.job)
+    const sanitizedJob = sanitizeText(body.job)
+    if (sanitizedJob) {
+      updates.job = sanitizedJob
+    }
   }
   if (Object.prototype.hasOwnProperty.call(body || {}, 'height')) {
-    updates.height = normalizeHeight(body.height)
+    const normalizedHeight = normalizeHeight(body.height)
+    if (normalizedHeight) {
+      updates.height = normalizedHeight
+    }
   }
 
   const documentsRaw =

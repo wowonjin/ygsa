@@ -2624,6 +2624,90 @@
         return { documentsPayload, photosPayload }
       }
 
+      function buildProfileSubmitPayload({
+        values,
+        documents,
+        photos,
+        photosFace,
+        photosFull,
+      } = {}) {
+        const payload = {
+          phone: formatPhoneNumber(phoneInput?.value || ''),
+          agreements: {
+            info: agreementInfo.checked,
+            manners: agreementManners.checked,
+          },
+        }
+
+        const addString = (key, raw) => {
+          if (typeof raw !== 'string') return
+          const trimmed = raw.trim()
+          if (!trimmed) return
+          payload[key] = trimmed
+        }
+
+        const addArray = (key, list) => {
+          if (!Array.isArray(list)) return
+          const cleaned = list
+            .map((value) => (typeof value === 'string' ? value.trim() : value))
+            .filter((value) => {
+              if (typeof value === 'string') return Boolean(value)
+              return value != null
+            })
+          if (cleaned.length) {
+            payload[key] = cleaned
+          }
+        }
+
+        const addObject = (key, obj) => {
+          if (!obj || typeof obj !== 'object') return
+          const entries = Object.entries(obj).filter(([, value]) => Boolean(value))
+          if (entries.length) {
+            payload[key] = Object.fromEntries(entries)
+          }
+        }
+
+        addString('mbti', mbtiInput?.value || '')
+        addString('job', jobInput?.value || '')
+        addString('university', universityInput?.value || '')
+        addString('salaryRange', salaryRangeSelect?.value || '')
+        addString('jobDetail', jobDetailInput?.value || '')
+        addString('profileAppeal', appealInput?.value || '')
+        addString('smoking', smokingSelect?.value || '')
+        addString('religion', religionSelect?.value || '')
+        addString('dink', dinkSelect?.value || '')
+        addString('longDistance', longDistanceSelect?.value || '')
+        addString('lastRelationship', lastRelationshipInput?.value || '')
+        addString('marriageTiming', marriageTimingSelect?.value || '')
+        addString('relationshipCount', relationshipCountSelect?.value || '')
+        addString('carOwnership', carOwnershipSelect?.value || '')
+        addString('tattoo', tattooSelect?.value || '')
+        addString('divorceStatus', divorceStatusSelect?.value || '')
+        addString('sufficientCondition', sufficientInput?.value || '')
+        addString('necessaryCondition', necessaryInput?.value || '')
+        addString('likesDislikes', likesDislikesInput?.value || '')
+        addString('aboutMe', aboutMeInput?.value || '')
+        addString('preferredAppearance', preferredAppearanceSelect?.value || '')
+
+        addArray('preferredHeights', getMultiSelectValues(preferredHeightsSelect))
+        addArray('preferredAges', getMultiSelectValues(preferredAgesSelect))
+        addArray('preferredLifestyle', getMultiSelectValues(preferredLifestyleSelect))
+        addArray('values', Array.isArray(values) ? values : [])
+
+        addObject('documents', documents)
+        if (Array.isArray(photos) && photos.length) {
+          payload.photos = photos
+        }
+        if (Array.isArray(photosFace) && photosFace.length) {
+          payload.photosFace = photosFace
+        }
+        if (Array.isArray(photosFull) && photosFull.length) {
+          payload.photosFull = photosFull
+        }
+
+        return payload
+      }
+
       fileDropZones.forEach((zone) => {
         const targetId = zone.dataset.target
         const inputEl = targetId ? document.getElementById(targetId) : null
@@ -2935,44 +3019,13 @@
         const { documentsPayload, photosPayload } = buildAttachmentPayload()
         const photosFaceUpload = photosPayload.filter((photo) => photo.role === 'face')
         const photosFullUpload = photosPayload.filter((photo) => photo.role === 'full')
-
-        const payload = {
-          phone: formatPhoneNumber(phoneInput?.value || ''),
-          mbti: mbtiInput?.value?.trim() || '',
-          job: jobInput?.value?.trim() || '',
-          university: universityInput?.value?.trim() || '',
-          salaryRange: salaryRangeSelect?.value || '',
-          jobDetail: jobDetailInput?.value?.trim() || '',
-          profileAppeal: appealInput?.value?.trim() || '',
-          smoking: smokingSelect?.value || '',
-          religion: religionSelect?.value || '',
-          dink: dinkSelect?.value || '',
-          lastRelationship: lastRelationshipInput?.value?.trim() || '',
-          marriageTiming: marriageTimingSelect?.value || '',
-          relationshipCount: relationshipCountSelect?.value || '',
-          carOwnership: carOwnershipSelect?.value || '',
-          tattoo: tattooSelect?.value || '',
-          longDistance: longDistanceSelect?.value || '',
-          divorceStatus: divorceStatusSelect?.value || '',
-          sufficientCondition: sufficientInput?.value?.trim() || '',
-          necessaryCondition: necessaryInput?.value?.trim() || '',
-          likesDislikes: likesDislikesInput?.value?.trim() || '',
-          aboutMe: aboutMeInput?.value?.trim() || '',
-          preferredHeights: getMultiSelectValues(preferredHeightsSelect),
-          preferredAges: getMultiSelectValues(preferredAgesSelect),
-          preferredLifestyle: getMultiSelectValues(preferredLifestyleSelect),
-          preferredAppearance: preferredAppearanceSelect?.value || '',
+        const payload = buildProfileSubmitPayload({
           values,
-          valuesCustom: '',
-          agreements: {
-            info: agreementInfo.checked,
-            manners: agreementManners.checked,
-          },
           documents: documentsPayload,
           photos: photosPayload,
           photosFace: photosFaceUpload,
           photosFull: photosFullUpload,
-        }
+        })
 
         if (!payload.phone) {
           showMessage('연락처를 입력해주세요.', 'error')
