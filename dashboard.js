@@ -481,6 +481,8 @@
       let profileCardHideTimer = null
       let matchSelectedCandidates = []
       let matchHistory = loadMatchHistory()
+      let firestoreDbInstance = null
+      let matchSelectionUnsubscribe = null
       const matchedCandidateIds = new Set(
         matchHistory.map((entry) => entry.candidateId).filter(Boolean),
       )
@@ -892,6 +894,7 @@
             refreshCalendar(true)
           }
           maybeApplyPendingMatchSelection()
+          subscribeToMatchSelections()
         } catch (error) {
           console.error(error)
           showToast('데이터를 불러오는데 실패했습니다.')
@@ -4983,10 +4986,9 @@
       function recordConfirmedCouple(selection, targetRecord) {
         if (!selection?.candidate || !selection?.target) return
         const candidateSnapshot = selection.candidate
-        const targetSnapshot =
-          targetRecord?.id === selection.target.id
-            ? buildCandidateSnapshot(targetRecord)
-            : selection.target
+        const targetSnapshot = targetRecord
+          ? buildCandidateSnapshot(targetRecord)
+          : selection.target
         const candidateId = candidateSnapshot.id || ''
         const targetId = targetSnapshot.id || ''
         confirmedMatches = confirmedMatches.filter(
@@ -5002,6 +5004,70 @@
         })
         saveConfirmedMatches()
         updateMatchedCouplesButton()
+        persistMatchSelectionToFirestore({
+          target: targetSnapshot,
+          candidate: candidateSnapshot,
+          confirmedAt,
+          week: buildWeekMeta(confirmedAt),
+          source: selection.source || 'bridge',
+        })
+      }
+
+      async function persistMatchSelectionToFirestore(entry) {
+        try {
+          const db = await ensureFirestoreDb()
+          if (!db) return
+          await db.collection('matchSelections').add({
+            target: entry.target || null,
+            candidate: entry.candidate || null,
+            week: entry.week || buildWeekMeta(entry.confirmedAt || Date.now()),
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            source: entry.source || 'admin',
+            status: 'pending',
+          })
+        } catch (error) {
+          console.warn('[match-confirmed] Firestore 저장 실패', error)
+        }
+      }
+
+      async function subscribeToMatchSelections() {
+        const db = await ensureFirestoreDb()
+        if (!db || typeof db.collection !== 'function') return
+        if (matchSelectionUnsubscribe) {
+          matchSelectionUnsubscribe()
+          matchSelectionUnsubscribe = null
+        }
+        matchSelectionUnsubscribe = db
+          .collection('matchSelections')
+          .orderBy('createdAt', 'desc')
+          .limit(300)
+          .onSnapshot(
+            (snapshot) => {
+              confirmedMatches = snapshot.docs.map((doc) => {
+                const data = doc.data() || {}
+                const createdAtValue =
+                  (data.createdAt &&
+                    typeof data.createdAt.toDate === 'function' &&
+                    data.createdAt.toDate()) ||
+                  null
+                const confirmedAt = createdAtValue
+                  ? createdAtValue.getTime()
+                  : data.confirmedAt || Date.now()
+                return {
+                  id: doc.id,
+                  target: data.target || null,
+                  candidate: data.candidate || null,
+                  confirmedAt,
+                  week: data.week || buildWeekMeta(confirmedAt),
+                }
+              })
+              saveConfirmedMatches()
+              updateMatchedCouplesButton()
+            },
+            (error) => {
+              console.warn('[match-confirmed] Firestore 구독 실패', error)
+            },
+          )
       }
 
       function loadMatchHistory() {
@@ -5036,6 +5102,34 @@
           console.warn('[match] 기록 불러오기 실패', error)
           return []
         }
+      }
+
+      function getFirebaseConfigPromise() {
+        if (
+          window.__FIREBASE_CONFIG_PROMISE__ &&
+          typeof window.__FIREBASE_CONFIG_PROMISE__.then === 'function'
+        ) {
+          return window.__FIREBASE_CONFIG_PROMISE__
+        }
+        if (window.FIREBASE_CONFIG) {
+          return Promise.resolve(window.FIREBASE_CONFIG)
+        }
+        return Promise.reject(new Error('Firebase 설정을 찾을 수 없습니다.'))
+      }
+
+      async function ensureFirestoreDb() {
+        if (firestoreDbInstance) return firestoreDbInstance
+        if (typeof firebase === 'undefined' || !firebase?.apps) return null
+        const config = await getFirebaseConfigPromise().catch((error) => {
+          console.warn('[match-confirmed] Firebase 설정을 불러오지 못했습니다.', error)
+          return null
+        })
+        if (!config) return null
+        if (!firebase.apps.length) {
+          firebase.initializeApp(config)
+        }
+        firestoreDbInstance = firebase.firestore()
+        return firestoreDbInstance
       }
 
       function saveMatchHistory() {

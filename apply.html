@@ -827,6 +827,9 @@
       window.BACKEND_ORIGIN = window.BACKEND_ORIGIN || 'https://ygsa-backend.onrender.com'
     </script>
     <script src="backend-config.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <script>
       ;(() => {
         const canvas = document.createElement('canvas')
@@ -925,9 +928,39 @@
         const weekLabel = document.getElementById('weekLabel')
         const matchCards = document.getElementById('matchCards')
         const MATCH_MANAGER_URL =
-          (window.MATCH_MANAGER_URL && String(window.MATCH_MANAGER_URL).trim()) || 'index.html'
+          (window.MATCH_MANAGER_URL && String(window.MATCH_MANAGER_URL).trim()) || ''
         let currentTargetProfile = null
         let matchPopupTimer = null
+        let firestoreInstancePromise = null
+
+        function getFirebaseConfigPromise() {
+          if (
+            window.__FIREBASE_CONFIG_PROMISE__ &&
+            typeof window.__FIREBASE_CONFIG_PROMISE__.then === 'function'
+          ) {
+            return window.__FIREBASE_CONFIG_PROMISE__
+          }
+          if (window.FIREBASE_CONFIG) {
+            return Promise.resolve(window.FIREBASE_CONFIG)
+          }
+          return Promise.reject(new Error('Firebase 설정을 찾을 수 없습니다.'))
+        }
+
+        function ensureFirestore() {
+          if (!firestoreInstancePromise) {
+            firestoreInstancePromise = (async () => {
+              if (typeof firebase === 'undefined' || !firebase?.apps) {
+                throw new Error('Firebase SDK를 불러오지 못했습니다.')
+              }
+              const config = await getFirebaseConfigPromise()
+              if (!firebase.apps.length) {
+                firebase.initializeApp(config)
+              }
+              return firebase.firestore()
+            })()
+          }
+          return firestoreInstancePromise
+        }
 
         const resolvedOrigin =
           (typeof window !== 'undefined' && window.BACKEND_ORIGIN) ||
@@ -1215,9 +1248,9 @@
           button.type = 'button'
           button.className = 'match-card-select-btn'
           button.textContent = '매칭 선택하기'
-          if (!currentTargetProfile?.phone) {
+          if (!currentTargetProfile) {
             button.disabled = true
-            button.title = '대상자 정보를 확인할 수 없습니다.'
+            button.title = '추천 대상 정보를 찾을 수 없습니다.'
           }
           button.addEventListener('click', (event) => {
             event.stopPropagation()
@@ -1226,23 +1259,28 @@
           return button
         }
 
-        function handleCardMatchSelect(record, button) {
+        async function handleCardMatchSelect(record, button) {
           const payload = buildMatchSelectionPayload(record)
           if (!payload) {
             showMessage('매칭 정보를 준비할 수 없습니다. 관리자에게 문의해주세요.', true)
             return
           }
-          const token = encodeMatchSelectionPayload(payload)
-          const destination = buildMatchManagerUrl(token)
-        window.open(destination, '_blank', 'noopener,noreferrer')
-          markMatchButtonCompleted(button)
-          showMatchConfirmationPopup()
+          try {
+            await sendMatchRequest(payload)
+            markMatchButtonCompleted(button)
+            showMatchConfirmationPopup()
+          } catch (error) {
+            console.error('[match-select] 전송 실패', error)
+            showMessage(error?.message || '매칭 신청을 전송하지 못했습니다.', true)
+          }
         }
 
         function buildMatchSelectionPayload(record) {
-          if (!record || !currentTargetProfile?.phone) return null
+          if (!record || !currentTargetProfile) return null
           const candidateId = getCandidateIdentifier(record)
-          if (!candidateId) return null
+          const hasTargetIdentifier =
+            currentTargetProfile.id || currentTargetProfile.phone || currentTargetProfile.phoneMasked
+          if (!candidateId || !hasTargetIdentifier) return null
           return {
             source: 'match-preview',
             createdAt: Date.now(),
@@ -1258,25 +1296,35 @@
           }
         }
 
-        function encodeMatchSelectionPayload(payload) {
-          try {
-            const json = JSON.stringify(payload)
-            return encodeURIComponent(btoa(unescape(encodeURIComponent(json))))
-          } catch (error) {
-            console.warn('[match-select] 인코딩 실패', error)
-            return ''
+        async function sendMatchRequest(payload) {
+          const endpoint = MATCH_MANAGER_URL && MATCH_MANAGER_URL.trim()
+          if (endpoint) {
+            const response = await fetch(endpoint, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(payload),
+              mode: 'cors',
+            })
+            if (!response.ok) {
+              const message = await response
+                .json()
+                .then((body) => body?.message)
+                .catch(() => '')
+              throw new Error(message || '서버 응답이 올바르지 않습니다.')
+            }
+            return
           }
-        }
-
-        function buildMatchManagerUrl(selectionToken) {
-          const base = MATCH_MANAGER_URL.replace(/\s+/g, '')
-          const cleanBase = base.replace(/#.*$/, '')
-          const hashBase = base.includes('#') ? base.slice(base.indexOf('#')) : '#match'
-          const hashWithoutQuery = hashBase.split('?')[0]
-          const finalHash = selectionToken
-            ? `${hashWithoutQuery}?selection=${selectionToken}`
-            : hashWithoutQuery
-          return `${cleanBase}${finalHash}`
+          const firestore = await ensureFirestore()
+          const weekMeta = buildWeekMeta(new Date())
+          await firestore.collection('matchSelections').add({
+            ...payload,
+            week: weekMeta,
+            source: 'apply',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            status: 'pending',
+          })
         }
 
         function getCandidateIdentifier(record) {
@@ -1341,6 +1389,42 @@
           if (matchPopupTimer) {
             window.clearTimeout(matchPopupTimer)
             matchPopupTimer = null
+          }
+        }
+
+        function buildWeekMeta(date) {
+          const info = getWeekInfo(date)
+          return {
+            label: info.label,
+            startTime: info.start.getTime(),
+            endTime: info.end.getTime(),
+            year: info.year,
+            week: info.week,
+          }
+        }
+
+        function getWeekInfo(date) {
+          const target = new Date(date)
+          const day = target.getDay() || 7
+          const start = new Date(target)
+          start.setHours(0, 0, 0, 0)
+          start.setDate(start.getDate() - (day - 1))
+          const end = new Date(start)
+          end.setDate(start.getDate() + 6)
+
+          const utcDate = new Date(Date.UTC(target.getFullYear(), target.getMonth(), target.getDate()))
+          const utcDay = utcDate.getUTCDay() || 7
+          utcDate.setUTCDate(utcDate.getUTCDate() + 4 - utcDay)
+          const isoYear = utcDate.getUTCFullYear()
+          const yearStart = new Date(Date.UTC(isoYear, 0, 1))
+          const weekNo = Math.ceil(((utcDate - yearStart) / 86400000 + 1) / 7)
+
+          return {
+            year: isoYear,
+            week: weekNo,
+            label: `${isoYear}년 ${String(weekNo).padStart(2, '0')}주차`,
+            start,
+            end,
           }
         }
 
