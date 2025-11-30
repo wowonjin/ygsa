@@ -33,7 +33,9 @@
       const appContentEl = document.getElementById('appContent')
       let isAuthenticated = false
       let appInitialized = false
+      const MATCH_CONFIRMED_STORAGE_KEY = 'YGSA_CONFIRMED_MATCHES'
       let pendingExternalMatchSelection = extractSelectionFromHash()
+      let confirmedMatches = loadConfirmedMatches()
 
       function initializeApp() {
         if (appInitialized) return
@@ -41,6 +43,7 @@
         updateStats()
         loadData()
         setupSSE()
+        updateMatchedCouplesButton()
       }
 
       function extractSelectionFromHash() {
@@ -62,6 +65,33 @@
           console.warn('[match-select] URL 해석 실패', error)
           cleanupSelectionInHash(hash.slice(1, queryIndex))
           return null
+        }
+      }
+
+      function loadConfirmedMatches() {
+        try {
+          const raw = localStorage.getItem(MATCH_CONFIRMED_STORAGE_KEY)
+          if (!raw) return []
+          const parsed = JSON.parse(raw)
+          if (!Array.isArray(parsed)) return []
+          return parsed
+            .map((entry) => ({
+              ...entry,
+              confirmedAt: entry.confirmedAt || Date.now(),
+              week: entry.week || buildWeekMeta(entry.confirmedAt || Date.now()),
+            }))
+            .sort((a, b) => (b.confirmedAt || 0) - (a.confirmedAt || 0))
+        } catch (error) {
+          console.warn('[match-confirmed] 불러오기 실패', error)
+          return []
+        }
+      }
+
+      function saveConfirmedMatches() {
+        try {
+          localStorage.setItem(MATCH_CONFIRMED_STORAGE_KEY, JSON.stringify(confirmedMatches))
+        } catch (error) {
+          console.warn('[match-confirmed] 저장 실패', error)
         }
       }
 
@@ -4145,6 +4175,17 @@
         }
       }
 
+      function buildWeekMeta(timestamp) {
+        const info = getWeekInfo(new Date(timestamp))
+        return {
+          label: info.label,
+          startTime: info.start.getTime(),
+          endTime: info.end.getTime(),
+          year: info.year,
+          week: info.week,
+        }
+      }
+
       function decodeBase64(value) {
         try {
           return decodeURIComponent(escape(atob(value)))
@@ -4841,16 +4882,16 @@
         return Array.from(map.values())
       }
 
-      function getCurrentWeekMatchEntries() {
+      function getCurrentWeekConfirmedMatches() {
         const weekInfo = getWeekInfo(new Date())
-        return matchHistory.filter(
+        return confirmedMatches.filter(
           (entry) => entry.week?.year === weekInfo.year && entry.week?.week === weekInfo.week,
         )
       }
 
       function updateMatchedCouplesButton() {
         if (!matchedCouplesBtn) return
-        const currentWeekMatches = getCurrentWeekMatchEntries()
+        const currentWeekMatches = getCurrentWeekConfirmedMatches()
         const count = currentWeekMatches.length
         matchedCouplesBtn.textContent = count ? `매칭된 커플 ${count}` : '매칭된 커플'
         matchedCouplesBtn.dataset.count = String(count)
@@ -4865,7 +4906,7 @@
             weekInfo.end,
           )}`
         }
-        const entries = getCurrentWeekMatchEntries()
+        const entries = getCurrentWeekConfirmedMatches()
         matchedCouplesList.innerHTML = entries.length
           ? entries
               .map((entry) => {
@@ -4874,7 +4915,7 @@
                 const candidateMeta = entry.candidate
                   ? buildCandidateMetaLine(entry.candidate)
                   : '프로필 정보 준비 중'
-                const matchedLabel = formatDate(entry.matchedAt)
+                const matchedLabel = formatDate(entry.confirmedAt)
                 return `
                   <li class="matched-couples-item">
                     <div class="matched-couples-names">
@@ -4920,6 +4961,7 @@
         if (selection.candidate?.id) {
           addCandidateToSelectionById(selection.candidate.id)
         }
+        recordConfirmedCouple(selection, targetRecord)
       }
 
       function findTargetRecordForSelection(targetInfo = {}) {
@@ -4936,6 +4978,30 @@
           if (recordByPhone) return recordByPhone
         }
         return null
+      }
+
+      function recordConfirmedCouple(selection, targetRecord) {
+        if (!selection?.candidate || !selection?.target) return
+        const candidateSnapshot = selection.candidate
+        const targetSnapshot =
+          targetRecord?.id === selection.target.id
+            ? buildCandidateSnapshot(targetRecord)
+            : selection.target
+        const candidateId = candidateSnapshot.id || ''
+        const targetId = targetSnapshot.id || ''
+        confirmedMatches = confirmedMatches.filter(
+          (entry) => entry.candidate?.id !== candidateId || entry.target?.id !== targetId,
+        )
+        const confirmedAt = Date.now()
+        confirmedMatches.unshift({
+          id: `${targetId || 'target'}-${candidateId || 'candidate'}-${confirmedAt}`,
+          target: targetSnapshot,
+          candidate: candidateSnapshot,
+          confirmedAt,
+          week: buildWeekMeta(confirmedAt),
+        })
+        saveConfirmedMatches()
+        updateMatchedCouplesButton()
       }
 
       function loadMatchHistory() {

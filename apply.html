@@ -399,26 +399,63 @@
       }
 
       .match-card-select-btn {
-        border: none;
+        border: 1px solid #5377f6;
         border-radius: 999px;
         padding: 12px 24px;
         font-size: 15px;
         font-weight: 600;
-        background: linear-gradient(135deg, #5377f6, #8b5cf6);
+        background: #5377f6;
         color: #fff;
         cursor: pointer;
-        box-shadow: 0 12px 24px rgba(83, 119, 246, 0.35);
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        box-shadow: none;
+        transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
       }
 
       .match-card-select-btn:hover {
         transform: translateY(-1px);
-        box-shadow: 0 16px 30px rgba(83, 119, 246, 0.45);
+        background: #4c6fe0;
+        border-color: #4c6fe0;
       }
 
       .match-card-select-btn:focus-visible {
-        outline: 3px solid rgba(83, 119, 246, 0.35);
+        outline: 3px solid rgba(83, 119, 246, 0.3);
         outline-offset: 3px;
+      }
+
+      .match-card-select-btn.is-completed {
+        background: #e2e8f0;
+        border-color: #e2e8f0;
+        color: #6b7280;
+        cursor: default;
+        transform: none;
+        box-shadow: none;
+      }
+
+      .match-card-select-btn.is-completed:hover {
+        transform: none;
+        background: #e2e8f0;
+        border-color: #e2e8f0;
+      }
+
+      .match-popup-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.25);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+      }
+
+      .match-popup {
+        background: #fff;
+        border-radius: 20px;
+        padding: 28px 36px;
+        box-shadow: 0 25px 60px rgba(15, 23, 42, 0.18);
+        text-align: center;
+        color: #4f4f4f;
+        font-size: 18px;
+        font-weight: 600;
       }
 
       @keyframes sparkFly {
@@ -890,6 +927,7 @@
         const MATCH_MANAGER_URL =
           (window.MATCH_MANAGER_URL && String(window.MATCH_MANAGER_URL).trim()) || 'index.html'
         let currentTargetProfile = null
+        let matchPopupTimer = null
 
         const resolvedOrigin =
           (typeof window !== 'undefined' && window.BACKEND_ORIGIN) ||
@@ -999,11 +1037,10 @@
           const toneClass = getProfileToneClass(record.gender)
           preview.className = `profile-card-preview ${toneClass}`.trim()
           preview.innerHTML = renderProfileCard(record)
-          wrapper.appendChild(preview)
           const cover = document.createElement('div')
           cover.className = 'match-card-cover'
           cover.innerHTML = `
-            <span>추천 후보 ${order || ''}</span>
+            <span>매칭 ${order || ''}</span>
             <small>카드를 펼쳐 확인하세요</small>
           `
           const flash = document.createElement('div')
@@ -1023,15 +1060,16 @@
             span.style.transform = `rotate(${(angle * 180) / Math.PI}deg)`
             sparks.appendChild(span)
           }
-          wrapper.appendChild(cover)
-          wrapper.appendChild(flash)
-          wrapper.appendChild(crack)
-          wrapper.appendChild(sparks)
+          preview.appendChild(cover)
+          preview.appendChild(flash)
+          preview.appendChild(crack)
+          preview.appendChild(sparks)
+          wrapper.appendChild(preview)
           const actions = document.createElement('div')
           actions.className = 'match-card-actions'
           const actionButton = createMatchSelectButton(record)
           actions.appendChild(actionButton)
-          wrapper.appendChild(actions)
+          preview.insertAdjacentElement('afterend', actions)
           initProfileCardSlider(preview)
           setupCardReveal(wrapper)
           return wrapper
@@ -1183,12 +1221,12 @@
           }
           button.addEventListener('click', (event) => {
             event.stopPropagation()
-            handleCardMatchSelect(record)
+            handleCardMatchSelect(record, button)
           })
           return button
         }
 
-        function handleCardMatchSelect(record) {
+        function handleCardMatchSelect(record, button) {
           const payload = buildMatchSelectionPayload(record)
           if (!payload) {
             showMessage('매칭 정보를 준비할 수 없습니다. 관리자에게 문의해주세요.', true)
@@ -1196,7 +1234,9 @@
           }
           const token = encodeMatchSelectionPayload(payload)
           const destination = buildMatchManagerUrl(token)
-          window.open(destination, '_blank', 'noopener,noreferrer')
+        window.open(destination, '_blank', 'noopener,noreferrer')
+          markMatchButtonCompleted(button)
+          showMatchConfirmationPopup()
         }
 
         function buildMatchSelectionPayload(record) {
@@ -1262,6 +1302,45 @@
             phoneMasked: target.phoneMasked || '',
             job: target.job || '',
             height: normalizeHeightValue(target.height) || '',
+          }
+        }
+
+        function markMatchButtonCompleted(button) {
+          if (!button) return
+          button.disabled = true
+          button.classList.add('is-completed')
+          button.textContent = '매칭이 신청되었습니다'
+        }
+
+        function showMatchConfirmationPopup() {
+          let overlay = document.getElementById('matchSelectionPopup')
+          if (!overlay) {
+            overlay = document.createElement('div')
+            overlay.id = 'matchSelectionPopup'
+            overlay.className = 'match-popup-overlay'
+            const popup = document.createElement('div')
+            popup.className = 'match-popup'
+            popup.textContent = '매칭이 신청되었습니다!'
+            overlay.appendChild(popup)
+            overlay.addEventListener('click', hideMatchConfirmationPopup)
+            document.body.appendChild(overlay)
+          } else {
+            overlay.querySelector('.match-popup').textContent = '매칭이 신청되었습니다!'
+          }
+          overlay.hidden = false
+          if (matchPopupTimer) {
+            window.clearTimeout(matchPopupTimer)
+          }
+          matchPopupTimer = window.setTimeout(hideMatchConfirmationPopup, 1800)
+        }
+
+        function hideMatchConfirmationPopup() {
+          const overlay = document.getElementById('matchSelectionPopup')
+          if (!overlay) return
+          overlay.hidden = true
+          if (matchPopupTimer) {
+            window.clearTimeout(matchPopupTimer)
+            matchPopupTimer = null
           }
         }
 
