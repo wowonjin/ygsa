@@ -734,6 +734,7 @@
       matchSelectionList?.addEventListener('click', handleMatchSelectionClick)
       matchHistoryList?.addEventListener('click', handleMatchHistoryClick)
       matchResetBtn?.addEventListener('click', () => clearMatchTarget())
+      matchedCouplesList?.addEventListener('click', handleMatchedCouplesListClick)
       detailDraftLoadBtn?.addEventListener('click', () => {
         if (!currentDraftData) {
           showToast('불러올 임시 데이터가 없습니다.')
@@ -4918,19 +4919,60 @@
                   : '프로필 정보 준비 중'
                 const matchedLabel = formatDate(entry.confirmedAt)
                 return `
-                  <li class="matched-couples-item">
+                  <li class="matched-couples-item" data-match-id="${escapeHtml(entry.id || '')}">
                     <div class="matched-couples-names">
                       <strong>${escapeHtml(targetName)}</strong>
                       <span class="matched-couples-connector">×</span>
                       <strong>${escapeHtml(candidateName)}</strong>
                     </div>
                     <p class="matched-couples-meta">${escapeHtml(candidateMeta)}</p>
-                    <span class="matched-couples-date">${escapeHtml(matchedLabel)}</span>
+                    <div class="matched-couples-footer">
+                      <span class="matched-couples-date">${escapeHtml(matchedLabel)}</span>
+                      <button type="button" class="matched-couples-remove">삭제</button>
+                    </div>
                   </li>
                 `
               })
               .join('')
           : '<li class="matched-couples-empty">이번 주차에는 확정된 커플이 없습니다.</li>'
+      }
+
+      function handleMatchedCouplesListClick(event) {
+        const button = event.target.closest('.matched-couples-remove')
+        if (!button) return
+        const item = button.closest('.matched-couples-item')
+        if (!item) return
+        const matchId = item.dataset.matchId
+        if (!matchId) return
+        if (!window.confirm('해당 매칭을 삭제하고 매칭 전 상태로 되돌릴까요?')) {
+          return
+        }
+        deleteMatchedCouple(matchId)
+      }
+
+      async function deleteMatchedCouple(matchId) {
+        const removedEntry = confirmedMatches.find((entry) => entry.id === matchId)
+        try {
+          const response = await fetch(`${MATCH_HISTORY_API_URL}/${encodeURIComponent(matchId)}`, {
+            method: 'DELETE',
+          })
+          if (!response.ok) {
+            const message = await response
+              .json()
+              .then((body) => body?.message)
+              .catch(() => '')
+            throw new Error(message || `HTTP ${response.status}`)
+          }
+          confirmedMatches = confirmedMatches.filter((entry) => entry.id !== matchId)
+          saveConfirmedMatches()
+          updateMatchedCouplesButton()
+          renderMatchedCouplesModal()
+          rebuildMatchedCandidateIds()
+          showToast('매칭 기록을 삭제했습니다.')
+        } catch (error) {
+          console.error('[match-confirmed] 삭제 실패', error)
+          showToast(error?.message || '매칭 삭제에 실패했습니다.')
+        }
       }
 
       function openMatchedCouplesModal() {
@@ -5004,6 +5046,7 @@
         confirmedMatches.unshift(matchEntry)
         saveConfirmedMatches()
         updateMatchedCouplesButton()
+        rebuildMatchedCandidateIds()
         if (options.persist !== false) {
           persistMatchToServer(matchEntry, {
             targetPhone: targetRecord?.phone || selection.targetPhone || '',
@@ -5060,6 +5103,7 @@
           confirmedMatches = rawEntries.map((entry) => mapServerMatchEntry(entry))
           saveConfirmedMatches()
           updateMatchedCouplesButton()
+          rebuildMatchedCandidateIds()
         } catch (error) {
           console.warn('[match-confirmed] 서버 매칭 기록 불러오기 실패', error)
         }
@@ -5142,6 +5186,12 @@
         matchHistory.forEach((entry) => {
           if (entry?.candidateId) {
             matchedCandidateIds.add(entry.candidateId)
+          }
+        })
+        confirmedMatches.forEach((entry) => {
+          const candidateId = entry?.candidate?.id || entry?.candidateId
+          if (candidateId) {
+            matchedCandidateIds.add(candidateId)
           }
         })
       }
