@@ -13,14 +13,9 @@
       :root {
         font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI',
           'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
-        color-scheme: light;
-        --bg: radial-gradient(circle at top, #fdf2ff, #f1f5f9 45%, #e2e8f0 100%);
         --ink: #0f172a;
         --ink-subtle: #475569;
-        --panel: rgba(255, 255, 255, 0.82);
         --line: rgba(15, 23, 42, 0.08);
-        --accent: #9333ea;
-        --accent-strong: #7e22ce;
         --success: #0f9d58;
         --danger: #dc2626;
       }
@@ -29,33 +24,46 @@
         box-sizing: border-box;
       }
 
+      [hidden] {
+        display: none !important;
+      }
+
       body {
         margin: 0;
         min-height: 100vh;
-        background: var(--bg);
         color: var(--ink);
-        padding: clamp(24px, 5vw, 48px);
       }
 
       main.apply-layout {
-        max-width: 1200px;
-        margin: 0 auto;
-        display: grid;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
         gap: clamp(20px, 3vw, 32px);
-      }
-
-      .panel {
-        background: var(--panel);
-        border-radius: 32px;
-        border: 1px solid rgba(148, 163, 184, 0.35);
-        backdrop-filter: blur(12px);
-        padding: clamp(24px, 4vw, 40px);
-        box-shadow: 0 30px 80px rgba(15, 23, 42, 0.12);
+        box-sizing: border-box;
+        padding: 24px 16px;
       }
 
       .hero {
         display: grid;
         gap: 24px;
+        width: 100%;
+        max-width: 420px;
+        text-align: left;
+        color: #4f4f4f;
+        justify-items: stretch;
+      }
+
+      .hero-description {
+        margin: 0;
+        line-height: 1.6;
+        font-size: 18px;
+        color: #7e7e7e;
+      }
+
+      .results {
+        width: 100%;
+        max-width: 1200px;
       }
 
       .hero-eyebrow {
@@ -72,27 +80,27 @@
         line-height: 1.2;
       }
 
-      .hero p.description {
-        margin: 0;
-        font-size: 16px;
-        line-height: 1.7;
-        color: var(--ink-subtle);
-      }
-
       form.lookup-form {
         display: grid;
         gap: 16px;
         max-width: 420px;
+        width: 100%;
+        margin: 0 auto;
+        justify-items: stretch;
       }
 
       .input-group {
         display: grid;
         gap: 8px;
+        width: 100%;
+        justify-items: start;
       }
 
       label {
         font-weight: 600;
-        color: var(--ink-subtle);
+        color: #7e7e7e;
+        font-size: 18px;
+        text-align: left;
       }
 
       input[type='tel'] {
@@ -101,6 +109,7 @@
         padding: 16px 18px;
         font-size: 16px;
         transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        width: 100%;
       }
 
       input[type='tel']:focus {
@@ -111,18 +120,19 @@
 
       button {
         border: none;
-        border-radius: 999px;
+        border-radius: 16px;
         font-size: 16px;
         font-weight: 700;
         padding: 16px;
         cursor: pointer;
         transition: transform 0.15s ease, box-shadow 0.15s ease;
+        width: 100%;
       }
 
       button.primary {
-        background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+        background: #5377f6;
         color: #fff;
-        box-shadow: 0 18px 40px rgba(147, 51, 234, 0.35);
+        box-shadow: none;
       }
 
       button.primary:disabled {
@@ -133,6 +143,7 @@
 
       button.primary:not(:disabled):hover {
         transform: translateY(-1px);
+        background: #4c6fe0;
       }
 
       button.ghost {
@@ -174,50 +185,40 @@
 
       .results-eyebrow {
         margin: 0;
-        font-size: 12px;
-        letter-spacing: 0.4em;
+        font-size: 16px;
+        letter-spacing: 0.05em;
         text-transform: uppercase;
-        color: #a855f7;
+        color: #5377f6;
+        font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+          'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+        font-weight: 500;
       }
 
       .results-head h2 {
         margin: 6px 0 4px;
         font-size: clamp(24px, 5vw, 36px);
+        color: #4f4f4f;
+        font-weight: 700;
       }
 
       .results-meta {
         margin: 0;
-        color: var(--ink-subtle);
-        font-size: 14px;
+        color: #7e7e7e;
+        font-size: 16px;
       }
 
       .matches-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
         gap: 24px;
       }
 
       .match-card {
+        position: relative;
         display: grid;
         gap: 18px;
-      }
-
-      .match-card-head {
-        display: grid;
-        gap: 6px;
-      }
-
-      .match-card-eyebrow {
-        margin: 0;
-        font-size: 11px;
-        letter-spacing: 0.3em;
-        text-transform: uppercase;
-        color: #94a3b8;
-      }
-
-      .match-card-head h3 {
-        margin: 0;
-        font-size: 20px;
+        perspective: 1600px;
+        overflow: visible;
       }
 
       .match-card-tagline {
@@ -234,21 +235,180 @@
         border: 1px solid #f1f5f9;
         overflow: hidden;
         position: relative;
-        background: #020617;
+        background: linear-gradient(135deg, #f8fafc, #ffffff);
       }
 
       .profile-card-preview.profile-card-preview-female {
         border-color: #fecdd3;
+        background: linear-gradient(135deg, #fff1f5, #ffe4e8);
       }
 
       .profile-card-preview.profile-card-preview-male {
         border-color: #bae6fd;
+        background: linear-gradient(135deg, #ecfeff, #dbeafe);
       }
 
       .profile-card-slider {
         width: 100%;
         height: 100%;
         position: relative;
+        opacity: 0;
+        transform: rotateY(14deg) scale(0.96);
+        filter: blur(4px) brightness(0.8);
+        transition: opacity 500ms ease, transform 500ms ease, filter 500ms ease;
+        visibility: hidden;
+      }
+
+      .match-card.is-open .profile-card-slider {
+        opacity: 1;
+        transform: rotateY(0deg) scale(1);
+        filter: blur(0px) brightness(1);
+        visibility: visible;
+      }
+
+      .match-card-cover {
+        position: absolute;
+        inset: 0;
+        border-radius: 32px;
+        background: radial-gradient(circle at top, rgba(83, 119, 246, 0.75), rgba(15, 23, 42, 0.95));
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 12px;
+        cursor: pointer;
+        z-index: 3;
+        text-align: center;
+        transition: opacity 350ms ease, transform 350ms ease;
+        box-shadow: 0 20px 55px rgba(83, 119, 246, 0.4);
+      }
+
+      .match-card-cover span {
+        font-size: 18px;
+        font-weight: 600;
+      }
+
+      .match-card-cover small {
+        font-size: 12px;
+        letter-spacing: 0.2em;
+        opacity: 0.8;
+      }
+
+      .match-card.is-open .match-card-cover {
+        opacity: 0;
+        pointer-events: none;
+        transform: scale(1.05);
+      }
+
+      .match-card-flash {
+        position: absolute;
+        inset: 0;
+        border-radius: 32px;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0));
+        opacity: 0;
+        pointer-events: none;
+        mix-blend-mode: screen;
+      }
+
+      .match-card.is-open .match-card-flash {
+        animation: cardFlash 650ms ease-out;
+      }
+
+      @keyframes cardFlash {
+        0% {
+          opacity: 0.9;
+          transform: scale(0.95);
+        }
+        60% {
+          opacity: 0.3;
+        }
+        100% {
+          opacity: 0;
+          transform: scale(1.15);
+        }
+      }
+
+      .match-card-crack {
+        position: absolute;
+        inset: 0;
+        border-radius: 32px;
+        pointer-events: none;
+        opacity: 0;
+        mix-blend-mode: screen;
+        background-image: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0) 55%),
+          repeating-conic-gradient(
+            from 0deg,
+            rgba(255, 255, 255, 0.45) 0deg 6deg,
+            transparent 6deg 18deg
+          );
+        filter: blur(1px);
+      }
+
+      .match-card.is-open .match-card-crack {
+        animation: crackBurst 700ms ease-out forwards;
+      }
+
+      @keyframes crackBurst {
+        0% {
+          opacity: 0;
+          transform: scale(0.8) rotate(-6deg);
+          filter: blur(6px);
+        }
+        40% {
+          opacity: 0.9;
+        }
+        100% {
+          opacity: 0;
+          transform: scale(1.25) rotate(4deg);
+          filter: blur(1px);
+        }
+      }
+
+      .match-card-sparks {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        overflow: visible;
+      }
+
+      .match-card-sparks span {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 5px;
+        height: 18px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(83, 119, 246, 0));
+        border-radius: 8px;
+        transform-origin: center;
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.3);
+        animation: sparkFly 720ms ease-out forwards;
+        animation-delay: var(--delay, 0ms);
+        animation-play-state: paused;
+      }
+
+      .match-card.is-open .match-card-sparks span {
+        animation-play-state: running;
+      }
+
+      @keyframes sparkFly {
+        0% {
+          opacity: 0;
+          transform: translate(-50%, -50%) scale(0.3);
+        }
+        20% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0;
+          transform: translate(
+              calc(-50% + var(--sx, 0px)),
+              calc(-50% + var(--sy, -80px))
+            )
+            scale(0.1)
+            rotate(180deg);
+        }
       }
 
       .profile-card-slide {
@@ -266,6 +426,11 @@
 
       .profile-card-slide-info {
         display: flex;
+        width: 100%;
+        height: 100%;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
       }
 
       .profile-card-info {
@@ -278,6 +443,7 @@
         gap: 18px;
         color: #0f172a;
         height: 100%;
+        flex: 1 0 auto;
       }
 
       .profile-card-info-label {
@@ -342,6 +508,17 @@
         display: flex;
         gap: 16px;
         z-index: 2;
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+      }
+
+      .profile-card-preview:hover .profile-card-slider-controls,
+      .profile-card-preview:focus-within .profile-card-slider-controls {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
       }
 
       .profile-card-slider-arrow {
@@ -374,8 +551,7 @@
       }
 
       .profile-card-info h2 {
-        margin: 12px 0 4px;
-        font-size: clamp(26px, 5vw, 38px);
+        display: none;
       }
 
       .profile-card-tagline {
@@ -429,10 +605,10 @@
         display: flex;
         flex-direction: column;
         gap: 4px;
-        padding: 14px;
-        border-radius: 20px;
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
+        padding: 10px 12px;
+        border-radius: 16px;
+        background: rgba(248, 250, 252, 0.85);
+        border: 1px solid rgba(148, 163, 184, 0.3);
       }
 
       .profile-card-preview-female .profile-card-stat {
@@ -446,15 +622,15 @@
       }
 
       .profile-card-stat span {
-        font-size: 11px;
-        letter-spacing: 0.18em;
+        font-size: 10px;
+        letter-spacing: 0.15em;
         text-transform: uppercase;
-        color: #94a3b8;
+        color: #a0aec0;
       }
 
       .profile-card-stat strong {
-        font-size: 18px;
-        color: #0f172a;
+        font-size: 16px;
+        color: #475569;
       }
 
       .profile-card-lifestyle {
@@ -497,10 +673,16 @@
       }
 
       .profile-card-appeal-block {
-        border-radius: 16px;
-        border: 1px solid rgba(15, 23, 42, 0.08);
-        padding: 12px;
-        background: rgba(255, 255, 255, 0.85);
+        padding: 0;
+        border: none;
+        border-radius: 0;
+        background: transparent;
+        width: 100%;
+        text-align: left;
+      }
+
+      .profile-card-appeal-block + .profile-card-appeal-block {
+        margin-top: 12px;
       }
 
       .profile-card-appeal-block .label {
@@ -508,6 +690,8 @@
         letter-spacing: 0.15em;
         text-transform: uppercase;
         color: #94a3b8;
+        text-align: left;
+        display: block;
       }
 
       .profile-card-appeal-block p {
@@ -516,6 +700,7 @@
         line-height: 1.6;
         color: #0f172a;
         white-space: pre-line;
+        text-align: left;
       }
 
       .profile-card-appeal-empty {
@@ -533,24 +718,27 @@
   </head>
   <body>
     <main class="apply-layout">
-      <section class="panel hero">
+      <section class="hero">
         <div>
-          <p class="hero-eyebrow">YGSA PREMIUM</p>
-          <h1>이번 주에 준비된 매칭을 확인해 보세요</h1>
-          <p class="description">
-            상담 시 등록했던 회원 전화번호를 입력하면, 이번 주차에 선정된 후보 3명의 프로필 카드를
-            확인할 수 있습니다.
+          <h1 style="margin:0 0 12px 0;font-size:36px;font-weight:700;color:#4f4f4f;">
+            매칭 확인하기<span style="color:#5377f6;">.</span>
+          </h1>
+          <p class="hero-description">
+            라운드 기준으로 가까운 수요일에 공개됩니다.<br />
+            기본 3명, 상황에 따라 추가 제안이 열릴 수 있어요.
           </p>
         </div>
         <form id="lookupForm" class="lookup-form" novalidate>
           <div class="input-group">
-            <label for="phoneInput">회원 전화번호</label>
+            <label for="phoneInput" style="font-weight:400;color:#7e7e7e;font-size:18px;text-align:left;">
+              상담 시 등록했던 휴대폰 번호를 입력해주세요
+            </label>
             <input
               id="phoneInput"
               type="tel"
               inputmode="tel"
               autocomplete="tel"
-              placeholder="예: 010-5633-3105"
+              placeholder="예: 010-1111-1111"
               required
             />
           </div>
@@ -558,22 +746,110 @@
           <p id="formMessage" class="message" role="alert"></p>
         </form>
       </section>
-      <section class="panel results" id="resultsSection" hidden>
+      <section class="results" id="resultsSection" hidden>
         <div class="results-head">
           <div>
             <p class="results-eyebrow" id="weekLabel">이번 주 추천</p>
             <h2 id="resultTitle">회원님을 위한 추천</h2>
             <p class="results-meta" id="resultMeta"></p>
           </div>
-          <button type="button" class="ghost" id="resetButton">다른 번호 조회</button>
         </div>
         <div class="matches-grid" id="matchCards"></div>
       </section>
     </main>
+    <script>
+      window.BACKEND_ORIGIN = window.BACKEND_ORIGIN || 'https://ygsa-backend.onrender.com'
+    </script>
     <script src="backend-config.js"></script>
     <script>
       ;(() => {
+        const canvas = document.createElement('canvas')
+        canvas.id = 'confettiCanvas'
+        canvas.style.position = 'fixed'
+        canvas.style.top = '0'
+        canvas.style.left = '0'
+        canvas.style.width = '100%'
+        canvas.style.height = '100%'
+        canvas.style.pointerEvents = 'none'
+        canvas.style.zIndex = '9999'
+        document.body.appendChild(canvas)
+
+        const ctx = canvas.getContext('2d')
+        const resize = () => {
+          canvas.width = window.innerWidth
+          canvas.height = window.innerHeight
+        }
+        resize()
+        window.addEventListener('resize', resize)
+
+        const colors = ['#ff6b6b', '#ffd93d', '#6bcbee', '#a26bff', '#4ade80']
+        const particles = []
+        const gravity = 0.12
+        const drag = 0.98
+
+        const createBurst = () => {
+          const count = 160
+          for (let i = 0; i < count; i += 1) {
+            const angle = (Math.PI * 2 * i) / count + Math.random() * 0.3
+            const speed = Math.random() * 8 + 4
+            particles.push({
+              x: canvas.width / 2,
+              y: canvas.height * 0.35,
+              vx: Math.cos(angle) * speed,
+              vy: Math.sin(angle) * speed - 2,
+              size: Math.random() * 6 + 4,
+              color: colors[Math.floor(Math.random() * colors.length)],
+              rotation: Math.random() * Math.PI,
+              rotationSpeed: (Math.random() - 0.5) * 0.2,
+              life: 1,
+            })
+          }
+        }
+
+        let animationFrame
+        const render = () => {
+          ctx.clearRect(0, 0, canvas.width, canvas.height)
+          particles.forEach((p) => {
+            p.vx *= drag
+            p.vy = p.vy * drag + gravity
+            p.x += p.vx
+            p.y += p.vy
+            p.rotation += p.rotationSpeed
+            p.life -= 0.005
+
+            ctx.save()
+            ctx.translate(p.x, p.y)
+            ctx.rotate(p.rotation)
+            ctx.globalAlpha = Math.max(p.life, 0)
+            ctx.fillStyle = p.color
+            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 1.4)
+            ctx.restore()
+          })
+          for (let i = particles.length - 1; i >= 0; i -= 1) {
+            if (particles[i].life <= 0 || particles[i].y > canvas.height + 50) {
+              particles.splice(i, 1)
+            }
+          }
+          if (particles.length) {
+            animationFrame = requestAnimationFrame(render)
+          }
+        }
+
+        window.addEventListener('load', () => {
+          createBurst()
+          render()
+          setTimeout(() => {
+            cancelAnimationFrame(animationFrame)
+            window.removeEventListener('resize', resize)
+            canvas.remove()
+          }, 3500)
+        })
+      })()
+    </script>
+    <script>
+      ;(() => {
         const form = document.getElementById('lookupForm')
+        const heroSection = document.querySelector('.hero')
         const phoneInput = document.getElementById('phoneInput')
         const submitButton = document.getElementById('submitButton')
         const messageEl = document.getElementById('formMessage')
@@ -582,7 +858,6 @@
         const resultMeta = document.getElementById('resultMeta')
         const weekLabel = document.getElementById('weekLabel')
         const matchCards = document.getElementById('matchCards')
-        const resetButton = document.getElementById('resetButton')
 
         const resolvedOrigin =
           (typeof window !== 'undefined' && window.BACKEND_ORIGIN) ||
@@ -590,22 +865,11 @@
         const MATCH_LOOKUP_URL = `${(resolvedOrigin || '').replace(/\/$/, '') || ''}/api/match-history/lookup`
 
         form?.addEventListener('submit', handleSubmit)
-        resetButton?.addEventListener('click', handleReset)
-
-        function handleReset() {
-          resultsSection.hidden = true
-          matchCards.innerHTML = ''
-          if (phoneInput) {
-            phoneInput.value = ''
-            phoneInput.focus()
-          }
-          showMessage('')
-        }
 
         async function handleSubmit(event) {
           event.preventDefault()
           if (!phoneInput) return
-          const phone = phoneInput.value.trim()
+          const phone = phoneInput.value.replace(/[^0-9]/g, '').trim()
           if (!phone) {
             showMessage('전화번호를 입력해주세요.', true)
             return
@@ -615,8 +879,7 @@
           try {
             const payload = await fetchMatches(phone)
             renderMatches(payload)
-            showMessage('추천 카드를 불러왔습니다.', false)
-            resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            showMessage('')
           } catch (error) {
             console.error(error)
             showMessage(error?.message || '매칭 정보를 불러오지 못했습니다.', true)
@@ -631,6 +894,20 @@
             submitButton.disabled = Boolean(isLoading)
             submitButton.textContent = isLoading ? '불러오는 중...' : '추천 카드 보기'
           }
+        }
+        if (phoneInput) {
+          phoneInput.addEventListener('input', () => {
+            let digits = phoneInput.value.replace(/[^0-9]/g, '')
+            if (digits.length < 4) {
+              phoneInput.value = digits
+              return
+            }
+            if (digits.length < 8) {
+              phoneInput.value = digits.replace(/(\d{3})(\d+)/, '$1-$2')
+              return
+            }
+            phoneInput.value = digits.replace(/(\d{3})(\d{3,4})(\d{0,4}).*/, '$1-$2-$3')
+          })
         }
 
         async function fetchMatches(phone) {
@@ -660,40 +937,65 @@
             throw new Error('표시할 매칭 카드가 없습니다.')
           }
           const targetName = data?.target?.name || '회원님'
-          resultTitle.textContent = `${targetName}을 위한 추천`
+          const nameWithHonorific = targetName.endsWith('님') ? targetName : `${targetName}님`
+          resultTitle.textContent = `${nameWithHonorific}을 위한 추천`
           resultMeta.textContent = data?.target?.phoneMasked
             ? `${data.target.phoneMasked} 인증 완료`
             : ''
           weekLabel.textContent = data?.week?.label || '이번 주 추천'
 
           matchCards.innerHTML = ''
-          matches.forEach((record) => {
-            const card = renderMatchCard(record)
+          matches.forEach((record, index) => {
+            const card = renderMatchCard(record, index + 1)
             if (card) {
               matchCards.appendChild(card)
             }
           })
+          if (heroSection) {
+            heroSection.hidden = true
+          }
           resultsSection.hidden = false
         }
 
-        function renderMatchCard(record) {
+        function renderMatchCard(record, order) {
           if (!record) return null
           const wrapper = document.createElement('article')
           wrapper.className = 'match-card'
-          const head = document.createElement('div')
-          head.className = 'match-card-head'
-          head.innerHTML = `
-            <p class="match-card-eyebrow">추천 후보</p>
-            <h3>${escapeHtml(getProfileCardDisplayName(record))}</h3>
-            <p class="match-card-tagline">${escapeHtml(getProfileCardTagline(record))}</p>
-          `
+          wrapper.tabIndex = 0
           const preview = document.createElement('div')
           const toneClass = getProfileToneClass(record.gender)
           preview.className = `profile-card-preview ${toneClass}`.trim()
           preview.innerHTML = renderProfileCard(record)
-          wrapper.appendChild(head)
           wrapper.appendChild(preview)
+          const cover = document.createElement('div')
+          cover.className = 'match-card-cover'
+          cover.innerHTML = `
+            <span>추천 후보 ${order || ''}</span>
+            <small>카드를 펼쳐 확인하세요</small>
+          `
+          const flash = document.createElement('div')
+          flash.className = 'match-card-flash'
+          const crack = document.createElement('div')
+          crack.className = 'match-card-crack'
+          const sparks = document.createElement('div')
+          sparks.className = 'match-card-sparks'
+          const sparkCount = 10
+          for (let i = 0; i < sparkCount; i += 1) {
+            const span = document.createElement('span')
+            const angle = (Math.PI * 2 * i) / sparkCount + Math.random() * 0.3
+            const distance = 140 + Math.random() * 60
+            span.style.setProperty('--sx', `${Math.cos(angle) * distance}px`)
+            span.style.setProperty('--sy', `${Math.sin(angle) * distance}px`)
+            span.style.setProperty('--delay', `${i * 35}ms`)
+            span.style.transform = `rotate(${(angle * 180) / Math.PI}deg)`
+            sparks.appendChild(span)
+          }
+          wrapper.appendChild(cover)
+          wrapper.appendChild(flash)
+          wrapper.appendChild(crack)
+          wrapper.appendChild(sparks)
           initProfileCardSlider(preview)
+          setupCardReveal(wrapper)
           return wrapper
         }
 
@@ -1076,6 +1378,27 @@
           slider.tabIndex = 0
           slider.addEventListener('click', handleProfileCardSliderClick)
           slider.addEventListener('keydown', handleProfileCardSliderKeydown)
+        }
+
+        function setupCardReveal(card) {
+          if (!card) return
+          const cover = card.querySelector('.match-card-cover')
+          const openCard = () => {
+            if (card.classList.contains('is-open')) return
+            card.classList.add('is-open')
+          }
+          if (cover) {
+            cover.addEventListener('click', (event) => {
+              event.stopPropagation()
+              openCard()
+            })
+          }
+          card.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              openCard()
+            }
+          })
         }
 
         function handleProfileCardSliderClick(event) {

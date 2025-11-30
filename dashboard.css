@@ -1985,14 +1985,16 @@
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
         overflow: hidden;
         position: relative;
-        background: #020617;
+        background: linear-gradient(135deg, #f8fafc, #ffffff);
         cursor: pointer;
       }
       .profile-card-preview.profile-card-preview-female {
         border-color: #fecdd3;
+        background: linear-gradient(135deg, #fff1f5, #ffe4e8);
       }
       .profile-card-preview.profile-card-preview-male {
         border-color: #bae6fd;
+        background: linear-gradient(135deg, #ecfeff, #e0f2fe);
       }
       .profile-card-slider {
         width: 100%;
@@ -2012,6 +2014,11 @@
       }
       .profile-card-slide-info {
         display: flex;
+        width: 100%;
+        height: 100%;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
       }
       .profile-card-info {
         width: 100%;
@@ -2023,6 +2030,7 @@
         gap: 18px;
         color: #0f172a;
         height: 100%;
+        flex: 1 0 auto;
         box-sizing: border-box;
       }
       .profile-card-info-label {
@@ -2082,6 +2090,16 @@
         display: flex;
         gap: 16px;
         z-index: 2;
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+      }
+      .profile-card-preview:hover .profile-card-slider-controls,
+      .profile-card-preview:focus-within .profile-card-slider-controls {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
       }
       .profile-card-slider-arrow {
         width: 42px;
@@ -2175,20 +2193,20 @@
         display: flex;
         flex-direction: column;
         gap: 4px;
-        padding: 14px;
-        border-radius: 20px;
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
+        padding: 10px 12px;
+        border-radius: 16px;
+        background: rgba(248, 250, 252, 0.85);
+        border: 1px solid rgba(148, 163, 184, 0.3);
       }
       .profile-card-stat span {
-        font-size: 11px;
-        letter-spacing: 0.18em;
+        font-size: 10px;
+        letter-spacing: 0.15em;
         text-transform: uppercase;
-        color: #94a3b8;
+        color: #a0aec0;
       }
       .profile-card-stat strong {
-        font-size: 18px;
-        color: #0f172a;
+        font-size: 16px;
+        color: #475569;
       }
       .profile-card-preview-female .profile-card-stat {
         background: rgba(244, 114, 182, 0.12);
@@ -2261,10 +2279,15 @@
         padding-right: 4px;
       }
       .profile-card-appeal-block {
-        padding: 14px 16px;
-        border-radius: 20px;
-        border: 1px solid rgba(15, 23, 42, 0.08);
-        background: rgba(255, 255, 255, 0.65);
+        padding: 0;
+        border: none;
+        border-radius: 0;
+        background: transparent;
+        width: 100%;
+        text-align: left;
+      }
+      .profile-card-appeal-block + .profile-card-appeal-block {
+        margin-top: 12px;
       }
       .profile-card-appeal-block .label {
         display: block;
@@ -2273,12 +2296,14 @@
         letter-spacing: 0.18em;
         text-transform: uppercase;
         color: #94a3b8;
+        text-align: left;
       }
       .profile-card-appeal-block p {
         margin: 0;
         font-size: 14px;
         line-height: 1.5;
         color: #0f172a;
+        text-align: left;
       }
       .profile-card-appeal-empty {
         margin: 0;

@@ -4715,8 +4715,8 @@
         const groups = buildMatchHistoryGroups(activeEntries)
         matchHistoryList.innerHTML = groups.length
           ? groups
-              .map(
-                (group) => `
+          .map(
+            (group) => `
               <div class="match-history-group">
                 <div class="match-history-group-title">
                   <strong>${escapeHtml(group.label)}</strong>
@@ -4742,8 +4742,8 @@
                 </div>
               </div>
             `,
-              )
-              .join('')
+          )
+          .join('')
           : '<p class="match-history-empty">이 대상자에 대한 매칭 기록이 없습니다.</p>'
       }
 
