@@ -1538,6 +1538,66 @@
       .gender-chart-center strong {
         font-size: 18px;
       }
+      .matched-couples-modal {
+        width: min(600px, 92vw);
+      }
+      .matched-couples-subtitle {
+        margin: 0 0 12px 0;
+        font-size: 14px;
+        color: #94a3b8;
+        text-align: center;
+      }
+      .matched-couples-body {
+        max-height: 420px;
+        overflow-y: auto;
+        padding-right: 6px;
+      }
+      .matched-couples-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .matched-couples-item {
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        border-radius: 16px;
+        padding: 14px 16px;
+        background: rgba(15, 23, 42, 0.65);
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .matched-couples-names {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 16px;
+        font-weight: 600;
+        color: #f8fafc;
+      }
+      .matched-couples-connector {
+        font-size: 14px;
+        color: #94a3b8;
+      }
+      .matched-couples-meta {
+        margin: 0;
+        font-size: 13px;
+        color: #c9d1d9;
+      }
+      .matched-couples-date {
+        color: #94a3b8;
+        font-size: 12px;
+      }
+      .matched-couples-empty {
+        border-radius: 16px;
+        border: 1px dashed rgba(148, 163, 184, 0.4);
+        padding: 24px;
+        text-align: center;
+        color: #94a3b8;
+        font-size: 14px;
+      }
       @keyframes modalPop {
         from {
           transform: translateY(20px) scale(0.95);
@@ -2446,6 +2506,21 @@
       background: rgba(16, 185, 129, 0.28);
       transform: translateY(-1px);
       border-color: rgba(16, 185, 129, 0.9);
+    }
+    .matched-couples-btn {
+      border: 1px solid rgba(99, 102, 241, 0.55);
+      background: rgba(99, 102, 241, 0.18);
+      color: #c7d2fe;
+      border-radius: 999px;
+      padding: 8px 18px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+    }
+    .matched-couples-btn:hover {
+      background: rgba(99, 102, 241, 0.3);
+      transform: translateY(-1px);
+      border-color: rgba(99, 102, 241, 0.8);
     }
       .match-overlay {
         position: fixed;

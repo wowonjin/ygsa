@@ -392,6 +392,35 @@
         animation-play-state: running;
       }
 
+      .match-card-actions {
+        display: flex;
+        justify-content: center;
+        margin-top: 12px;
+      }
+
+      .match-card-select-btn {
+        border: none;
+        border-radius: 999px;
+        padding: 12px 24px;
+        font-size: 15px;
+        font-weight: 600;
+        background: linear-gradient(135deg, #5377f6, #8b5cf6);
+        color: #fff;
+        cursor: pointer;
+        box-shadow: 0 12px 24px rgba(83, 119, 246, 0.35);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .match-card-select-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 16px 30px rgba(83, 119, 246, 0.45);
+      }
+
+      .match-card-select-btn:focus-visible {
+        outline: 3px solid rgba(83, 119, 246, 0.35);
+        outline-offset: 3px;
+      }
+
       @keyframes sparkFly {
         0% {
           opacity: 0;
@@ -858,6 +887,9 @@
         const resultMeta = document.getElementById('resultMeta')
         const weekLabel = document.getElementById('weekLabel')
         const matchCards = document.getElementById('matchCards')
+        const MATCH_MANAGER_URL =
+          (window.MATCH_MANAGER_URL && String(window.MATCH_MANAGER_URL).trim()) || 'index.html'
+        let currentTargetProfile = null
 
         const resolvedOrigin =
           (typeof window !== 'undefined' && window.BACKEND_ORIGIN) ||
@@ -943,6 +975,7 @@
             ? `${data.target.phoneMasked} 인증 완료`
             : ''
           weekLabel.textContent = data?.week?.label || '이번 주 추천'
+          currentTargetProfile = buildMatchTargetSnapshot(data?.target)
 
           matchCards.innerHTML = ''
           matches.forEach((record, index) => {
@@ -994,6 +1027,11 @@
           wrapper.appendChild(flash)
           wrapper.appendChild(crack)
           wrapper.appendChild(sparks)
+          const actions = document.createElement('div')
+          actions.className = 'match-card-actions'
+          const actionButton = createMatchSelectButton(record)
+          actions.appendChild(actionButton)
+          wrapper.appendChild(actions)
           initProfileCardSlider(preview)
           setupCardReveal(wrapper)
           return wrapper
@@ -1132,6 +1170,99 @@
               <span class="profile-card-photo-label">${escapeHtml(label)}</span>
             </div>
           `
+        }
+
+        function createMatchSelectButton(record) {
+          const button = document.createElement('button')
+          button.type = 'button'
+          button.className = 'match-card-select-btn'
+          button.textContent = '매칭 선택하기'
+          if (!currentTargetProfile?.phone) {
+            button.disabled = true
+            button.title = '대상자 정보를 확인할 수 없습니다.'
+          }
+          button.addEventListener('click', (event) => {
+            event.stopPropagation()
+            handleCardMatchSelect(record)
+          })
+          return button
+        }
+
+        function handleCardMatchSelect(record) {
+          const payload = buildMatchSelectionPayload(record)
+          if (!payload) {
+            showMessage('매칭 정보를 준비할 수 없습니다. 관리자에게 문의해주세요.', true)
+            return
+          }
+          const token = encodeMatchSelectionPayload(payload)
+          const destination = buildMatchManagerUrl(token)
+          window.open(destination, '_blank', 'noopener,noreferrer')
+        }
+
+        function buildMatchSelectionPayload(record) {
+          if (!record || !currentTargetProfile?.phone) return null
+          const candidateId = getCandidateIdentifier(record)
+          if (!candidateId) return null
+          return {
+            source: 'match-preview',
+            createdAt: Date.now(),
+            candidate: {
+              id: candidateId,
+              name: record.name || record.characterName || '추천 후보',
+              gender: record.gender || '',
+              job: record.job || '',
+              height: normalizeHeightValue(record.height) || '',
+              phone: record.phone || '',
+            },
+            target: currentTargetProfile,
+          }
+        }
+
+        function encodeMatchSelectionPayload(payload) {
+          try {
+            const json = JSON.stringify(payload)
+            return encodeURIComponent(btoa(unescape(encodeURIComponent(json))))
+          } catch (error) {
+            console.warn('[match-select] 인코딩 실패', error)
+            return ''
+          }
+        }
+
+        function buildMatchManagerUrl(selectionToken) {
+          const base = MATCH_MANAGER_URL.replace(/\s+/g, '')
+          const cleanBase = base.replace(/#.*$/, '')
+          const hashBase = base.includes('#') ? base.slice(base.indexOf('#')) : '#match'
+          const hashWithoutQuery = hashBase.split('?')[0]
+          const finalHash = selectionToken
+            ? `${hashWithoutQuery}?selection=${selectionToken}`
+            : hashWithoutQuery
+          return `${cleanBase}${finalHash}`
+        }
+
+        function getCandidateIdentifier(record) {
+          return (
+            record.id ||
+            record.uuid ||
+            record.candidateId ||
+            record.profileId ||
+            record.phone ||
+            record.key ||
+            ''
+          )
+        }
+
+        function buildMatchTargetSnapshot(target) {
+          if (!target) return null
+          const phone = target.phone || target.phoneNumber || ''
+          return {
+            id: target.id || target.uuid || '',
+            name: target.name || '회원님',
+            gender: target.gender || '',
+            phone,
+            phoneMasked: target.phoneMasked || '',
+            job: target.job || '',
+            height: normalizeHeightValue(target.height) || '',
+          }
         }
 
         function renderProfileCardInfoSection(record) {

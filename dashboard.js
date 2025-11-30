@@ -33,6 +33,7 @@
       const appContentEl = document.getElementById('appContent')
       let isAuthenticated = false
       let appInitialized = false
+      let pendingExternalMatchSelection = extractSelectionFromHash()
 
       function initializeApp() {
         if (appInitialized) return
@@ -40,6 +41,28 @@
         updateStats()
         loadData()
         setupSSE()
+      }
+
+      function extractSelectionFromHash() {
+        if (typeof location === 'undefined' || !location.hash) return null
+        const hash = location.hash
+        const queryIndex = hash.indexOf('?')
+        if (queryIndex === -1) return null
+        const queryString = hash.slice(queryIndex + 1)
+        const params = new URLSearchParams(queryString)
+        const encoded = params.get('selection')
+        if (!encoded) return null
+        try {
+          const decoded = decodeURIComponent(encoded)
+          const json = decodeBase64(decoded)
+          const data = JSON.parse(json)
+          cleanupSelectionInHash(hash.slice(1, queryIndex))
+          return data
+        } catch (error) {
+          console.warn('[match-select] URL 해석 실패', error)
+          cleanupSelectionInHash(hash.slice(1, queryIndex))
+          return null
+        }
       }
 
       function recordAuthentication() {
@@ -300,6 +323,11 @@
       const genderChartSummary = document.getElementById('genderChartSummary')
       const genderChartBars = document.getElementById('genderChartBars')
       const matchBtn = document.getElementById('matchBtn')
+      const matchedCouplesBtn = document.getElementById('matchedCouplesBtn')
+      const matchedCouplesModal = document.getElementById('matchedCouplesModal')
+      const matchedCouplesCloseBtn = document.getElementById('matchedCouplesCloseBtn')
+      const matchedCouplesList = document.getElementById('matchedCouplesList')
+      const matchedCouplesSubtitle = document.getElementById('matchedCouplesSubtitle')
       const matchModal = document.getElementById('matchModal')
       const matchCloseBtn = document.getElementById('matchCloseBtn')
       const matchTargetInput = document.getElementById('matchTargetInput')
@@ -646,6 +674,16 @@
         if (event.target === genderChartModal) closeGenderChartModal()
       })
       matchBtn?.addEventListener('click', () => openMatchModal())
+      matchedCouplesBtn?.addEventListener('click', () => {
+        renderMatchedCouplesModal()
+        openMatchedCouplesModal()
+      })
+      matchedCouplesCloseBtn?.addEventListener('click', closeMatchedCouplesModal)
+      matchedCouplesModal?.addEventListener('click', (event) => {
+        if (event.target === matchedCouplesModal) {
+          closeMatchedCouplesModal()
+        }
+      })
       matchCloseBtn?.addEventListener('click', closeMatchModal)
       matchModal?.addEventListener('click', (event) => {
         if (event.target === matchModal) closeMatchModal()
@@ -823,6 +861,7 @@
           if (!calendarModal.hidden) {
             refreshCalendar(true)
           }
+          maybeApplyPendingMatchSelection()
         } catch (error) {
           console.error(error)
           showToast('데이터를 불러오는데 실패했습니다.')
@@ -4106,6 +4145,25 @@
         }
       }
 
+      function decodeBase64(value) {
+        try {
+          return decodeURIComponent(escape(atob(value)))
+        } catch (error) {
+          return ''
+        }
+      }
+
+      function cleanupSelectionInHash(hashBase) {
+        if (typeof window === 'undefined' || typeof location === 'undefined') return
+        const base = hashBase ? `#${hashBase}` : ''
+        const newUrl = `${location.pathname}${location.search}${base}`
+        try {
+          window.history.replaceState(null, '', newUrl)
+        } catch (error) {
+          location.hash = base
+        }
+      }
+
       function escapeHtml(str) {
         return String(str || '')
           .replace(/&/g, '&amp;')
@@ -4699,6 +4757,7 @@
       }
 
       function updateMatchHistoryUI() {
+        updateMatchedCouplesButton()
         if (!matchHistoryList || !matchHistorySummaryEl) return
         const activeEntries = getActiveMatchHistoryEntries()
         matchHistorySummaryEl.textContent = `${activeEntries.length}명`
@@ -4780,6 +4839,103 @@
           map.get(weekKey).items.push(entry)
         })
         return Array.from(map.values())
+      }
+
+      function getCurrentWeekMatchEntries() {
+        const weekInfo = getWeekInfo(new Date())
+        return matchHistory.filter(
+          (entry) => entry.week?.year === weekInfo.year && entry.week?.week === weekInfo.week,
+        )
+      }
+
+      function updateMatchedCouplesButton() {
+        if (!matchedCouplesBtn) return
+        const currentWeekMatches = getCurrentWeekMatchEntries()
+        const count = currentWeekMatches.length
+        matchedCouplesBtn.textContent = count ? `매칭된 커플 ${count}` : '매칭된 커플'
+        matchedCouplesBtn.dataset.count = String(count)
+      }
+
+      function renderMatchedCouplesModal() {
+        if (!matchedCouplesList) return
+        const weekInfo = getWeekInfo(new Date())
+        if (matchedCouplesSubtitle) {
+          matchedCouplesSubtitle.textContent = `${weekInfo.label} · ${formatWeekRange(
+            weekInfo.start,
+            weekInfo.end,
+          )}`
+        }
+        const entries = getCurrentWeekMatchEntries()
+        matchedCouplesList.innerHTML = entries.length
+          ? entries
+              .map((entry) => {
+                const targetName = entry.target?.name || '대상자'
+                const candidateName = entry.candidate?.name || '추천 후보'
+                const candidateMeta = entry.candidate
+                  ? buildCandidateMetaLine(entry.candidate)
+                  : '프로필 정보 준비 중'
+                const matchedLabel = formatDate(entry.matchedAt)
+                return `
+                  <li class="matched-couples-item">
+                    <div class="matched-couples-names">
+                      <strong>${escapeHtml(targetName)}</strong>
+                      <span class="matched-couples-connector">×</span>
+                      <strong>${escapeHtml(candidateName)}</strong>
+                    </div>
+                    <p class="matched-couples-meta">${escapeHtml(candidateMeta)}</p>
+                    <span class="matched-couples-date">${escapeHtml(matchedLabel)}</span>
+                  </li>
+                `
+              })
+              .join('')
+          : '<li class="matched-couples-empty">이번 주차에는 확정된 커플이 없습니다.</li>'
+      }
+
+      function openMatchedCouplesModal() {
+        if (!matchedCouplesModal || !isAuthenticated) return
+        matchedCouplesModal.hidden = false
+      }
+
+      function closeMatchedCouplesModal() {
+        if (!matchedCouplesModal) return
+        matchedCouplesModal.hidden = true
+      }
+
+      function maybeApplyPendingMatchSelection() {
+        if (!pendingExternalMatchSelection || !isAuthenticated) return
+        if (!Array.isArray(items) || !items.length) return
+        applyExternalMatchSelection(pendingExternalMatchSelection)
+        pendingExternalMatchSelection = null
+      }
+
+      function applyExternalMatchSelection(selection) {
+        if (!selection) return
+        const targetRecord = findTargetRecordForSelection(selection.target)
+        if (!targetRecord) {
+          showToast('대상자를 찾지 못했습니다. 관리자 대시보드에서 직접 선택해주세요.')
+          return
+        }
+        setMatchTarget(targetRecord)
+        openMatchModal()
+        if (selection.candidate?.id) {
+          addCandidateToSelectionById(selection.candidate.id)
+        }
+      }
+
+      function findTargetRecordForSelection(targetInfo = {}) {
+        if (!targetInfo) return null
+        if (targetInfo.id) {
+          const recordById = items.find((item) => item.id === targetInfo.id)
+          if (recordById) return recordById
+        }
+        const phoneKey = normalizePhoneKey(targetInfo.phone || targetInfo.phoneMasked || '')
+        if (phoneKey) {
+          const recordByPhone = items.find(
+            (item) => normalizePhoneKey(item.phone) === phoneKey,
+          )
+          if (recordByPhone) return recordByPhone
+        }
+        return null
       }
 
       function loadMatchHistory() {

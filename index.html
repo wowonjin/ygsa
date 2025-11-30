@@ -92,6 +92,7 @@
               <div class="gender-stats" id="genderStats" aria-live="polite">남 0명 · 여 0명 (0% : 0%)</div>
               <button type="button" id="genderChartBtn" class="gender-chart-btn">성비 보기</button>
               <button type="button" id="matchBtn" class="match-btn">매칭하기</button>
+              <button type="button" id="matchedCouplesBtn" class="matched-couples-btn">매칭된 커플</button>
             </div>
           </div>
           <div class="toolbar-filters">
@@ -983,6 +984,18 @@
           <div class="gender-chart-summary" id="genderChartSummary"></div>
           <div class="gender-chart-bars" id="genderChartBars"></div>
           <div class="gender-chart-legend" id="genderChartLegend"></div>
+        </div>
+      </div>
+    </div>
+    <div class="simple-modal-overlay" id="matchedCouplesModal" hidden>
+      <div class="simple-modal matched-couples-modal">
+        <header class="simple-modal-header">
+          <h3 id="matchedCouplesTitle">이번 주 매칭된 커플</h3>
+          <button type="button" id="matchedCouplesCloseBtn" aria-label="매칭된 커플 모달 닫기">×</button>
+        </header>
+        <p id="matchedCouplesSubtitle" class="matched-couples-subtitle"></p>
+        <div class="matched-couples-body">
+          <ul id="matchedCouplesList" class="matched-couples-list"></ul>
         </div>
       </div>
     </div>
