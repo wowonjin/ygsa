@@ -481,8 +481,6 @@
       let profileCardHideTimer = null
       let matchSelectedCandidates = []
       let matchHistory = loadMatchHistory()
-      let firestoreDbInstance = null
-      let matchSelectionUnsubscribe = null
       const matchedCandidateIds = new Set(
         matchHistory.map((entry) => entry.candidateId).filter(Boolean),
       )
@@ -894,7 +892,7 @@
             refreshCalendar(true)
           }
           maybeApplyPendingMatchSelection()
-          subscribeToMatchSelections()
+          refreshMatchedCouplesFromServer()
         } catch (error) {
           console.error(error)
           showToast('데이터를 불러오는데 실패했습니다.')
@@ -4964,7 +4962,7 @@
         if (selection.candidate?.id) {
           addCandidateToSelectionById(selection.candidate.id)
         }
-        recordConfirmedCouple(selection, targetRecord)
+        recordConfirmedCouple(selection, targetRecord, { persist: false })
       }
 
       function findTargetRecordForSelection(targetInfo = {}) {
@@ -4983,7 +4981,7 @@
         return null
       }
 
-      function recordConfirmedCouple(selection, targetRecord) {
+      function recordConfirmedCouple(selection, targetRecord, options = {}) {
         if (!selection?.candidate || !selection?.target) return
         const candidateSnapshot = selection.candidate
         const targetSnapshot = targetRecord
@@ -4995,79 +4993,106 @@
           (entry) => entry.candidate?.id !== candidateId || entry.target?.id !== targetId,
         )
         const confirmedAt = Date.now()
-        confirmedMatches.unshift({
+        const matchEntry = {
           id: `${targetId || 'target'}-${candidateId || 'candidate'}-${confirmedAt}`,
           target: targetSnapshot,
           candidate: candidateSnapshot,
           confirmedAt,
           week: buildWeekMeta(confirmedAt),
-        })
+          targetPhone: targetRecord?.phone || selection.targetPhone || '',
+        }
+        confirmedMatches.unshift(matchEntry)
         saveConfirmedMatches()
         updateMatchedCouplesButton()
-        persistMatchSelectionToFirestore({
+        if (options.persist !== false) {
+          persistMatchToServer(matchEntry, {
+            targetPhone: targetRecord?.phone || selection.targetPhone || '',
+          })
+        }
+      }
+
+      async function persistMatchToServer(entry, overrides = {}) {
+        const payload = buildMatchHistoryPayload(entry, overrides)
+        if (!payload) return
+        try {
+          const response = await fetch(MATCH_HISTORY_API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          })
+          if (!response.ok) {
+            console.warn('[match-confirmed] 서버 저장 실패', await response.text())
+          } else {
+            refreshMatchedCouplesFromServer()
+          }
+        } catch (error) {
+          console.warn('[match-confirmed] 서버 저장 실패', error)
+        }
+      }
+
+      function buildMatchHistoryPayload(entry, overrides = {}) {
+        if (!entry) return null
+        const candidateId = overrides.candidateId || entry.candidate?.id || entry.candidateId || ''
+        const targetId = overrides.targetId || entry.target?.id || entry.targetId || ''
+        const targetPhoneRaw =
+          overrides.targetPhone || entry.targetPhone || entry.target?.phone || ''
+        const targetPhone = normalizePhoneKey(targetPhoneRaw)
+        if (!candidateId || !targetId || !targetPhone) return null
+        const matchedAt = overrides.matchedAt || entry.confirmedAt || entry.matchedAt || Date.now()
+        return {
+          id: overrides.id || entry.id || `${targetId}-${candidateId}-${matchedAt}`,
+          candidateId,
+          targetId,
+          targetPhone,
+          matchedAt,
+          week: entry.week || buildWeekMeta(matchedAt),
+        }
+      }
+
+      async function refreshMatchedCouplesFromServer() {
+        try {
+          const response = await fetch(MATCH_HISTORY_API_URL)
+          const body = await response.json().catch(() => ({}))
+          if (!response.ok || body?.ok === false) {
+            throw new Error(body?.message || '응답이 올바르지 않습니다.')
+          }
+          const rawEntries = Array.isArray(body?.data) ? body.data : []
+          confirmedMatches = rawEntries.map((entry) => mapServerMatchEntry(entry))
+          saveConfirmedMatches()
+          updateMatchedCouplesButton()
+        } catch (error) {
+          console.warn('[match-confirmed] 서버 매칭 기록 불러오기 실패', error)
+        }
+      }
+
+      function mapServerMatchEntry(entry) {
+        if (!entry) return null
+        const confirmedAt = entry.matchedAt || entry.confirmedAt || Date.now()
+        const targetRecord = items.find((item) => item.id === entry.targetId)
+        const candidateRecord = items.find((item) => item.id === entry.candidateId)
+        const targetSnapshot = targetRecord
+          ? buildCandidateSnapshot(targetRecord)
+          : {
+              id: entry.targetId || '',
+              name: targetRecord?.name || '',
+              gender: targetRecord?.gender || '',
+              phoneMasked: formatPhoneNumber(entry.targetPhone || ''),
+            }
+        const candidateSnapshot = candidateRecord
+          ? buildCandidateSnapshot(candidateRecord)
+          : {
+              id: entry.candidateId || '',
+              name: candidateRecord?.name || '',
+              gender: candidateRecord?.gender || '',
+            }
+        return {
+          id: entry.id || `${targetSnapshot.id}-${candidateSnapshot.id}-${confirmedAt}`,
           target: targetSnapshot,
           candidate: candidateSnapshot,
           confirmedAt,
-          week: buildWeekMeta(confirmedAt),
-          source: selection.source || 'bridge',
-        })
-      }
-
-      async function persistMatchSelectionToFirestore(entry) {
-        try {
-          const db = await ensureFirestoreDb()
-          if (!db) return
-          await db.collection('matchSelections').add({
-            target: entry.target || null,
-            candidate: entry.candidate || null,
-            week: entry.week || buildWeekMeta(entry.confirmedAt || Date.now()),
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            source: entry.source || 'admin',
-            status: 'pending',
-          })
-        } catch (error) {
-          console.warn('[match-confirmed] Firestore 저장 실패', error)
+          week: entry.week || buildWeekMeta(confirmedAt),
+          targetPhone: entry.targetPhone || '',
         }
-      }
-
-      async function subscribeToMatchSelections() {
-        const db = await ensureFirestoreDb()
-        if (!db || typeof db.collection !== 'function') return
-        if (matchSelectionUnsubscribe) {
-          matchSelectionUnsubscribe()
-          matchSelectionUnsubscribe = null
-        }
-        matchSelectionUnsubscribe = db
-          .collection('matchSelections')
-          .orderBy('createdAt', 'desc')
-          .limit(300)
-          .onSnapshot(
-            (snapshot) => {
-              confirmedMatches = snapshot.docs.map((doc) => {
-                const data = doc.data() || {}
-                const createdAtValue =
-                  (data.createdAt &&
-                    typeof data.createdAt.toDate === 'function' &&
-                    data.createdAt.toDate()) ||
-                  null
-                const confirmedAt = createdAtValue
-                  ? createdAtValue.getTime()
-                  : data.confirmedAt || Date.now()
-                return {
-                  id: doc.id,
-                  target: data.target || null,
-                  candidate: data.candidate || null,
-                  confirmedAt,
-                  week: data.week || buildWeekMeta(confirmedAt),
-                }
-              })
-              saveConfirmedMatches()
-              updateMatchedCouplesButton()
-            },
-            (error) => {
-              console.warn('[match-confirmed] Firestore 구독 실패', error)
-            },
-          )
       }
 
       function loadMatchHistory() {
@@ -5102,34 +5127,6 @@
           console.warn('[match] 기록 불러오기 실패', error)
           return []
         }
-      }
-
-      function getFirebaseConfigPromise() {
-        if (
-          window.__FIREBASE_CONFIG_PROMISE__ &&
-          typeof window.__FIREBASE_CONFIG_PROMISE__.then === 'function'
-        ) {
-          return window.__FIREBASE_CONFIG_PROMISE__
-        }
-        if (window.FIREBASE_CONFIG) {
-          return Promise.resolve(window.FIREBASE_CONFIG)
-        }
-        return Promise.reject(new Error('Firebase 설정을 찾을 수 없습니다.'))
-      }
-
-      async function ensureFirestoreDb() {
-        if (firestoreDbInstance) return firestoreDbInstance
-        if (typeof firebase === 'undefined' || !firebase?.apps) return null
-        const config = await getFirebaseConfigPromise().catch((error) => {
-          console.warn('[match-confirmed] Firebase 설정을 불러오지 못했습니다.', error)
-          return null
-        })
-        if (!config) return null
-        if (!firebase.apps.length) {
-          firebase.initializeApp(config)
-        }
-        firestoreDbInstance = firebase.firestore()
-        return firestoreDbInstance
       }
 
       function saveMatchHistory() {
