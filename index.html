@@ -170,6 +170,17 @@
                 <option value="done">상담 완료</option>
               </select>
             </div>
+            <div class="field span-2">
+              <label>대면 상담 일정 (15분 단위)</label>
+              <div class="inline-group">
+                <input type="date" id="detailDate" />
+                <select id="detailTime" class="time-select" disabled>
+                  <option value="">시간 선택</option>
+                </select>
+                <button type="button" id="detailClearSchedule" aria-label="일정 초기화">🗑</button>
+              </div>
+              <p class="modal-subtitle" id="detailScheduleInfo"></p>
+            </div>
             <div class="field span-2 membership-payment-field">
               <label class="membership-payment-label" for="detailMembershipType">회원권 / 결제 정보</label>
               <div class="inline-group membership-payment-inline">
@@ -189,21 +200,9 @@
                 <input id="detailPaymentDate" type="date" aria-label="입금 날짜" />
               </div>
             </div>
-            <div class="field span-2">
-              <label>대면 상담 일정 (15분 단위)</label>
-              <div class="inline-group">
-                <input type="date" id="detailDate" />
-                <select id="detailTime" class="time-select" disabled>
-                  <option value="">시간 선택</option>
-                </select>
-                <button type="button" id="detailClearSchedule" aria-label="일정 초기화">🗑</button>
-              </div>
-              <p class="modal-subtitle" id="detailScheduleInfo"></p>
-            </div>
             <hr class="detail-divider" />
           </div>
           <div class="detail-section-tabs" role="tablist" aria-label="상세 정보 카테고리">
-            <p class="detail-tabs-label">회원 정보 선택</p>
             <button
               type="button"
               class="detail-section-tab"
@@ -632,7 +631,6 @@
                       aria-describedby="detailPreferredHeightHint"
                     />
                   </div>
-                  <p class="range-hint" id="detailPreferredHeightHint">폼1: 175cm · 폼2: 180cm</p>
                 </div>
                 <div class="field field-range">
                   <label for="detailPreferredAgeYoungest" id="detailPreferredAgesLabel">
@@ -657,7 +655,63 @@
                       aria-describedby="detailPreferredAgeHint"
                     />
                   </div>
-                  <p class="range-hint" id="detailPreferredAgeHint">폼1: 97년생 · 폼2: 93년생</p>
+                </div>
+                <div class="field">
+                  <label for="detailPreferredAppearance">
+                    선호하는 외적 이상형
+                    <span class="detail-badge detail-badge-preference" aria-hidden="true">매칭용</span>
+                  </label>
+                  <select id="detailPreferredAppearance">
+                    <option value="">선택</option>
+                    <option value="깔끔하고 단정한 스타일">깔끔하고 단정한 스타일</option>
+                    <option value="세련된 도시 감성">세련된 도시 감성</option>
+                    <option value="스포티하고 건강한 스타일">스포티하고 건강한 스타일</option>
+                    <option value="캐주얼하고 편안한 분위기">캐주얼하고 편안한 분위기</option>
+                    <option value="러블리하고 부드러운 인상">러블리하고 부드러운 인상</option>
+                    <option value="개성 있는 패션 감각">개성 있는 패션 감각</option>
+                    <option value="상관없음">상관없음</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="detailDink">
+                    딩크 여부
+                    <span class="detail-badge detail-badge-preference" aria-hidden="true">매칭용</span>
+                  </label>
+                  <select id="detailDink">
+                    <option value="">선택</option>
+                    <option value="딩크를 원합니다">딩크를 원합니다</option>
+                    <option value="딩크를 고려 중입니다">딩크를 고려 중입니다</option>
+                    <option value="딩크를 원하지 않습니다">딩크를 원하지 않습니다</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="detailMarriageTiming">
+                    결혼을 생각하는 시기
+                    <span class="detail-badge detail-badge-preference" aria-hidden="true">매칭용</span>
+                  </label>
+                  <select id="detailMarriageTiming">
+                    <option value="">선택</option>
+                    <option value="상대방에 따라 다름">상대방에 따라 다름</option>
+                    <option value="결혼생각 없음">결혼생각 없음</option>
+                    <option value="연애 시작 후 3개월 안에 결혼준비 시작">
+                      연애 시작 후 3개월 안에 결혼준비 시작
+                    </option>
+                    <option value="연애 시작 후 6개월 안에 결혼준비 시작">
+                      연애 시작 후 6개월 안에 결혼준비 시작
+                    </option>
+                    <option value="연애 시작 후 1년 정도에 결혼준비 시작">
+                      연애 시작 후 1년 정도에 결혼준비 시작
+                    </option>
+                    <option value="연애 시작 후 1년 6개월 정도에 결혼준비 시작">
+                      연애 시작 후 1년 6개월 정도에 결혼준비 시작
+                    </option>
+                    <option value="연애 시작 후 2년정도에 결혼준비 시작">
+                      연애 시작 후 2년정도에 결혼준비 시작
+                    </option>
+                    <option value="연애 시작 후 2년 이상에 결혼준비 시작">
+                      연애 시작 후 2년 이상에 결혼준비 시작
+                    </option>
+                  </select>
                 </div>
                 <div class="field">
                   <label for="detailPreferredLifestyle" id="detailPreferredLifestyleLabel">
@@ -720,63 +774,6 @@
                     <option value="운동·건강 관리">운동·건강 관리</option>
                     <option value="미식·카페 탐방">미식·카페 탐방</option>
                     <option value="반려동물과 함께">반려동물과 함께</option>
-                  </select>
-                </div>
-                <div class="field">
-                  <label for="detailPreferredAppearance">
-                    선호하는 외적 이상형
-                    <span class="detail-badge detail-badge-preference" aria-hidden="true">매칭용</span>
-                  </label>
-                  <select id="detailPreferredAppearance">
-                    <option value="">선택</option>
-                    <option value="깔끔하고 단정한 스타일">깔끔하고 단정한 스타일</option>
-                    <option value="세련된 도시 감성">세련된 도시 감성</option>
-                    <option value="스포티하고 건강한 스타일">스포티하고 건강한 스타일</option>
-                    <option value="캐주얼하고 편안한 분위기">캐주얼하고 편안한 분위기</option>
-                    <option value="러블리하고 부드러운 인상">러블리하고 부드러운 인상</option>
-                    <option value="개성 있는 패션 감각">개성 있는 패션 감각</option>
-                    <option value="상관없음">상관없음</option>
-                  </select>
-                </div>
-                <div class="field">
-                  <label for="detailDink">
-                    딩크 여부
-                    <span class="detail-badge detail-badge-preference" aria-hidden="true">매칭용</span>
-                  </label>
-                  <select id="detailDink">
-                    <option value="">선택</option>
-                    <option value="딩크를 원합니다">딩크를 원합니다</option>
-                    <option value="딩크를 고려 중입니다">딩크를 고려 중입니다</option>
-                    <option value="딩크를 원하지 않습니다">딩크를 원하지 않습니다</option>
-                  </select>
-                </div>
-                <div class="field">
-                  <label for="detailMarriageTiming">
-                    결혼을 생각하는 시기
-                    <span class="detail-badge detail-badge-preference" aria-hidden="true">매칭용</span>
-                  </label>
-                  <select id="detailMarriageTiming">
-                    <option value="">선택</option>
-                    <option value="상대방에 따라 다름">상대방에 따라 다름</option>
-                    <option value="결혼생각 없음">결혼생각 없음</option>
-                    <option value="연애 시작 후 3개월 안에 결혼준비 시작">
-                      연애 시작 후 3개월 안에 결혼준비 시작
-                    </option>
-                    <option value="연애 시작 후 6개월 안에 결혼준비 시작">
-                      연애 시작 후 6개월 안에 결혼준비 시작
-                    </option>
-                    <option value="연애 시작 후 1년 정도에 결혼준비 시작">
-                      연애 시작 후 1년 정도에 결혼준비 시작
-                    </option>
-                    <option value="연애 시작 후 1년 6개월 정도에 결혼준비 시작">
-                      연애 시작 후 1년 6개월 정도에 결혼준비 시작
-                    </option>
-                    <option value="연애 시작 후 2년정도에 결혼준비 시작">
-                      연애 시작 후 2년정도에 결혼준비 시작
-                    </option>
-                    <option value="연애 시작 후 2년 이상에 결혼준비 시작">
-                      연애 시작 후 2년 이상에 결혼준비 시작
-                    </option>
                   </select>
                 </div>
               </div>

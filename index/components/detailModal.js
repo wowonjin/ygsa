@@ -228,7 +228,7 @@ export function openDetailModal(id) {
   updateTimeOptions(scheduledDate, scheduledTime, id)
   dom.detailScheduleInfo.textContent = record.meetingSchedule
     ? `현재 예약: ${formatDate(record.meetingSchedule)}`
-    : '대면 상담 일정이 아직 없습니다.'
+    : ''
 
   state.currentDraftData = getDraftForPhone(record.phone)
   if (dom.detailDraftLoadBtn) {
@@ -337,7 +337,7 @@ function handleClearSchedule(event) {
   event.preventDefault()
   dom.detailDateInput.value = ''
   updateTimeOptions('', '', state.detailRecordId)
-  dom.detailScheduleInfo.textContent = '대면 상담 일정이 아직 없습니다.'
+  dom.detailScheduleInfo.textContent = ''
 }
 
 function getReservedTimes(dateValue, currentId) {
@@ -358,7 +358,7 @@ function updateTimeOptions(dateValue, selectedTime, currentId) {
   dom.detailTimeSelect.innerHTML = '<option value="">시간 선택</option>'
   if (!dateValue) {
     dom.detailTimeSelect.disabled = true
-    if (dom.detailScheduleInfo) dom.detailScheduleInfo.textContent = '대면 상담 일정이 아직 없습니다.'
+    if (dom.detailScheduleInfo) dom.detailScheduleInfo.textContent = ''
     return
   }
   const reserved = getReservedTimes(dateValue, currentId)

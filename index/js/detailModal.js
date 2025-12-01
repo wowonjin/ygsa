@@ -57,7 +57,7 @@
     dom.detailTimeSelect.innerHTML = '<option value="">시간 선택</option>'
     if (!dateValue) {
       dom.detailTimeSelect.disabled = true
-      dom.detailScheduleInfo.textContent = '대면 상담 일정이 아직 없습니다.'
+      dom.detailScheduleInfo.textContent = ''
       return
     }
     const reserved = getReservedTimes(dateValue, currentId)
@@ -187,7 +187,7 @@
     updateTimeOptions(scheduledDate, scheduledTime, id)
     dom.detailScheduleInfo.textContent = record.meetingSchedule
       ? `현재 예약: ${formatDate(record.meetingSchedule)}`
-      : '대면 상담 일정이 아직 없습니다.'
+        : ''
 
     updateDetailAttachments(record)
 
@@ -414,7 +414,7 @@
       event.preventDefault()
       dom.detailDateInput.value = ''
       updateTimeOptions('', '', state.detailRecordId)
-      dom.detailScheduleInfo.textContent = '대면 상담 일정이 아직 없습니다.'
+      dom.detailScheduleInfo.textContent = ''
     })
     dom.detailProfileLinkBtn?.addEventListener('click', handleDetailProfileLink)
     dom.detailProfileLinkCopyBtn?.addEventListener('click', handleDetailProfileLinkCopy)

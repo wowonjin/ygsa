@@ -932,7 +932,7 @@ function DetailModal({
       ? `선택한 일정: ${schedule.date} ${schedule.time}`
       : record.meetingSchedule
       ? `현재 예약: ${formatDateTime(record.meetingSchedule)}`
-      : '대면 상담 일정이 아직 없습니다.'
+        : ''
 
   return (
     <div className="modal-overlay" role="dialog" aria-modal="true">

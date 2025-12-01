@@ -2037,9 +2037,7 @@
         detailDateInput.value = scheduledDate
         updateTimeOptions(scheduledDate, scheduledTime, id)
         detailNotesInput.value = record.notes || ''
-        detailScheduleInfo.textContent = record.meetingSchedule
-          ? `현재 예약: ${formatDate(record.meetingSchedule)}`
-          : '대면 상담 일정이 아직 없습니다.'
+        detailScheduleInfo.textContent = ''
 
         currentDraftData = getDraftForPhone(record.phone)
         if (detailDraftLoadBtn) {
@@ -3697,9 +3695,11 @@
         const dateValue = detailDateInput.value
         const timeValue = detailTimeSelect.value
         if (dateValue && timeValue) {
-          detailScheduleInfo.textContent = `선택한 일정: ${dateValue} ${timeValue}`
+        detailScheduleInfo.textContent = `선택한 일정: ${dateValue} ${timeValue}`
         } else if (dateValue && !timeValue) {
           detailScheduleInfo.textContent = '상담 시간을 선택해 주세요.'
+        } else if (!dateValue && !timeValue) {
+          detailScheduleInfo.textContent = ''
         }
       }
 
@@ -3707,7 +3707,7 @@
         event.preventDefault()
         detailDateInput.value = ''
         updateTimeOptions('', '', detailRecordId)
-        detailScheduleInfo.textContent = '대면 상담 일정이 아직 없습니다.'
+        detailScheduleInfo.textContent = ''
       }
 
 
@@ -3959,7 +3959,7 @@
         detailTimeSelect.innerHTML = '<option value="">시간 선택</option>'
         if (!dateValue) {
           detailTimeSelect.disabled = true
-          detailScheduleInfo.textContent = '대면 상담 일정이 아직 없습니다.'
+          detailScheduleInfo.textContent = ''
           return
         }
 

@@ -162,13 +162,9 @@
 
 .detail-priority {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px;
-  padding: 18px 20px;
-  border-radius: 18px;
-  background: rgba(31, 110, 235, 0.12);
-  border: 1px solid rgba(56, 139, 253, 0.3);
-  box-shadow: 0 20px 50px rgba(12, 28, 64, 0.35);
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin: 0 0 24px;
 }
 
 .detail-priority .field {
@@ -178,11 +174,15 @@
 }
 
 .detail-priority .span-2 {
-  grid-column: span 2;
+  width: 100%;
+}
+
+.detail-priority .membership-payment-field {
+  grid-column: 1 / -1;
 }
 
 .detail-priority .modal-subtitle {
-  color: #d6e4ff;
+  color: #6b7280;
   font-weight: 500;
 }
 
