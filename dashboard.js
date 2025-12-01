@@ -24,6 +24,15 @@
         '준호',
         '세이',
       ]
+      const REFERRAL_SOURCE_LABELS = [
+        '쓰레드',
+        '프립',
+        '지인 추천',
+        '문토',
+        '인스타그램',
+        '네이버블로그',
+      ]
+      const REFERRAL_SOURCE_FALLBACK_LABEL = '기타/미입력'
       const profileCardNameCache = new WeakMap()
       const authOverlay = document.getElementById('authOverlay')
       const authForm = document.getElementById('authForm')
@@ -301,6 +310,7 @@
             { label: 'MBTI', key: 'mbti' },
             { label: '연봉', key: 'salaryRange', formatter: formatSalaryRange },
             { label: '거주 구', key: 'district' },
+            { label: '유입 경로', key: 'referralSource', formatter: formatReferralSource },
           ],
         },
         moim: {
@@ -353,6 +363,12 @@
       const genderChartCenter = document.getElementById('genderChartCenter')
       const genderChartSummary = document.getElementById('genderChartSummary')
       const genderChartBars = document.getElementById('genderChartBars')
+      const referralChartBtn = document.getElementById('referralChartBtn')
+      const referralChartModal = document.getElementById('referralChartModal')
+      const referralChartCloseBtn = document.getElementById('referralChartCloseBtn')
+      const referralChartList = document.getElementById('referralChartList')
+      const referralChartSummary = document.getElementById('referralChartSummary')
+      const referralChartEmpty = document.getElementById('referralChartEmpty')
       const matchBtn = document.getElementById('matchBtn')
       const matchedCouplesBtn = document.getElementById('matchedCouplesBtn')
       const matchedCouplesModal = document.getElementById('matchedCouplesModal')
@@ -392,6 +408,7 @@
       const detailEducationSelect = document.getElementById('detailEducation')
       const detailJobInput = document.getElementById('detailJob')
       const detailDistrictInput = document.getElementById('detailDistrict')
+      const detailReferralSourceSelect = document.getElementById('detailReferralSource')
       const detailMbtiInput = document.getElementById('detailMbti')
       const detailUniversityInput = document.getElementById('detailUniversity')
       const detailSalaryRangeSelect = document.getElementById('detailSalaryRange')
@@ -407,8 +424,10 @@
       const detailCarOwnershipSelect = document.getElementById('detailCarOwnership')
       const detailTattooSelect = document.getElementById('detailTattoo')
       const detailDivorceStatusSelect = document.getElementById('detailDivorceStatus')
-      const detailPreferredHeightsSelect = document.getElementById('detailPreferredHeights')
-      const detailPreferredAgesSelect = document.getElementById('detailPreferredAges')
+      const detailPreferredHeightMinInput = document.getElementById('detailPreferredHeightMin')
+      const detailPreferredHeightMaxInput = document.getElementById('detailPreferredHeightMax')
+      const detailPreferredAgeYoungestInput = document.getElementById('detailPreferredAgeYoungest')
+      const detailPreferredAgeOldestInput = document.getElementById('detailPreferredAgeOldest')
       const detailPreferredLifestyleSelect = document.getElementById('detailPreferredLifestyle')
       const detailPreferredAppearanceSelect = document.getElementById('detailPreferredAppearance')
       const detailSufficientConditionInput = document.getElementById('detailSufficientCondition')
@@ -421,7 +440,13 @@
       const detailDateInput = document.getElementById('detailDate')
       const detailTimeSelect = document.getElementById('detailTime')
       const detailClearScheduleBtn = document.getElementById('detailClearSchedule')
+      const detailMembershipTypeSelect = document.getElementById('detailMembershipType')
+      const detailPaymentAmountInput = document.getElementById('detailPaymentAmount')
+      const detailPaymentDateInput = document.getElementById('detailPaymentDate')
       const detailNotesInput = document.getElementById('detailNotes')
+      const matchFeedbackList = document.getElementById('matchFeedbackList')
+      const matchFeedbackAddBtn = document.getElementById('matchFeedbackAddBtn')
+      const matchFeedbackEmptyState = document.getElementById('matchFeedbackEmpty')
       const moimDetailView = document.getElementById('moimDetailView')
       const detailScheduleInfo = document.getElementById('detailScheduleInfo')
       const detailAttachmentsSection = document.getElementById('detailAttachmentsSection')
@@ -446,6 +471,8 @@
       const detailIdCardDeleteBtn = document.getElementById('detailIdCardDeleteBtn')
       const detailEmploymentDeleteBtn = document.getElementById('detailEmploymentDeleteBtn')
       const detailDraftLoadBtn = document.getElementById('detailDraftLoadBtn')
+      const paymentHistoryList = document.getElementById('paymentHistoryList')
+      const paymentHistoryEmpty = document.getElementById('paymentHistoryEmpty')
       const detailSectionButtons = Array.from(
         document.querySelectorAll('[data-detail-section-target]')
       )
@@ -521,7 +548,9 @@
         INTRO: 'intro',
         CONFIRMED: 'confirmed',
       }
+      const MATCH_FEEDBACK_MAX = 12
       let genderStatsData = { male: 0, female: 0 }
+      let referralStatsData = { total: 0, breakdown: [] }
       if (IS_MOIM_VIEW) {
         updateWeekFilterLabel()
       } else {
@@ -662,6 +691,7 @@
       detailDateInput.addEventListener('change', handleDetailDateChange)
       detailTimeSelect.addEventListener('change', handleDetailTimeChange)
       detailClearScheduleBtn.addEventListener('click', handleClearSchedule)
+      matchFeedbackAddBtn?.addEventListener('click', () => addMatchFeedbackEntry())
       detailPhotoFaceBtn?.addEventListener('click', () => detailPhotoFaceInput?.click())
       detailPhotoFullBtn?.addEventListener('click', () => detailPhotoFullInput?.click())
       detailPhotoFaceInput?.addEventListener('change', (event) =>
@@ -687,11 +717,19 @@
       detailPhotosGrid?.addEventListener('click', (event) => {
         const target = event.target
         if (!(target instanceof HTMLElement)) return
-        const button = target.closest('.attachment-delete-btn')
-        if (!button) return
-        if (button.dataset.attachmentType !== 'photo') return
-        const attachmentId = button.dataset.attachmentId
-        handlePhotoDelete(attachmentId)
+        const actionButton = target.closest('[data-attachment-action]')
+        if (!actionButton) return
+        const action = actionButton.dataset.attachmentAction
+        const attachmentId = actionButton.dataset.attachmentId
+        if (!attachmentId) return
+        if (action === 'delete' && actionButton.dataset.attachmentType === 'photo') {
+          handlePhotoDelete(attachmentId)
+          return
+        }
+        if (action === 'move') {
+          const direction = actionButton.dataset.direction === 'up' ? -1 : 1
+          handlePhotoReorder(attachmentId, direction)
+        }
       })
       profileCardCloseBtn?.addEventListener('click', closeProfileCardModal)
       profileCardModal?.addEventListener('click', (event) => {
@@ -708,6 +746,11 @@
       genderChartCloseBtn?.addEventListener('click', () => closeGenderChartModal())
       genderChartModal?.addEventListener('click', (event) => {
         if (event.target === genderChartModal) closeGenderChartModal()
+      })
+      referralChartBtn?.addEventListener('click', () => openReferralChartModal())
+      referralChartCloseBtn?.addEventListener('click', () => closeReferralChartModal())
+      referralChartModal?.addEventListener('click', (event) => {
+        if (event.target === referralChartModal) closeReferralChartModal()
       })
       matchBtn?.addEventListener('click', () => openMatchModal())
       matchedCouplesBtn?.addEventListener('click', () => {
@@ -783,6 +826,10 @@
         }
         if (matchModal && !matchModal.hidden) {
           closeMatchModal()
+          return
+        }
+        if (referralChartModal && !referralChartModal.hidden) {
+          closeReferralChartModal()
           return
         }
         if (stickyNoteEl && stickyNoteEl.classList.contains('visible')) {
@@ -1242,6 +1289,7 @@
         cardsEl.innerHTML = ''
         const prepared = getPreparedItems()
         updateGenderStatsDisplay(prepared)
+        updateReferralStats(prepared)
         if (!prepared.length) {
           if (emptyEl) {
             emptyEl.textContent =
@@ -1269,6 +1317,7 @@
         card.dataset.id = item.id || ''
         const idAttr = escapeHtml(item.id || '')
         const isSelected = selectedIds.has(item.id)
+        const ratingChip = buildMatchRatingChip(item)
         const entries = (cardFields || [])
           .map(({ label, key, formatter }) => {
             const value = formatter ? formatter(item[key], item) : item[key]
@@ -1283,6 +1332,7 @@
                 <span class="status-chip ${escapeHtml(getStatusClass(item.phoneConsultStatus))}">
                   ${escapeHtml(formatPhoneStatus(item.phoneConsultStatus))}
                 </span>
+                ${ratingChip}
               </div>
               <div class="meta">${formatDate(item.createdAt)} 접수</div>
             </div>
@@ -1299,10 +1349,57 @@
           <dl>
             ${entries}
           </dl>
+          ${renderCardPreferences(item)}
           ${renderCardAttachments(item)}
           ${renderProfileCardButtonSection(item.id)}
         `
         return card
+      }
+
+      function buildMatchRatingChip(record) {
+        if (!record || record.phoneConsultStatus !== 'done') return ''
+        const average = Number(record.matchRatingAverage)
+        if (!Number.isFinite(average) || average <= 0) return ''
+        const ratingCount = Array.isArray(record.matchReviews)
+          ? record.matchReviews.filter((entry) => Number(entry.rating) > 0).length
+          : 0
+        const displayValue = average.toFixed(1)
+        const countLabel = ratingCount ? ` · ${ratingCount}회` : ''
+        return `
+          <span class="match-rating-chip" title="평균 평점 ${displayValue}${countLabel}">
+            ⭐ ${displayValue}
+          </span>
+        `
+      }
+
+      function renderCardPreferences(record) {
+        if (!record) return ''
+        const entries = []
+        if (record.preferredHeightLabel) {
+          entries.push(`
+            <li class="card-preferences-item">
+              <span>선호 키</span>
+              <strong>${escapeHtml(record.preferredHeightLabel)}</strong>
+            </li>
+          `)
+        }
+        if (record.preferredAgeLabel) {
+          entries.push(`
+            <li class="card-preferences-item">
+              <span>선호 나이</span>
+              <strong>${escapeHtml(record.preferredAgeLabel)}</strong>
+            </li>
+          `)
+        }
+        if (!entries.length) return ''
+        return `
+          <div class="card-preferences">
+            <p class="card-preferences-title">선호 조건</p>
+            <ul class="card-preferences-list">
+              ${entries.join('')}
+            </ul>
+          </div>
+        `
       }
 
       function renderMoimCard(item) {
@@ -1549,6 +1646,284 @@
         resetDetailSectionTabs()
       }
 
+      function generateMatchFeedbackId() {
+        return `mfb_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
+      }
+
+      function clearMatchFeedbackEntries() {
+        if (!matchFeedbackList) return
+        matchFeedbackList.innerHTML = ''
+        updateMatchFeedbackEmptyState()
+      }
+
+      function updateMatchFeedbackEmptyState() {
+        if (!matchFeedbackEmptyState) return
+        const hasItems = Boolean(
+          matchFeedbackList?.querySelector &&
+            matchFeedbackList.querySelector('.match-feedback-item'),
+        )
+        matchFeedbackEmptyState.hidden = hasItems
+      }
+
+      function buildRatingOptions(selectedRating) {
+        return [1, 2, 3, 4, 5]
+          .map((value) => {
+            const isSelected = Number(selectedRating) === value ? 'selected' : ''
+            return `<option value="${value}" ${isSelected}>${value}점</option>`
+          })
+          .join('')
+      }
+
+      function addMatchFeedbackEntry(entry = {}) {
+        if (!matchFeedbackList) return null
+        const currentCount = matchFeedbackList.querySelectorAll('.match-feedback-item').length
+        if (!entry.id && currentCount >= MATCH_FEEDBACK_MAX) {
+          showToast(`후기는 최대 ${MATCH_FEEDBACK_MAX}개까지 추가할 수 있습니다.`)
+          return null
+        }
+        const id = typeof entry.id === 'string' && entry.id ? entry.id : generateMatchFeedbackId()
+        const roundLabelRaw =
+          typeof entry.roundLabel === 'string' && entry.roundLabel.trim()
+            ? entry.roundLabel
+            : `${currentCount + 1}회차`
+        const partnerName = entry.partnerName || ''
+        const ratingValue = Number(entry.rating)
+        const comment = entry.comment || ''
+        const recordedAt = entry.recordedAt || ''
+        const item = document.createElement('div')
+        item.className = 'match-feedback-item'
+        item.dataset.feedbackId = id
+        if (recordedAt) {
+          item.dataset.recordedAt = recordedAt
+        }
+        item.innerHTML = `
+          <div class="match-feedback-row">
+            <label>
+              회차
+              <input
+                type="text"
+                class="match-feedback-round"
+                placeholder="예: 1회차"
+                value="${escapeHtml(roundLabelRaw)}"
+              />
+            </label>
+            <label>
+              평점
+              <select class="match-feedback-rating">
+                <option value="">선택</option>
+                ${buildRatingOptions(ratingValue)}
+              </select>
+            </label>
+            <label>
+              상대 이름
+              <input
+                type="text"
+                class="match-feedback-partner"
+                placeholder="예: 김연결"
+                value="${escapeHtml(partnerName)}"
+              />
+            </label>
+            <button type="button" class="match-feedback-remove" aria-label="후기 삭제">삭제</button>
+          </div>
+          <label class="match-feedback-note-label">
+            후기
+            <textarea
+              class="match-feedback-note"
+              rows="3"
+              placeholder="만남 기록을 적어주세요."
+            >${escapeHtml(comment)}</textarea>
+          </label>
+        `
+        const removeBtn = item.querySelector('.match-feedback-remove')
+        removeBtn?.addEventListener('click', () => {
+          item.remove()
+          updateMatchFeedbackEmptyState()
+        })
+        matchFeedbackList.appendChild(item)
+        updateMatchFeedbackEmptyState()
+        return item
+      }
+
+      function renderMatchFeedbackEntries(entries) {
+        if (!matchFeedbackList) return
+        clearMatchFeedbackEntries()
+        const source = Array.isArray(entries) && entries.length ? entries.slice() : []
+        if (source.length) {
+          source
+            .sort((a, b) => (Number(a.sequence) || 0) - (Number(b.sequence) || 0))
+            .forEach((entry) => addMatchFeedbackEntry(entry))
+        } else {
+          addMatchFeedbackEntry({ roundLabel: '1회차' })
+        }
+        updateMatchFeedbackEmptyState()
+      }
+
+      function collectMatchFeedbackEntries() {
+        if (!matchFeedbackList) return []
+        const items = Array.from(matchFeedbackList.querySelectorAll('.match-feedback-item'))
+        return items
+          .map((item, index) => {
+            const roundInput = item.querySelector('.match-feedback-round')
+            const partnerInput = item.querySelector('.match-feedback-partner')
+            const ratingSelect = item.querySelector('.match-feedback-rating')
+            const noteInput = item.querySelector('.match-feedback-note')
+            const roundLabel = roundInput?.value.trim() || ''
+            const partnerName = partnerInput?.value.trim() || ''
+            const ratingValue = Number(ratingSelect?.value)
+            const hasRating = Number.isFinite(ratingValue) && ratingValue >= 1 && ratingValue <= 5
+            const comment = noteInput?.value.trim() || ''
+            const hasContent = roundLabel || partnerName || comment || hasRating
+            if (!hasContent) {
+              return null
+            }
+            const storedId = item.dataset.feedbackId || generateMatchFeedbackId()
+            const recordedAt = item.dataset.recordedAt || new Date().toISOString()
+            return {
+              id: storedId,
+              sequence: index + 1,
+              roundLabel,
+              partnerName,
+              rating: hasRating ? ratingValue : null,
+              comment,
+              recordedAt,
+            }
+          })
+          .filter(Boolean)
+      }
+
+      function sanitizePaymentAmount(value) {
+        if (value == null) return ''
+        const digits = String(value).replace(/[^\d]/g, '')
+        if (!digits) return ''
+        const trimmed = digits.replace(/^0+/, '')
+        return trimmed || '0'
+      }
+
+      function formatPaymentAmountLabel(value) {
+        const digits = sanitizePaymentAmount(value)
+        if (!digits) return ''
+        return `${Number(digits).toLocaleString('ko-KR')}원`
+      }
+
+      function normalizePaymentHistoryEntry(entry, index = 0) {
+        if (!entry || typeof entry !== 'object') return null
+        const membershipType =
+          entry.membershipType != null ? String(entry.membershipType).trim() : ''
+        const paymentAmount = sanitizePaymentAmount(entry.paymentAmount ?? entry.amount ?? '')
+        const paymentDateRaw =
+          typeof entry.paymentDate === 'string' && entry.paymentDate.trim()
+            ? entry.paymentDate.trim()
+            : typeof entry.depositDate === 'string' && entry.depositDate.trim()
+            ? entry.depositDate.trim()
+            : ''
+        const memo = entry.memo != null ? String(entry.memo).trim() : ''
+        let recordedAt = ''
+        const recordedSource = entry.recordedAt || entry.savedAt || ''
+        if (recordedSource) {
+          const parsed = new Date(recordedSource)
+          if (!Number.isNaN(parsed.getTime())) {
+            recordedAt = parsed.toISOString()
+          }
+        }
+        if (!membershipType && !paymentAmount && !paymentDateRaw && !memo) {
+          return null
+        }
+        const id =
+          typeof entry.id === 'string' && entry.id.trim()
+            ? entry.id.trim()
+            : `pay_${index + 1}`
+        return {
+          id,
+          membershipType,
+          paymentAmount,
+          paymentDate: paymentDateRaw,
+          memo,
+          recordedAt,
+        }
+      }
+
+      function getPaymentHistoryEntries(record) {
+        if (!record) return []
+        const source = Array.isArray(record.paymentHistory) ? record.paymentHistory.slice() : []
+        if (!source.length) {
+          const fallback = normalizePaymentHistoryEntry(
+            {
+              membershipType: record.membershipType,
+              paymentAmount: record.paymentAmount,
+              paymentDate: record.paymentDate,
+            },
+            0,
+          )
+          if (fallback) {
+            source.push(fallback)
+          }
+        }
+        source.sort((a, b) => {
+          const aTime = a.recordedAt ? new Date(a.recordedAt).getTime() : 0
+          const bTime = b.recordedAt ? new Date(b.recordedAt).getTime() : 0
+          return bTime - aTime
+        })
+        return source
+      }
+
+      function getLatestPaymentEntry(record) {
+        if (!record) return null
+        const history = getPaymentHistoryEntries(record)
+        if (history.length) return history[0]
+        if (
+          record.membershipType ||
+          record.paymentAmount ||
+          record.paymentDate
+        ) {
+          return {
+            membershipType: record.membershipType || '',
+            paymentAmount: record.paymentAmount || '',
+            paymentDate: record.paymentDate || '',
+          }
+        }
+        return null
+      }
+
+      function renderPaymentHistory(record) {
+        if (!paymentHistoryList || !paymentHistoryEmpty) return
+        paymentHistoryList.innerHTML = ''
+        const entries = getPaymentHistoryEntries(record)
+        if (!entries.length) {
+          paymentHistoryEmpty.hidden = false
+          return
+        }
+        paymentHistoryEmpty.hidden = true
+        entries.forEach((entry) => {
+          const item = document.createElement('li')
+          item.className = 'payment-history-item'
+          const membershipLabel = entry.membershipType || '-'
+          const amountLabel = formatPaymentAmountLabel(entry.paymentAmount) || '-'
+          const depositLabel = entry.paymentDate || '-'
+          const recordedLabel = entry.recordedAt ? formatDate(entry.recordedAt) : ''
+          item.innerHTML = `
+            <div class="payment-history-line">
+              <span>회원권</span>
+              <strong>${escapeHtml(membershipLabel || '-')}</strong>
+            </div>
+            <div class="payment-history-line">
+              <span>결제 대금</span>
+              <strong>${escapeHtml(amountLabel || '-')}</strong>
+            </div>
+            <div class="payment-history-line">
+              <span>입금 날짜</span>
+              <strong>${escapeHtml(depositLabel || '-')}</strong>
+            </div>
+            ${entry.memo ? `<p class="payment-history-memo">${escapeHtml(entry.memo)}</p>` : ''}
+            ${
+              recordedLabel
+                ? `<p class="payment-history-meta">기록 시각 ${escapeHtml(recordedLabel)}</p>`
+                : ''
+            }
+          `
+          paymentHistoryList.appendChild(item)
+        })
+      }
+
       function openDetailModal(id) {
         const record = items.find((item) => item.id === id)
         if (!record) {
@@ -1609,6 +1984,7 @@
         setSelectValue(detailEducationSelect, record.education || '')
         if (detailJobInput) detailJobInput.value = record.job || ''
         if (detailDistrictInput) detailDistrictInput.value = record.district || ''
+        setSelectValue(detailReferralSourceSelect, record.referralSource || '')
         if (detailMbtiInput) detailMbtiInput.value = record.mbti || ''
         if (detailUniversityInput) detailUniversityInput.value = record.university || ''
         setSelectValue(detailSalaryRangeSelect, record.salaryRange || '')
@@ -1625,8 +2001,14 @@
         setSelectValue(detailCarOwnershipSelect, record.carOwnership || '')
         setSelectValue(detailTattooSelect, record.tattoo || '')
         setSelectValue(detailDivorceStatusSelect, record.divorceStatus || '')
-        setMultiSelectValues(detailPreferredHeightsSelect, record.preferredHeights || [])
-        setMultiSelectValues(detailPreferredAgesSelect, record.preferredAges || [])
+        if (detailPreferredHeightMinInput)
+          detailPreferredHeightMinInput.value = record.preferredHeightMin || ''
+        if (detailPreferredHeightMaxInput)
+          detailPreferredHeightMaxInput.value = record.preferredHeightMax || ''
+        if (detailPreferredAgeYoungestInput)
+          detailPreferredAgeYoungestInput.value = record.preferredAgeYoungest || ''
+        if (detailPreferredAgeOldestInput)
+          detailPreferredAgeOldestInput.value = record.preferredAgeOldest || ''
         setMultiSelectValues(detailPreferredLifestyleSelect, record.preferredLifestyle || [])
         setSelectValue(detailPreferredAppearanceSelect, record.preferredAppearance || '')
         detailValuesSelection = Array.isArray(record.values) ? record.values.slice(0, 1) : []
@@ -1639,6 +2021,15 @@
         if (detailLikesDislikesInput) detailLikesDislikesInput.value = record.likesDislikes || ''
         if (detailAboutMeInput) detailAboutMeInput.value = record.aboutMe || ''
         if (detailNotesInput) detailNotesInput.value = record.notes || ''
+        renderMatchFeedbackEntries(record.matchReviews || [])
+        const latestPaymentEntry = getLatestPaymentEntry(record)
+        if (detailMembershipTypeSelect)
+          setSelectValue(detailMembershipTypeSelect, latestPaymentEntry?.membershipType || '')
+        if (detailPaymentAmountInput)
+          detailPaymentAmountInput.value = latestPaymentEntry?.paymentAmount || ''
+        if (detailPaymentDateInput)
+          detailPaymentDateInput.value = latestPaymentEntry?.paymentDate || ''
+        renderPaymentHistory(record)
 
         const { date: scheduledDate, time: scheduledTime } = splitLocalDateTime(
           record.meetingSchedule,
@@ -1711,6 +2102,7 @@
         if (detailMbtiInput) detailMbtiInput.value = ''
         if (detailUniversityInput) detailUniversityInput.value = ''
         setSelectValue(detailSalaryRangeSelect, '')
+        setSelectValue(detailReferralSourceSelect, '')
         if (detailJobDetailInput) detailJobDetailInput.value = ''
         if (detailProfileAppealInput) detailProfileAppealInput.value = ''
         setSelectValue(detailSmokingSelect, '')
@@ -1723,8 +2115,10 @@
         setSelectValue(detailCarOwnershipSelect, '')
         setSelectValue(detailTattooSelect, '')
         setSelectValue(detailDivorceStatusSelect, '')
-        setMultiSelectValues(detailPreferredHeightsSelect, [])
-        setMultiSelectValues(detailPreferredAgesSelect, [])
+        if (detailPreferredHeightMinInput) detailPreferredHeightMinInput.value = ''
+        if (detailPreferredHeightMaxInput) detailPreferredHeightMaxInput.value = ''
+        if (detailPreferredAgeYoungestInput) detailPreferredAgeYoungestInput.value = ''
+        if (detailPreferredAgeOldestInput) detailPreferredAgeOldestInput.value = ''
         setMultiSelectValues(detailPreferredLifestyleSelect, [])
         setSelectValue(detailPreferredAppearanceSelect, '')
         setMultiSelectValues(detailValuesSelect, [])
@@ -1734,6 +2128,11 @@
         if (detailNecessaryConditionInput) detailNecessaryConditionInput.value = ''
         if (detailLikesDislikesInput) detailLikesDislikesInput.value = ''
         if (detailAboutMeInput) detailAboutMeInput.value = ''
+        if (detailMembershipTypeSelect) setSelectValue(detailMembershipTypeSelect, '')
+        if (detailPaymentAmountInput) detailPaymentAmountInput.value = ''
+        if (detailPaymentDateInput) detailPaymentDateInput.value = ''
+        renderPaymentHistory(null)
+        clearMatchFeedbackEntries()
         if (detailAttachmentsSection) detailAttachmentsSection.hidden = true
         if (detailIdCardItem) detailIdCardItem.hidden = true
         if (detailEmploymentItem) detailEmploymentItem.hidden = true
@@ -2269,6 +2668,137 @@
         const digits = String(raw || '').replace(/[^0-9]/g, '').slice(0, 3)
         return digits ? `${digits}cm` : ''
       }
+      function parseBirthYearInput(value) {
+        if (!value) return null
+        const trimmed = String(value).trim()
+        if (!trimmed) return null
+        const fullMatch = trimmed.match(/(19|20)\d{2}/)
+        if (fullMatch) {
+          const year = Number(fullMatch[0])
+          return Number.isFinite(year) ? year : null
+        }
+        const shortMatch = trimmed.match(/\d{2}/)
+        if (!shortMatch) return null
+        const short = Number(shortMatch[0])
+        if (!Number.isFinite(short)) return null
+        const now = new Date()
+        const currentYear = now.getFullYear()
+        const currentTwoDigit = currentYear % 100
+        const baseCentury = currentYear - currentTwoDigit
+        const inferred =
+          short <= currentTwoDigit ? baseCentury + short : baseCentury - 100 + short
+        if (inferred < 1900 || inferred > currentYear) return null
+        return inferred
+      }
+      function formatBirthYearLabel(year) {
+        if (!Number.isFinite(year)) return ''
+        return `${String(year).slice(-2)}년생`
+      }
+      function getHeightPreferenceLabels(minValue, maxValue) {
+        const hasMin = Number.isFinite(minValue)
+        const hasMax = Number.isFinite(maxValue)
+        if (!hasMin && !hasMax) return []
+        const rangeMin = hasMin ? minValue : 0
+        const rangeMax = hasMax ? maxValue : Infinity
+        return HEIGHT_PREFERENCE_MAP.filter(({ min, max }) => {
+          const start = Math.max(rangeMin, min)
+          const end = Math.min(rangeMax, max)
+          return start <= end
+        }).map(({ label }) => label)
+      }
+      function getAgePreferenceLabels(minAge, maxAge) {
+        const hasMin = Number.isFinite(minAge)
+        const hasMax = Number.isFinite(maxAge)
+        if (!hasMin && !hasMax) return []
+        const rangeMin = hasMin ? minAge : AGE_PREFERENCE_MAP[0].min
+        const rangeMax = hasMax ? maxAge : AGE_PREFERENCE_MAP[AGE_PREFERENCE_MAP.length - 1].max
+        return AGE_PREFERENCE_MAP.filter(({ min, max }) => {
+          const start = Math.max(rangeMin, min)
+          const end = Math.min(rangeMax, max)
+          return start <= end
+        }).map(({ label }) => label)
+      }
+      function buildPreferredHeightRangeValues(minRaw, maxRaw) {
+        const minValue = parseHeightValue(minRaw)
+        const maxValue = parseHeightValue(maxRaw)
+        let rangeMin = Number.isFinite(minValue) ? minValue : null
+        let rangeMax = Number.isFinite(maxValue) ? maxValue : null
+        if (rangeMin != null && rangeMax != null && rangeMin > rangeMax) {
+          ;[rangeMin, rangeMax] = [rangeMax, rangeMin]
+        }
+        const minLabel = rangeMin != null ? `${rangeMin}cm` : ''
+        const maxLabel = rangeMax != null ? `${rangeMax}cm` : ''
+        let label = ''
+        if (minLabel && maxLabel) {
+          label = `${minLabel} ~ ${maxLabel}`
+        } else if (minLabel) {
+          label = `${minLabel} 이상`
+        } else if (maxLabel) {
+          label = `${maxLabel} 이하`
+        }
+        const buckets = getHeightPreferenceLabels(rangeMin, rangeMax)
+        return { minLabel, maxLabel, label, buckets }
+      }
+      function buildPreferredAgeRangeValues(youngRaw, oldRaw) {
+        const youngestYear = parseBirthYearInput(youngRaw)
+        const oldestYear = parseBirthYearInput(oldRaw)
+        const years = [youngestYear, oldestYear].filter((value) => Number.isFinite(value))
+        if (!years.length) {
+          return {
+            youngestLabel: '',
+            oldestLabel: '',
+            label: '',
+            buckets: [],
+          }
+        }
+        const sorted = years.slice().sort((a, b) => b - a)
+        const resolvedYoungest = sorted[0]
+        const resolvedOldest = sorted[sorted.length - 1]
+        const youngestLabel = formatBirthYearLabel(resolvedYoungest)
+        const oldestLabel = formatBirthYearLabel(resolvedOldest)
+        let label = ''
+        if (youngestLabel && oldestLabel && youngestLabel !== oldestLabel) {
+          label = `${youngestLabel} ~ ${oldestLabel}`
+        } else {
+          label = youngestLabel || oldestLabel
+        }
+        const currentYear = new Date().getFullYear()
+        const youngestAge = Number.isFinite(resolvedYoungest) ? currentYear - resolvedYoungest : null
+        const oldestAge = Number.isFinite(resolvedOldest) ? currentYear - resolvedOldest : null
+        let minAge = Number.isFinite(youngestAge) ? youngestAge : null
+        let maxAge = Number.isFinite(oldestAge) ? oldestAge : null
+        if (minAge != null && maxAge != null && minAge > maxAge) {
+          ;[minAge, maxAge] = [maxAge, minAge]
+        }
+        const buckets = getAgePreferenceLabels(minAge, maxAge)
+        return {
+          youngestLabel,
+          oldestLabel,
+          label,
+          buckets,
+        }
+      }
+      function buildPreferredHeightDisplay(record) {
+        const minLabel = normalizeHeightValue(record.preferredHeightMin || '')
+        const maxLabel = normalizeHeightValue(record.preferredHeightMax || '')
+        if (minLabel && maxLabel) return `${minLabel} ~ ${maxLabel}`
+        if (minLabel) return `${minLabel} 이상`
+        if (maxLabel) return `${maxLabel} 이하`
+        if (Array.isArray(record.preferredHeights) && record.preferredHeights.length) {
+          return record.preferredHeights.join(', ')
+        }
+        return ''
+      }
+      function buildPreferredAgeDisplay(record) {
+        const youngest = record.preferredAgeYoungest
+        const oldest = record.preferredAgeOldest
+        if (youngest && oldest && youngest !== oldest) return `${youngest} ~ ${oldest}`
+        if (youngest || oldest) return youngest || oldest
+        if (Array.isArray(record.preferredAges) && record.preferredAges.length) {
+          return record.preferredAges.join(', ')
+        }
+        return ''
+      }
 
       function normalizeDepositStatusValue(raw) {
         const value = String(raw || '').toLowerCase().trim()
@@ -2373,12 +2903,12 @@
         if (!container) return 0
         container.innerHTML = ''
         const list = Array.isArray(photos) ? photos : []
-        list
-          .filter((photo) => {
-            const source = getFileSource(photo)
-            return Boolean(source)
-          })
-          .forEach((photo, index) => {
+        const validPhotos = list.filter((photo) => {
+          const source = getFileSource(photo)
+          return Boolean(source)
+        })
+        const hasMultiple = validPhotos.length > 1
+        validPhotos.forEach((photo, index) => {
             const source = getFileSource(photo)
             const item = document.createElement('div')
             item.className = 'attachment-photo-item'
@@ -2404,11 +2934,38 @@
             deleteBtn.type = 'button'
             deleteBtn.className = 'attachment-delete-btn'
             deleteBtn.textContent = '삭제'
+            deleteBtn.dataset.attachmentAction = 'delete'
             deleteBtn.dataset.attachmentType = 'photo'
             deleteBtn.dataset.attachmentId = attachmentId
+            const actions = document.createElement('div')
+            actions.className = 'attachment-photo-actions'
+            if (hasMultiple) {
+              const moveUpBtn = document.createElement('button')
+              moveUpBtn.type = 'button'
+              moveUpBtn.className = 'attachment-reorder-btn'
+              moveUpBtn.textContent = '위로'
+              moveUpBtn.dataset.attachmentAction = 'move'
+              moveUpBtn.dataset.direction = 'up'
+              moveUpBtn.dataset.attachmentId = attachmentId
+              moveUpBtn.disabled = index === 0
+              moveUpBtn.setAttribute('aria-label', `${label}을(를) 위로 이동`)
+              const moveDownBtn = document.createElement('button')
+              moveDownBtn.type = 'button'
+              moveDownBtn.className = 'attachment-reorder-btn'
+              moveDownBtn.textContent = '아래로'
+              moveDownBtn.dataset.attachmentAction = 'move'
+              moveDownBtn.dataset.direction = 'down'
+              moveDownBtn.dataset.attachmentId = attachmentId
+              moveDownBtn.disabled = index === validPhotos.length - 1
+              moveDownBtn.setAttribute('aria-label', `${label}을(를) 아래로 이동`)
+              actions.appendChild(moveUpBtn)
+              actions.appendChild(moveDownBtn)
+            }
+            deleteBtn.setAttribute('aria-label', `${label} 삭제`)
+            actions.appendChild(deleteBtn)
             item.appendChild(link)
             item.appendChild(urlBox)
-            item.appendChild(deleteBtn)
+            item.appendChild(actions)
             container.appendChild(item)
           })
         return container.childElementCount
@@ -2942,6 +3499,26 @@
         showToast('사진을 삭제했습니다.')
       }
 
+      function handlePhotoReorder(attachmentId, step) {
+        if (!attachmentId || !Number.isFinite(step) || !detailPhotoUploads.length) return
+        const currentIndex = detailPhotoUploads.findIndex((photo) => {
+          const photoId = photo?.id || photo?.storagePath
+          return photoId === attachmentId
+        })
+        if (currentIndex === -1) return
+        const targetIndex = currentIndex + step
+        if (targetIndex < 0 || targetIndex >= detailPhotoUploads.length) return
+        const nextList = detailPhotoUploads.slice()
+        const [moved] = nextList.splice(currentIndex, 1)
+        nextList.splice(targetIndex, 0, moved)
+        detailPhotoUploads = nextList
+        if (Array.isArray(detailCurrentRecord?.photos)) {
+          detailCurrentRecord.photos = nextList.slice()
+        }
+        refreshDetailAttachments()
+        showToast('사진 순서를 변경했습니다.')
+      }
+
       function getDraftForPhone(phone) {
         const key = normalizePhoneKey(phone)
         if (!key) return null
@@ -2994,6 +3571,8 @@
           detailJobDetailInput.value = draft.jobDetail || ''
         if (detailUniversityInput && draft.university !== undefined)
           detailUniversityInput.value = draft.university || ''
+        if (detailReferralSourceSelect && draft.referralSource !== undefined)
+          setSelectValue(detailReferralSourceSelect, draft.referralSource || '')
         if (detailSalaryRangeSelect && draft.salaryRange !== undefined)
           setSelectValue(detailSalaryRangeSelect, draft.salaryRange || '')
         if (detailSmokingSelect && draft.smoking !== undefined)
@@ -3025,10 +3604,14 @@
         if (detailNecessaryConditionInput && draft.necessaryCondition !== undefined)
           detailNecessaryConditionInput.value = draft.necessaryCondition || ''
         if (detailAboutMeInput && draft.aboutMe !== undefined) detailAboutMeInput.value = draft.aboutMe || ''
-        if (detailPreferredHeightsSelect && draft.preferredHeights !== undefined)
-          setMultiSelectValues(detailPreferredHeightsSelect, toOptionArray(draft.preferredHeights))
-        if (detailPreferredAgesSelect && draft.preferredAges !== undefined)
-          setMultiSelectValues(detailPreferredAgesSelect, toOptionArray(draft.preferredAges))
+        if (detailPreferredHeightMinInput && draft.preferredHeightMin !== undefined)
+          detailPreferredHeightMinInput.value = draft.preferredHeightMin || ''
+        if (detailPreferredHeightMaxInput && draft.preferredHeightMax !== undefined)
+          detailPreferredHeightMaxInput.value = draft.preferredHeightMax || ''
+        if (detailPreferredAgeYoungestInput && draft.preferredAgeYoungest !== undefined)
+          detailPreferredAgeYoungestInput.value = draft.preferredAgeYoungest || ''
+        if (detailPreferredAgeOldestInput && draft.preferredAgeOldest !== undefined)
+          detailPreferredAgeOldestInput.value = draft.preferredAgeOldest || ''
         if (detailPreferredLifestyleSelect && draft.preferredLifestyle !== undefined)
           setMultiSelectValues(
             detailPreferredLifestyleSelect,
@@ -3072,6 +3655,20 @@
 
       function formatSalaryRange(value) {
         return SALARY_RANGE_LABELS[value] || ''
+      }
+
+      function normalizeReferralSourceLabel(value, options = {}) {
+        const emptyFallback = Boolean(options.emptyFallback)
+        const trimmed = typeof value === 'string' ? value.trim() : ''
+        if (!trimmed) {
+          return emptyFallback ? REFERRAL_SOURCE_FALLBACK_LABEL : ''
+        }
+        const match = REFERRAL_SOURCE_LABELS.find((label) => label === trimmed)
+        return match || REFERRAL_SOURCE_FALLBACK_LABEL
+      }
+
+      function formatReferralSource(value) {
+        return normalizeReferralSourceLabel(value) || ''
       }
 
       function formatPhoneStatus(status) {
@@ -3143,6 +3740,8 @@
         if (detailJobInput) detailJobInput.value = jobValue
         const districtValue = (detailDistrictInput?.value || '').trim()
         if (detailDistrictInput) detailDistrictInput.value = districtValue
+        const referralSourceValue = detailReferralSourceSelect?.value || ''
+        setSelectValue(detailReferralSourceSelect, referralSourceValue)
         const heightValue = normalizeHeightValue(detailHeightInput?.value)
         if (detailHeightInput) detailHeightInput.value = heightValue
         const mbtiValue = (detailMbtiInput?.value || '').trim()
@@ -3175,11 +3774,25 @@
         setSelectValue(detailTattooSelect, tattooValue)
         const divorceStatusValue = detailDivorceStatusSelect?.value || ''
         setSelectValue(detailDivorceStatusSelect, divorceStatusValue)
-        const preferredHeights = getMultiSelectValues(detailPreferredHeightsSelect)
-        const preferredAges = getMultiSelectValues(detailPreferredAgesSelect)
         const preferredLifestyle = getMultiSelectValues(detailPreferredLifestyleSelect)
         const preferredAppearanceValue = detailPreferredAppearanceSelect?.value || ''
         setSelectValue(detailPreferredAppearanceSelect, preferredAppearanceValue)
+        const preferredHeightRange = buildPreferredHeightRangeValues(
+          detailPreferredHeightMinInput?.value || '',
+          detailPreferredHeightMaxInput?.value || '',
+        )
+        if (detailPreferredHeightMinInput)
+          detailPreferredHeightMinInput.value = preferredHeightRange.minLabel || ''
+        if (detailPreferredHeightMaxInput)
+          detailPreferredHeightMaxInput.value = preferredHeightRange.maxLabel || ''
+        const preferredAgeRange = buildPreferredAgeRangeValues(
+          detailPreferredAgeYoungestInput?.value || '',
+          detailPreferredAgeOldestInput?.value || '',
+        )
+        if (detailPreferredAgeYoungestInput)
+          detailPreferredAgeYoungestInput.value = preferredAgeRange.youngestLabel || ''
+        if (detailPreferredAgeOldestInput)
+          detailPreferredAgeOldestInput.value = preferredAgeRange.oldestLabel || ''
         const valuesSelected = getMultiSelectValues(detailValuesSelect).slice(0, 1)
         if (valuesSelected.length > 1) {
           showToast('가치관은 한 개만 선택할 수 있습니다.')
@@ -3198,6 +3811,11 @@
         if (detailLikesDislikesInput) detailLikesDislikesInput.value = likesDislikesValue
         const aboutMeValue = (detailAboutMeInput?.value || '').trim()
         if (detailAboutMeInput) detailAboutMeInput.value = aboutMeValue
+        const membershipTypeValue = detailMembershipTypeSelect?.value || ''
+        setSelectValue(detailMembershipTypeSelect, membershipTypeValue)
+        const paymentAmountRaw = (detailPaymentAmountInput?.value || '').trim()
+        const paymentAmountValue = sanitizePaymentAmount(paymentAmountRaw)
+        const paymentDateValue = detailPaymentDateInput?.value || ''
 
         const dateValue = detailDateInput.value
         const timeValue = detailTimeSelect.disabled ? '' : detailTimeSelect.value
@@ -3230,6 +3848,7 @@
           job: jobValue,
           height: heightValue,
           district: districtValue,
+          referralSource: referralSourceValue,
           mbti: mbtiValue,
           university: universityValue,
           salaryRange: salaryRangeValue,
@@ -3245,8 +3864,14 @@
           carOwnership: carOwnershipValue,
           tattoo: tattooValue,
           divorceStatus: divorceStatusValue,
-          preferredHeights,
-          preferredAges,
+          preferredHeightMin: preferredHeightRange.minLabel || '',
+          preferredHeightMax: preferredHeightRange.maxLabel || '',
+          preferredHeightLabel: preferredHeightRange.label || '',
+          preferredHeights: preferredHeightRange.buckets,
+          preferredAgeYoungest: preferredAgeRange.youngestLabel || '',
+          preferredAgeOldest: preferredAgeRange.oldestLabel || '',
+          preferredAgeLabel: preferredAgeRange.label || '',
+          preferredAges: preferredAgeRange.buckets,
           preferredLifestyle,
           preferredAppearance: preferredAppearanceValue,
           sufficientCondition: sufficientConditionValue,
@@ -3255,9 +3880,15 @@
           values: valuesSelected,
           valuesCustom: valuesCustomValue,
           aboutMe: aboutMeValue,
+          membershipType: membershipTypeValue,
+          paymentAmount: paymentAmountValue,
+          paymentDate: paymentDateValue,
           phoneConsultStatus: phoneStatus,
           meetingSchedule,
           notes: detailNotesInput.value?.trim() || '',
+        }
+        if (matchFeedbackList) {
+          payload.matchReviews = collectMatchFeedbackEntries()
         }
         const existingRecord = items.find((item) => item.id === detailRecordId) || {}
         if (detailDocumentDirty.size) {
@@ -3740,9 +4371,27 @@
           normalized.height = normalized.height != null ? String(normalized.height) : ''
         }
         normalized.height = normalizeHeightValue(normalized.height)
+        normalized.preferredHeightMin = normalizeHeightValue(normalized.preferredHeightMin)
+        normalized.preferredHeightMax = normalizeHeightValue(normalized.preferredHeightMax)
+        const normalizeBirthLabel = (value) => {
+          if (value == null) return ''
+          const raw = String(value).trim()
+          if (!raw) return ''
+          const parsed = parseBirthYearInput(raw)
+          if (parsed) return formatBirthYearLabel(parsed)
+          return raw
+        }
+        normalized.preferredAgeYoungest = normalizeBirthLabel(normalized.preferredAgeYoungest)
+        normalized.preferredAgeOldest = normalizeBirthLabel(normalized.preferredAgeOldest)
         if (typeof normalized.district !== 'string') {
           normalized.district = normalized.district != null ? String(normalized.district) : ''
         }
+        if (typeof normalized.referralSource !== 'string') {
+          normalized.referralSource =
+            normalized.referralSource != null ? String(normalized.referralSource) : ''
+        }
+        normalized.referralSource =
+          normalizeReferralSourceLabel(normalized.referralSource.trim()) || ''
         MOIM_INDICATOR_KEYS.forEach((key) => {
           const value = normalized[key]
           normalized[key] = value != null ? String(value) : ''
@@ -3777,6 +4426,25 @@
           normalized.likesDislikes != null ? String(normalized.likesDislikes) : ''
         normalized.valuesCustom = normalized.valuesCustom != null ? String(normalized.valuesCustom) : ''
         normalized.aboutMe = normalized.aboutMe != null ? String(normalized.aboutMe) : ''
+        normalized.membershipType =
+          normalized.membershipType != null ? String(normalized.membershipType).trim() : ''
+        normalized.paymentAmount = sanitizePaymentAmount(normalized.paymentAmount)
+        normalized.paymentDate =
+          typeof normalized.paymentDate === 'string' ? normalized.paymentDate.trim() : ''
+        normalized.paymentHistory = Array.isArray(normalized.paymentHistory)
+          ? normalized.paymentHistory
+              .map((entry, index) => normalizePaymentHistoryEntry(entry, index))
+              .filter(Boolean)
+          : []
+        normalized.matchReviews = Array.isArray(normalized.matchReviews)
+          ? normalized.matchReviews
+              .map((entry, index) => normalizeMatchReviewEntry(entry, index))
+              .filter(Boolean)
+          : []
+        if (normalized.matchReviews.length) {
+          normalized.matchReviews.sort((a, b) => (a.sequence || 0) - (b.sequence || 0))
+        }
+        normalized.matchRatingAverage = calculateMatchRatingAverage(normalized.matchReviews)
         const normalizeFileEntry = (entry, fallbackName) => {
           if (!entry) return null
           if (typeof entry === 'string') {
@@ -3867,6 +4535,8 @@
         normalized.preferredLifestyle = toStringArray(normalized.preferredLifestyle)
         normalized.preferredAppearance =
           normalized.preferredAppearance != null ? String(normalized.preferredAppearance) : ''
+        normalized.preferredHeightLabel = buildPreferredHeightDisplay(normalized)
+        normalized.preferredAgeLabel = buildPreferredAgeDisplay(normalized)
         normalized.values = Array.isArray(normalized.values)
           ? normalized.values.map((value) => String(value)).slice(0, 1)
           : []
@@ -3878,6 +4548,62 @@
               }
             : { info: false, manners: false }
         return normalized
+      }
+
+      function normalizeMatchReviewEntry(entry, index = 0) {
+        if (!entry || typeof entry !== 'object') return null
+        const id =
+          typeof entry.id === 'string' && entry.id.trim()
+            ? entry.id.trim()
+            : generateMatchFeedbackId()
+        const sequenceRaw = Number(entry.sequence ?? entry.roundIndex ?? index + 1)
+        const sequence = Number.isFinite(sequenceRaw) && sequenceRaw > 0 ? sequenceRaw : index + 1
+        const roundLabel =
+          entry.roundLabel != null ? String(entry.roundLabel).trim() : String(entry.round || '').trim()
+        const partnerName =
+          entry.partnerName != null
+            ? String(entry.partnerName).trim()
+            : String(entry.partner || '').trim()
+        const comment =
+          entry.comment != null
+            ? String(entry.comment).trim()
+            : entry.note != null
+            ? String(entry.note).trim()
+            : ''
+        const ratingValue = Number(entry.rating)
+        const rating =
+          Number.isFinite(ratingValue) && ratingValue > 0 && ratingValue <= 5
+            ? Number(ratingValue.toFixed(2))
+            : null
+        let recordedAt = ''
+        if (entry.recordedAt) {
+          const parsed = new Date(entry.recordedAt)
+          if (!Number.isNaN(parsed.getTime())) {
+            recordedAt = parsed.toISOString()
+          }
+        }
+        if (!roundLabel && !partnerName && !comment && rating == null) {
+          return null
+        }
+        return {
+          id,
+          sequence,
+          roundLabel,
+          partnerName,
+          comment,
+          rating,
+          recordedAt,
+        }
+      }
+
+      function calculateMatchRatingAverage(entries) {
+        if (!Array.isArray(entries) || !entries.length) return null
+        const ratings = entries
+          .map((entry) => Number(entry.rating))
+          .filter((value) => Number.isFinite(value) && value > 0)
+        if (!ratings.length) return null
+        const average = ratings.reduce((sum, value) => sum + value, 0) / ratings.length
+        return Number(average.toFixed(1))
       }
 
       function splitLocalDateTime(value) {
@@ -3927,6 +4653,10 @@
               'carOwnership',
               'tattoo',
               'divorceStatus',
+              'referralSource',
+            'membershipType',
+            'paymentAmount',
+            'paymentDate',
             ]
               .map((key) => String(item[key] || '').toLowerCase())
               .some((value) => value.includes(term))
@@ -4183,6 +4913,82 @@
         genderStatsEl.textContent = `남 ${male}명 (${malePercent}%) · 여 ${female}명 (${femalePercent}%)`
       }
 
+      function updateReferralStats(list) {
+        const sourceList = Array.isArray(list) ? list : []
+        const counts = new Map()
+        REFERRAL_SOURCE_LABELS.forEach((label) => counts.set(label, 0))
+        counts.set(REFERRAL_SOURCE_FALLBACK_LABEL, 0)
+        sourceList.forEach((item) => {
+          const label = normalizeReferralSourceLabel(item?.referralSource, { emptyFallback: true })
+          if (!label) return
+          counts.set(label, (counts.get(label) || 0) + 1)
+        })
+        const total = sourceList.length
+        const breakdown = REFERRAL_SOURCE_LABELS.map((label) => {
+          const count = counts.get(label) || 0
+          return {
+            label,
+            count,
+            percent: total ? Math.round((count / total) * 100) : 0,
+          }
+        })
+        const fallbackCount = counts.get(REFERRAL_SOURCE_FALLBACK_LABEL) || 0
+        if (fallbackCount) {
+          breakdown.push({
+            label: REFERRAL_SOURCE_FALLBACK_LABEL,
+            count: fallbackCount,
+            percent: total ? Math.round((fallbackCount / total) * 100) : 0,
+          })
+        }
+        referralStatsData = { total, breakdown }
+        if (referralChartModal && !referralChartModal.hidden) {
+          renderReferralChart()
+        }
+      }
+
+      function openReferralChartModal() {
+        if (!referralChartModal) return
+        referralChartModal.hidden = false
+        renderReferralChart()
+      }
+
+      function closeReferralChartModal() {
+        if (!referralChartModal) return
+        referralChartModal.hidden = true
+      }
+
+      function renderReferralChart() {
+        if (!referralChartList) return
+        const { total, breakdown } = referralStatsData
+        if (!total) {
+          if (referralChartSummary) {
+            referralChartSummary.textContent = '표시할 데이터가 없습니다.'
+          }
+          referralChartList.innerHTML = ''
+          if (referralChartEmpty) referralChartEmpty.hidden = false
+          return
+        }
+        if (referralChartEmpty) referralChartEmpty.hidden = true
+        if (referralChartSummary) {
+          referralChartSummary.textContent = `총 ${total}명 · 유입 경로 통계`
+        }
+        referralChartList.innerHTML = breakdown
+          .map((entry) => {
+            return `
+              <li class="referral-chart-item">
+                <div class="referral-chart-label">
+                  <strong>${escapeHtml(entry.label)}</strong>
+                  <span>${entry.count.toLocaleString('ko-KR')}명 · ${entry.percent}%</span>
+                </div>
+                <div class="referral-chart-bar">
+                  <span style="width:${entry.percent}%;"></span>
+                </div>
+              </li>
+            `
+          })
+          .join('')
+      }
+
       function syncSelectionWithItems() {
         const validIds = new Set(items.map((item) => item.id))
         Array.from(selectedIds).forEach((id) => {
@@ -4387,16 +5193,15 @@
 
       function updateMatchPreferenceSummary(record) {
         if (matchPreferredHeightEl) {
-          matchPreferredHeightEl.textContent = formatPreferenceText(
-            record?.preferredHeights,
-            '선호 키 정보가 없습니다.',
-          )
+          const heightText =
+            record?.preferredHeightLabel ||
+            formatPreferenceText(record?.preferredHeights, '')
+          matchPreferredHeightEl.textContent = heightText || '선호 키 정보가 없습니다.'
         }
         if (matchPreferredAgeEl) {
-          matchPreferredAgeEl.textContent = formatPreferenceText(
-            record?.preferredAges,
-            '선호 나이 정보가 없습니다.',
-          )
+          const ageText =
+            record?.preferredAgeLabel || formatPreferenceText(record?.preferredAges, '')
+          matchPreferredAgeEl.textContent = ageText || '선호 나이 정보가 없습니다.'
         }
         if (matchPreferredLifestyleEl) {
           if (Array.isArray(record?.preferredLifestyle) && record.preferredLifestyle.length) {
@@ -4429,17 +5234,41 @@
           return
         }
         const { list, total } = computeMatchResults(target)
-        if (!total) {
+        const priorityEntries = buildPriorityMatchResults(target)
+        const merged = mergePriorityMatchResults(priorityEntries, list)
+        const displayList = merged.list
+        const priorityDisplayed = merged.displayedPriorityCount
+        const hasPriority = priorityDisplayed > 0
+        if (!displayList.length) {
           matchStatusEl.textContent = '조건에 맞는 추천 후보가 없습니다.'
           renderMatchResults([])
           return
         }
-        if (total > MATCH_RESULT_LIMIT) {
+        if (hasPriority) {
+          const fragments = []
+          if (priorityEntries.length > priorityDisplayed) {
+            fragments.push(
+              `선매칭 ${priorityEntries.length}명 중 상위 ${priorityDisplayed}명 우선 표시`,
+            )
+          } else {
+            fragments.push(`선매칭 ${priorityDisplayed}명 우선 표시`)
+          }
+          const additionalCount = displayList.length - priorityDisplayed
+          const remainingSlots = Math.max(MATCH_RESULT_LIMIT - priorityDisplayed, 0)
+          if (additionalCount > 0 && total > remainingSlots) {
+            fragments.push(`조건 일치 ${total}명 중 ${remainingSlots}명 추가 노출`)
+          } else if (additionalCount > 0) {
+            fragments.push(`조건 일치 ${additionalCount}명 추가 노출`)
+          } else if (total > 0) {
+            fragments.push('조건 일치 후보는 자리 확보 후 노출됩니다.')
+          }
+          matchStatusEl.textContent = fragments.join(' · ')
+        } else if (total > MATCH_RESULT_LIMIT) {
           matchStatusEl.textContent = `${total}명 중 상위 ${MATCH_RESULT_LIMIT}명만 표시합니다.`
         } else {
           matchStatusEl.textContent = `${total}명 추천되었습니다.`
         }
-        renderMatchResults(list)
+        renderMatchResults(displayList)
       }
 
       function renderMatchResults(results) {
@@ -4475,6 +5304,11 @@
                     </div>
                   </div>
                   <div class="match-result-head-actions">
+                    ${
+                      entry.priority
+                        ? '<span class="match-priority-chip">선매칭</span>'
+                        : ''
+                    }
                     <span class="match-score">점수 ${entry.score}/${MATCH_SCORE_MAX}</span>
                     <button type="button" class="match-result-add-btn match-select-btn">선택하기</button>
                   </div>
@@ -4555,6 +5389,130 @@
             statusLabel: PHONE_STATUS_LABELS[statusKey] || '',
             statusClass: STATUS_CLASS_NAMES[statusKey] || '',
           },
+        }
+      }
+
+      function buildPriorityMatchResults(targetRecord) {
+        if (!targetRecord) return []
+        const reverseEntries = getReverseMatchEntriesForTarget(targetRecord)
+        if (!reverseEntries.length) return []
+        return reverseEntries
+          .map(({ record, matchedAt }) => {
+            const evaluated = evaluateMatchCandidate(targetRecord, record)
+            if (evaluated) {
+              return {
+                ...evaluated,
+                reasons: [
+                  '이번 주 선매칭에서 이미 연결된 남성 후보입니다.',
+                  ...evaluated.reasons,
+                ],
+                priority: true,
+                priorityMatchedAt: matchedAt || 0,
+              }
+            }
+            return buildFallbackPriorityMatchEntry(record, matchedAt)
+          })
+          .filter(Boolean)
+      }
+
+      function buildFallbackPriorityMatchEntry(record, matchedAt) {
+        if (!record) return null
+        const candidateAge = getAgeFromBirth(record.birth)
+        const candidateHeight = parseHeightValue(record.height)
+        const statusKey = PHONE_STATUS_VALUES.includes(record.phoneConsultStatus)
+          ? record.phoneConsultStatus
+          : 'pending'
+        return {
+          candidate: record,
+          score: 0,
+          reasons: ['이번 주 선매칭에서 이미 연결된 남성 후보입니다.'],
+          meta: {
+            gender: record.gender || '',
+            ageLabel: formatAgeLabel(candidateAge),
+            heightLabel: candidateHeight ? `${candidateHeight}cm` : record.height || '',
+            lifestyleOverlapCount: 0,
+            createdAt: record.createdAt ? new Date(record.createdAt).getTime() : 0,
+            statusLabel: PHONE_STATUS_LABELS[statusKey] || '',
+            statusClass: STATUS_CLASS_NAMES[statusKey] || '',
+          },
+          priority: true,
+          priorityMatchedAt: matchedAt || 0,
+        }
+      }
+
+      function getReverseMatchEntriesForTarget(targetRecord) {
+        if (!targetRecord) return []
+        const targetGender = normalizeMatchGender(targetRecord.gender)
+        if (targetGender !== 'female') return []
+        if (!Array.isArray(matchHistory) || !matchHistory.length) return []
+        const currentWeek = getWeekInfo(new Date())
+        const targetId = targetRecord.id || ''
+        const targetPhoneKey = normalizePhoneKey(targetRecord.phone)
+        if (!targetId && !targetPhoneKey) return []
+        const seenIds = new Set()
+        return matchHistory
+          .filter((entry) => {
+            if (!entry || isConfirmedMatchEntry(entry)) return false
+            const sameId = targetId && entry.candidateId === targetId
+            const entryPhoneKey = normalizePhoneKey(entry.candidatePhone || entry.candidate?.phone || '')
+            const samePhone = targetPhoneKey && entryPhoneKey === targetPhoneKey
+            if (!sameId && !samePhone) return false
+            if (!entry.week) return true
+            return entry.week.year === currentWeek.year && entry.week.week === currentWeek.week
+          })
+          .map((entry) => {
+            const record = findMemberByIdOrPhone(entry.targetId, entry.target?.phone)
+            if (!record) return null
+            const recordKey = record.id || normalizePhoneKey(record.phone)
+            if (recordKey && seenIds.has(recordKey)) return null
+            if (recordKey) seenIds.add(recordKey)
+            return {
+              record,
+              matchedAt: entry.matchedAt || 0,
+            }
+          })
+          .filter(Boolean)
+          .sort((a, b) => (b.matchedAt || 0) - (a.matchedAt || 0))
+      }
+
+      function findMemberByIdOrPhone(id, phone) {
+        if (id) {
+          const byId = items.find((item) => item.id === id)
+          if (byId) return byId
+        }
+        const phoneKey = normalizePhoneKey(phone)
+        if (!phoneKey) return null
+        return items.find((item) => normalizePhoneKey(item.phone) === phoneKey) || null
+      }
+
+      function mergePriorityMatchResults(priorityEntries, regularEntries) {
+        const merged = []
+        const seen = new Set()
+        let displayedPriorityCount = 0
+        const priorityList = Array.isArray(priorityEntries) ? priorityEntries : []
+        const regularList = Array.isArray(regularEntries) ? regularEntries : []
+        priorityList.forEach((entry) => {
+          if (!entry || !entry.candidate) return
+          if (merged.length >= MATCH_RESULT_LIMIT) return
+          const candidateId = entry.candidate.id || ''
+          const candidateKey = candidateId || normalizePhoneKey(entry.candidate.phone)
+          if (candidateKey && seen.has(candidateKey)) return
+          merged.push(entry)
+          displayedPriorityCount += 1
+          if (candidateKey) seen.add(candidateKey)
+        })
+        regularList.forEach((entry) => {
+          if (merged.length >= MATCH_RESULT_LIMIT) return
+          const candidateId = entry?.candidate?.id || ''
+          const candidateKey = candidateId || normalizePhoneKey(entry?.candidate?.phone)
+          if (candidateKey && seen.has(candidateKey)) return
+          merged.push(entry)
+          if (candidateKey) seen.add(candidateKey)
+        })
+        return {
+          list: merged,
+          priorityCount: priorityList.length,
+          displayedPriorityCount,
         }
       }
 
@@ -5854,9 +6812,10 @@
           연봉구간: formatSalaryRange(item.salaryRange) || '',
           흡연: item.smoking || '',
           종교: item.religion || '',
-          선호키: (item.preferredHeights || []).join(', '),
-          선호나이: (item.preferredAges || []).join(', '),
+          선호키: item.preferredHeightLabel || (item.preferredHeights || []).join(', '),
+          선호나이: item.preferredAgeLabel || (item.preferredAges || []).join(', '),
           거주구: item.district || '',
+          유입경로: formatReferralSource(item.referralSource) || '',
           직무상세: item.jobDetail || '',
           추가어필: item.profileAppeal || '',
           충분조건: item.sufficientCondition || '',
