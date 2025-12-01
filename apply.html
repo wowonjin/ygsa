@@ -1046,6 +1046,7 @@
           wrapper.className = 'match-card'
           wrapper.tabIndex = 0
           const candidateId = getCandidateIdentifier(record)
+          const matchEntryId = record.matchEntryId || ''
           const preview = document.createElement('div')
           const toneClass = getProfileToneClass(record.gender)
           preview.className = `profile-card-preview ${toneClass}`.trim()
@@ -1080,7 +1081,7 @@
           wrapper.appendChild(preview)
           const actions = document.createElement('div')
           actions.className = 'match-card-actions'
-          const actionButton = createMatchSelectButton(record, candidateId)
+          const actionButton = createMatchSelectButton(record, candidateId, matchEntryId)
           actions.appendChild(actionButton)
           preview.insertAdjacentElement('afterend', actions)
           initProfileCardSlider(preview)
@@ -1223,7 +1224,7 @@
           `
         }
 
-        function createMatchSelectButton(record, candidateId) {
+        function createMatchSelectButton(record, candidateId, matchEntryId) {
           const button = document.createElement('button')
           button.type = 'button'
           button.className = 'match-card-select-btn'
@@ -1239,16 +1240,16 @@
           }
           button.addEventListener('click', (event) => {
             event.stopPropagation()
-            handleCardMatchSelect(record, button, candidateId)
+            handleCardMatchSelect(record, button, candidateId, matchEntryId)
           })
           return button
         }
 
-        async function handleCardMatchSelect(record, button, candidateIdOverride) {
+        async function handleCardMatchSelect(record, button, candidateIdOverride, matchEntryId) {
           const originalScrollY = window.scrollY || document.documentElement.scrollTop || 0
           const originalButtonTop = button?.getBoundingClientRect()?.top || 0
           const candidateId = candidateIdOverride || getCandidateIdentifier(record)
-          const payload = buildMatchSelectionPayload(record, candidateId)
+          const payload = buildMatchSelectionPayload(record, candidateId, matchEntryId)
           if (!payload) {
             showMessage('매칭 정보를 준비할 수 없습니다. 관리자에게 문의해주세요.', true)
             return
@@ -1274,25 +1275,28 @@
           }
         }
 
-        function buildMatchSelectionPayload(record, candidateIdArg) {
+        function buildMatchSelectionPayload(record, candidateIdArg, matchEntryId) {
           if (!record || !currentTargetProfile || !lastLookupPhoneKey) return null
           const candidateId = candidateIdArg || getCandidateIdentifier(record)
           const targetId = currentTargetProfile.id || ''
           if (!candidateId || !targetId) return null
-          const matchedAt = Date.now()
+          const matchedAt =
+            typeof record.matchRecordedAt === 'number' && record.matchRecordedAt > 0
+              ? record.matchRecordedAt
+              : Date.now()
           const candidatePhone = normalizePhoneKey(record.phone || record.phoneNumber || '')
           const candidateName = record.name || record.characterName || '추천 후보'
           const candidateGender = record.gender || ''
           const targetName = currentTargetProfile.name || '회원님'
           const targetGender = currentTargetProfile.gender || ''
           return {
-            id: `${targetId}-${candidateId}-${matchedAt}`,
+            id: matchEntryId || `${targetId}-${candidateId}-${matchedAt}`,
             candidateId,
             targetId,
             targetPhone: lastLookupPhoneKey,
             matchedAt,
             week: buildWeekMeta(new Date(matchedAt)),
-            category: 'intro',
+            category: 'confirmed',
             candidateName,
             candidateGender,
             candidatePhone,

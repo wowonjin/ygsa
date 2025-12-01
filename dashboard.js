@@ -5291,13 +5291,14 @@
       function rebuildMatchedCandidateIds() {
         matchedCandidateIds.clear()
         matchHistory.forEach((entry) => {
-          if (entry?.candidateId) {
-            matchedCandidateIds.add(entry.candidateId)
-          }
+          if (!entry || !entry.candidateId) return
+          if (!isConfirmedMatchEntry(entry)) return
+          matchedCandidateIds.add(entry.candidateId)
         })
         confirmedMatches.forEach((entry) => {
           const candidateId = entry?.candidate?.id || entry?.candidateId
-          if (candidateId) {
+          if (!candidateId) return
+          if (isConfirmedMatchEntry(entry)) {
             matchedCandidateIds.add(candidateId)
           }
         })

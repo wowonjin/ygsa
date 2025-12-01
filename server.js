@@ -303,13 +303,15 @@ app.post('/api/match-history', async (req, res) => {
   try {
     const history = await readMatchHistory()
     const index = history.findIndex((item) => item.id === entry.id)
+    let nextEntry = entry
     if (index !== -1) {
-      history[index] = entry
+      nextEntry = mergeMatchHistoryEntries(history[index], entry)
+      history[index] = nextEntry
     } else {
       history.unshift(entry)
     }
     await writeMatchHistory(history)
-    res.json({ ok: true, data: entry })
+    res.json({ ok: true, data: nextEntry })
   } catch (error) {
     console.error('[match-history:create]', error)
     res.status(500).json({ ok: false, message: '매칭 기록을 저장하지 못했습니다.' })
@@ -362,31 +364,40 @@ app.post('/api/match-history/lookup', async (req, res) => {
       return res.status(404).json({ ok: false, message: '매칭 기록이 없습니다.' })
     }
 
-    const matchedIntroEntries = relevant.filter(
+    const introEntries = relevant.filter(
       (entry) => sanitizeMatchHistoryCategory(entry.category) !== 'confirmed',
     )
-    const matchedCandidateIds = Array.from(
-      new Set(matchedIntroEntries.map((entry) => entry.candidateId).filter(Boolean)),
+    const confirmedEntries = relevant.filter(
+      (entry) => sanitizeMatchHistoryCategory(entry.category) === 'confirmed',
     )
-    const matchedCandidates = matchedIntroEntries.map((entry) => ({
+    const matchedCandidateIds = Array.from(
+      new Set(confirmedEntries.map((entry) => entry.candidateId).filter(Boolean)),
+    )
+    const matchedCandidates = confirmedEntries.map((entry) => ({
       candidateId: entry.candidateId,
       matchedAt: entry.matchedAt,
       candidateName: entry.candidateName || '',
       candidatePhone: entry.candidatePhone || '',
+      targetName: entry.targetName || '',
+      targetPhone: entry.targetPhone || '',
     }))
+
+    if (!introEntries.length) {
+      return res.status(404).json({ ok: false, message: '이번주 소개가 없습니다.' })
+    }
 
     let activeWeekKey = requestedWeek && requestedWeek.trim() ? requestedWeek.trim() : ''
     if (!activeWeekKey) {
-      activeWeekKey = buildWeekKey(relevant[0]?.week)
+      activeWeekKey = buildWeekKey(introEntries[0]?.week)
     }
 
-    const weekFiltered = activeWeekKey
-      ? relevant.filter((entry) => buildWeekKey(entry.week) === activeWeekKey)
-      : relevant
+    const weekFilteredIntro = activeWeekKey
+      ? introEntries.filter((entry) => buildWeekKey(entry.week) === activeWeekKey)
+      : introEntries
 
     const selection = []
     const seen = new Set()
-    const sourceList = weekFiltered.length ? weekFiltered : relevant
+    const sourceList = weekFilteredIntro.length ? weekFilteredIntro : introEntries
 
     for (const entry of sourceList) {
       if (!entry?.candidateId || seen.has(entry.candidateId)) continue
@@ -401,13 +412,21 @@ app.post('/api/match-history/lookup', async (req, res) => {
       return res.status(404).json({ ok: false, message: '표시할 매칭 후보를 찾지 못했습니다.' })
     }
 
-    const responseWeek = selection[0].entry?.week || null
+    const responseWeek = selection[0].entry?.week || introEntries[0]?.week || null
     res.json({
       ok: true,
       data: {
         target: buildMatchTargetPayload(targetRecord),
         week: responseWeek,
-        matches: selection.map(({ record }) => buildMatchCardPayload(record)),
+        matches: selection.map(({ entry, record }) => {
+          const payload = buildMatchCardPayload(record)
+          return {
+            ...payload,
+            matchEntryId: entry.id,
+            matchRecordedAt: entry.matchedAt,
+            matchCandidateId: entry.candidateId,
+          }
+        }),
         matchedCandidateIds,
         matchedCandidates,
       },
@@ -860,6 +879,37 @@ function sanitizeWeekDescriptor(week, fallbackTime) {
 function sanitizeMatchHistoryCategory(value) {
   const normalized = sanitizeText(value).toLowerCase()
   return normalized === 'confirmed' ? 'confirmed' : 'intro'
+}
+
+function hasContent(value) {
+  if (value === null || value === undefined) return false
+  if (typeof value === 'string') {
+    return value.trim().length > 0
+  }
+  return true
+}
+
+function mergeMatchHistoryEntries(existing = {}, incoming = {}) {
+  const merged = { ...existing, ...incoming }
+  const preservedFields = [
+    'candidateName',
+    'candidateGender',
+    'candidatePhone',
+    'targetName',
+    'targetGender',
+  ]
+  preservedFields.forEach((field) => {
+    if (!hasContent(merged[field]) && hasContent(existing[field])) {
+      merged[field] = existing[field]
+    }
+  })
+  if (!hasContent(merged.week) && hasContent(existing.week)) {
+    merged.week = existing.week
+  }
+  if (!hasContent(merged.matchedAt) && hasContent(existing.matchedAt)) {
+    merged.matchedAt = existing.matchedAt
+  }
+  return merged
 }
 
 function getWeekInfoFromDate(dateInput) {
