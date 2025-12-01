@@ -588,6 +588,12 @@ app.patch('/api/consult/:id', async (req, res) => {
     tattoo: sanitizeText,
     divorceStatus: sanitizeText,
     preferredAppearance: sanitizeText,
+    preferredHeightMin: sanitizeText,
+    preferredHeightMax: sanitizeText,
+    preferredHeightLabel: sanitizeText,
+    preferredAgeYoungest: sanitizeText,
+    preferredAgeOldest: sanitizeText,
+    preferredAgeLabel: sanitizeText,
   }
 
   Object.entries(optionalDetailTextFields).forEach(([field, sanitizer]) => {
