@@ -17,6 +17,7 @@ body.modal-open {
       }
       :root {
         color-scheme: dark;
+        --popup-surface: #242424;
       }
       * {
         box-sizing: border-box;
@@ -660,7 +661,7 @@ body.modal-open {
       width: min(1080px, 100%);
       height: min(90vh, 880px);
       max-height: 90vh;
-      background: #0d1117;
+      background: var(--popup-surface);
       border: 1px solid rgba(48, 54, 61, 0.9);
       border-radius: 28px;
       box-shadow: 0 40px 120px rgba(1, 4, 9, 0.8);
@@ -864,17 +865,17 @@ body.modal-open {
         padding-bottom: 4px;
       }
     .calendar-day {
-      border: 1px solid rgba(48, 54, 61, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 14px;
       padding: 12px 10px;
       min-height: 92px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      background: #0f141c;
+      background: var(--popup-surface);
       color: #d0d5dd;
       cursor: pointer;
-      transition: border-color 0.15s ease, transform 0.15s ease;
+      transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease;
     }
       .calendar-day:hover {
         border-color: #94a3b8;
@@ -909,9 +910,9 @@ body.modal-open {
         border-radius: 999px;
       }
     .calendar-panel {
-      border: 1px solid rgba(48, 54, 61, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 18px;
-      background: #0f141c;
+      background: var(--popup-surface);
       padding: 20px;
       display: flex;
       flex-direction: column;
@@ -938,15 +939,15 @@ body.modal-open {
         padding-right: 6px;
       }
     .calendar-appointments li {
-      border: 1px solid rgba(48, 54, 61, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 16px;
       padding: 12px 14px;
-      background: #0b0f16;
+      background: rgba(255, 255, 255, 0.03);
       display: flex;
       flex-direction: column;
       gap: 6px;
       cursor: pointer;
-      transition: transform 0.15s ease, border-color 0.15s ease;
+      transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
     }
       .calendar-appointments li:hover {
         transform: translateY(-1px);
@@ -1668,7 +1669,7 @@ body.modal-open {
         display: none;
       }
     .simple-modal {
-      background: #0d1117;
+      background: var(--popup-surface);
       border: 1px solid rgba(48, 54, 61, 0.9);
       border-radius: 28px;
       padding: 32px 36px 40px;
@@ -2359,7 +2360,7 @@ body.modal-open {
       }
       .profile-card-dialog {
         width: min(520px, 92vw);
-        background: rgba(13, 17, 23, 0.95);
+        background: var(--popup-surface);
         border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 28px;
         padding: 32px;
@@ -2924,7 +2925,7 @@ body.modal-open {
       max-height: 96vh;
       height: min(900px, 96vh);
       overflow-y: auto;
-      background: #0d1117;
+      background: var(--popup-surface);
       border: 1px solid #30363d;
       border-radius: 28px;
       padding: 18px 26px 26px;
@@ -3036,10 +3037,10 @@ body.modal-open {
       border-color: rgba(59, 130, 246, 0.6);
     }
     .match-target-card {
-      border: 1px solid #30363d;
+      border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 18px;
       padding: 18px;
-      background: #0f141c;
+      background: var(--popup-surface);
       display: flex;
       flex-direction: column;
       gap: 12px;
@@ -3076,19 +3077,19 @@ body.modal-open {
       color: #a5b4fc;
     }
     .match-conditions {
-      border: 1px solid #30363d;
+      border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 18px;
       padding: 18px;
-      background: #0f141c;
+      background: var(--popup-surface);
     }
     .match-conditions.inline {
       margin-top: 8px;
     }
     .match-selection-panel {
-      border: 1px solid #30363d;
+      border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 18px;
       padding: 14px 16px;
-      background: #0f141c;
+      background: var(--popup-surface);
       display: flex;
       flex-direction: column;
       gap: 12px;
@@ -3117,10 +3118,10 @@ body.modal-open {
       gap: 10px;
     }
     .match-selection-card {
-      border: 1px solid rgba(48, 54, 61, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 12px;
       padding: 10px 12px;
-      background: #090e15;
+      background: rgba(255, 255, 255, 0.02);
       display: flex;
       flex-direction: column;
       gap: 6px;
@@ -3190,19 +3191,19 @@ body.modal-open {
       color: #c9d1d9;
     }
     .match-results-panel {
-      border: 1px solid #30363d;
+      border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 18px;
       padding: 18px;
-      background: #0f141c;
+      background: var(--popup-surface);
       display: flex;
       flex-direction: column;
       gap: 18px;
     }
     .match-history-panel {
-      border: 1px solid #30363d;
+      border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 18px;
       padding: 14px 16px;
-      background: #0f141c;
+      background: var(--popup-surface);
       display: flex;
       flex-direction: column;
       gap: 14px;
@@ -3243,20 +3244,21 @@ body.modal-open {
       gap: 12px;
     }
     .match-result-card {
-      border: 1px solid #30363d;
+      border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 16px;
       padding: 16px;
-      background: #090e15;
+      background: rgba(255, 255, 255, 0.02);
       display: flex;
       flex-direction: column;
       gap: 8px;
       cursor: pointer;
-      transition: border-color 0.15s ease, transform 0.15s ease;
+      transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease;
       position: relative;
       z-index: 0;
     }
-      .match-result-card:hover {
+    .match-result-card:hover {
         border-color: #1f6feb;
+        background: rgba(31, 111, 235, 0.08);
         transform: translateY(-2px);
         z-index: 2;
       }
@@ -3358,10 +3360,10 @@ body.modal-open {
       color: #8b949e;
     }
     .match-history-group {
-      border: 1px solid rgba(48, 54, 61, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 14px;
       padding: 10px 12px;
-      background: #090e15;
+      background: rgba(255, 255, 255, 0.02);
       display: flex;
       flex-direction: column;
       gap: 10px;
