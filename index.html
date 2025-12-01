@@ -91,6 +91,7 @@
             <div class="gender-stats-wrap">
               <div class="gender-stats" id="genderStats" aria-live="polite">남 0명 · 여 0명 (0% : 0%)</div>
               <button type="button" id="genderChartBtn" class="gender-chart-btn">성비 보기</button>
+              <button type="button" id="referralChartBtn" class="gender-chart-btn">유입 경로</button>
               <button type="button" id="matchBtn" class="match-btn">매칭하기</button>
               <button type="button" id="matchedCouplesBtn" class="matched-couples-btn">매칭된 커플</button>
             </div>
@@ -169,6 +170,25 @@
                 <option value="done">상담 완료</option>
               </select>
             </div>
+            <div class="field span-2 membership-payment-field">
+              <label class="membership-payment-label" for="detailMembershipType">회원권 / 결제 정보</label>
+              <div class="inline-group membership-payment-inline">
+                <select id="detailMembershipType" aria-label="회원권 종류">
+                  <option value="">회원권 선택</option>
+                  <option value="라이트">라이트</option>
+                  <option value="스탠다드">스탠다드</option>
+                  <option value="프리미엄">프리미엄</option>
+                </select>
+                <input
+                  id="detailPaymentAmount"
+                  type="text"
+                  inputmode="numeric"
+                  placeholder="결제 대금 (원)"
+                  aria-label="결제 대금"
+                />
+                <input id="detailPaymentDate" type="date" aria-label="입금 날짜" />
+              </div>
+            </div>
             <div class="field span-2">
               <label>대면 상담 일정 (15분 단위)</label>
               <div class="inline-group">
@@ -245,6 +265,16 @@
               disabled
             >
               증빙 자료
+            </button>
+            <button
+              type="button"
+              class="detail-section-tab"
+              data-detail-section-target="payments"
+              aria-controls="detailSectionPayments"
+              role="tab"
+              aria-selected="false"
+            >
+              결제 내역
             </button>
           </div>
           <div class="detail-section-group" aria-live="polite">
@@ -376,6 +406,19 @@
                 <div class="field">
                   <label for="detailDistrict">거주 구</label>
                   <input id="detailDistrict" type="text" placeholder="서울특별시 강남구" required />
+                </div>
+                <div class="field">
+                  <label for="detailReferralSource">유입 경로</label>
+                  <select id="detailReferralSource">
+                    <option value="">선택</option>
+                    <option value="쓰레드">쓰레드</option>
+                    <option value="프립">프립</option>
+                    <option value="지인 추천">지인 추천</option>
+                    <option value="문토">문토</option>
+                    <option value="인스타그램">인스타그램</option>
+                    <option value="네이버블로그">네이버블로그</option>
+                    <option value="기타/미입력">기타/미입력</option>
+                  </select>
                 </div>
                 <div class="field">
                   <label for="detailSmoking">
@@ -566,111 +609,55 @@
             >
               <legend>선호 조건</legend>
               <div class="detail-field-grid columns-3">
-                <div class="field">
-                  <label for="detailPreferredHeights" id="detailPreferredHeightsLabel">
+                <div class="field field-range">
+                  <label for="detailPreferredHeightMin" id="detailPreferredHeightsLabel">
                     선호하는 키
                     <span class="detail-badge detail-badge-preference" aria-hidden="true">매칭용</span>
-                    <span class="select-hint">여러 항목 선택 가능</span>
+                    <span class="select-hint">범위를 입력해주세요</span>
                   </label>
-                  <div
-                    class="multi-checkbox-list"
-                    data-multi-select="detailPreferredHeights"
-                    role="group"
-                    aria-labelledby="detailPreferredHeightsLabel"
-                  >
-                    <label class="multi-checkbox-item">
-                      <input type="checkbox" value="160cm 이하" />
-                      <span>160cm 이하</span>
-                    </label>
-                    <label class="multi-checkbox-item">
-                      <input type="checkbox" value="161-165cm" />
-                      <span>161-165cm</span>
-                    </label>
-                    <label class="multi-checkbox-item">
-                      <input type="checkbox" value="166-170cm" />
-                      <span>166-170cm</span>
-                    </label>
-                    <label class="multi-checkbox-item">
-                      <input type="checkbox" value="171-175cm" />
-                      <span>171-175cm</span>
-                    </label>
-                    <label class="multi-checkbox-item">
-                      <input type="checkbox" value="176-180cm" />
-                      <span>176-180cm</span>
-                    </label>
-                    <label class="multi-checkbox-item">
-                      <input type="checkbox" value="181cm 이상" />
-                      <span>181cm 이상</span>
-                    </label>
+                  <div class="range-inputs">
+                    <input
+                      type="text"
+                      id="detailPreferredHeightMin"
+                      inputmode="numeric"
+                      placeholder="폼1 예: 175cm"
+                      aria-describedby="detailPreferredHeightHint"
+                    />
+                    <span class="range-separator" aria-hidden="true">~</span>
+                    <input
+                      type="text"
+                      id="detailPreferredHeightMax"
+                      inputmode="numeric"
+                      placeholder="폼2 예: 180cm"
+                      aria-describedby="detailPreferredHeightHint"
+                    />
                   </div>
-                  <select
-                    id="detailPreferredHeights"
-                    multiple
-                    size="6"
-                    class="multi-select-hidden"
-                    aria-hidden="true"
-                    tabindex="-1"
-                  >
-                    <option value="160cm 이하">160cm 이하</option>
-                    <option value="161-165cm">161-165cm</option>
-                    <option value="166-170cm">166-170cm</option>
-                    <option value="171-175cm">171-175cm</option>
-                    <option value="176-180cm">176-180cm</option>
-                    <option value="181cm 이상">181cm 이상</option>
-                  </select>
+                  <p class="range-hint" id="detailPreferredHeightHint">폼1: 175cm · 폼2: 180cm</p>
                 </div>
-                <div class="field">
-                  <label for="detailPreferredAges" id="detailPreferredAgesLabel">
+                <div class="field field-range">
+                  <label for="detailPreferredAgeYoungest" id="detailPreferredAgesLabel">
                     선호 나이
                     <span class="detail-badge detail-badge-preference" aria-hidden="true">매칭용</span>
-                    <span class="select-hint">여러 항목 선택 가능</span>
+                    <span class="select-hint">범위를 입력해주세요</span>
                   </label>
-                  <div
-                    class="multi-checkbox-list"
-                    data-multi-select="detailPreferredAges"
-                    role="group"
-                    aria-labelledby="detailPreferredAgesLabel"
-                  >
-                    <label class="multi-checkbox-item">
-                      <input type="checkbox" value="20대 초반" />
-                      <span>20대 초반</span>
-                    </label>
-                    <label class="multi-checkbox-item">
-                      <input type="checkbox" value="20대 중반" />
-                      <span>20대 중반</span>
-                    </label>
-                    <label class="multi-checkbox-item">
-                      <input type="checkbox" value="20대 후반" />
-                      <span>20대 후반</span>
-                    </label>
-                    <label class="multi-checkbox-item">
-                      <input type="checkbox" value="30대 초반" />
-                      <span>30대 초반</span>
-                    </label>
-                    <label class="multi-checkbox-item">
-                      <input type="checkbox" value="30대 중반" />
-                      <span>30대 중반</span>
-                    </label>
-                    <label class="multi-checkbox-item">
-                      <input type="checkbox" value="30대 후반 이상" />
-                      <span>30대 후반 이상</span>
-                    </label>
+                  <div class="range-inputs">
+                    <input
+                      type="text"
+                      id="detailPreferredAgeYoungest"
+                      inputmode="numeric"
+                      placeholder="폼1 예: 97년생"
+                      aria-describedby="detailPreferredAgeHint"
+                    />
+                    <span class="range-separator" aria-hidden="true">~</span>
+                    <input
+                      type="text"
+                      id="detailPreferredAgeOldest"
+                      inputmode="numeric"
+                      placeholder="폼2 예: 93년생"
+                      aria-describedby="detailPreferredAgeHint"
+                    />
                   </div>
-                  <select
-                    id="detailPreferredAges"
-                    multiple
-                    size="6"
-                    class="multi-select-hidden"
-                    aria-hidden="true"
-                    tabindex="-1"
-                  >
-                    <option value="20대 초반">20대 초반</option>
-                    <option value="20대 중반">20대 중반</option>
-                    <option value="20대 후반">20대 후반</option>
-                    <option value="30대 초반">30대 초반</option>
-                    <option value="30대 중반">30대 중반</option>
-                    <option value="30대 후반 이상">30대 후반 이상</option>
-                  </select>
+                  <p class="range-hint" id="detailPreferredAgeHint">폼1: 97년생 · 폼2: 93년생</p>
                 </div>
                 <div class="field">
                   <label for="detailPreferredLifestyle" id="detailPreferredLifestyleLabel">
@@ -807,7 +794,32 @@
                   <label for="detailNotes">관리자 메모</label>
                   <textarea id="detailNotes" placeholder="상담 기록이나 참고 사항을 입력하세요."></textarea>
                 </div>
+              <div class="field full-width detail-match-feedback">
+                <div class="match-feedback-head">
+                  <label id="matchFeedbackLabel">만남 후기 &amp; 매칭 평점</label>
+                  <button type="button" id="matchFeedbackAddBtn" class="match-feedback-add">회차 추가</button>
+                </div>
+                <p class="match-feedback-hint">매칭이 진행된 회차별로 상대방 후기와 5점 만점의 평점을 기록하세요.</p>
+                <div
+                  id="matchFeedbackList"
+                  class="match-feedback-list"
+                  aria-describedby="matchFeedbackLabel"
+                  aria-live="polite"
+                ></div>
+                <p id="matchFeedbackEmpty" class="match-feedback-empty" hidden>등록된 후기가 없습니다. ‘회차 추가’ 버튼을 눌러 새 후기를 작성하세요.</p>
               </div>
+              </div>
+            </fieldset>
+            <fieldset
+              class="detail-section detail-section-payments"
+              id="detailSectionPayments"
+              data-detail-section="payments"
+              hidden
+            >
+              <legend>결제 내역</legend>
+              <p class="payment-history-hint">회원권 결제 및 증빙 기록을 한눈에 확인하세요.</p>
+              <ul id="paymentHistoryList" class="payment-history-list" aria-live="polite"></ul>
+              <p id="paymentHistoryEmpty" class="payment-history-empty" hidden>저장된 결제 내역이 없습니다.</p>
             </fieldset>
           </div>
           <section
@@ -984,6 +996,19 @@
           <div class="gender-chart-summary" id="genderChartSummary"></div>
           <div class="gender-chart-bars" id="genderChartBars"></div>
           <div class="gender-chart-legend" id="genderChartLegend"></div>
+        </div>
+      </div>
+    </div>
+    <div class="simple-modal-overlay" id="referralChartModal" hidden>
+      <div class="simple-modal referral-chart-modal">
+        <header class="simple-modal-header">
+          <h3>유입 경로 현황</h3>
+          <button type="button" id="referralChartCloseBtn" aria-label="유입 경로 모달 닫기">×</button>
+        </header>
+        <div class="referral-chart-body">
+          <p id="referralChartSummary" class="referral-chart-summary"></p>
+          <ul id="referralChartList" class="referral-chart-list"></ul>
+          <p id="referralChartEmpty" class="referral-chart-empty" hidden>표시할 데이터가 없습니다.</p>
         </div>
       </div>
     </div>

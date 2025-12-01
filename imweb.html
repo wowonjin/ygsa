@@ -271,6 +271,21 @@
         <div class="field-tooltip" data-field="district">거주하시는 구/군을 입력해주세요.</div>
       </div>
 
+      <!-- 유입 경로 -->
+      <div class="field">
+        <label for="referralSource" class="label">우리 서비스를 알게 된 경로</label>
+        <select id="referralSource" name="referralSource" class="select" required>
+          <option value="" selected disabled>(선택)</option>
+          <option value="쓰레드">쓰레드</option>
+          <option value="프립">프립</option>
+          <option value="지인 추천">지인 추천</option>
+          <option value="문토">문토</option>
+          <option value="인스타그램">인스타그램</option>
+          <option value="네이버블로그">네이버블로그</option>
+        </select>
+        <div class="field-tooltip" data-field="referralSource">어디에서 연결사를 알게 되었는지 선택해주세요.</div>
+      </div>
+
       <!-- 개인정보 동의 (회사명: 투미프롬) -->
       <div class="field" style="grid-column:1/-1">
         <label class="label">개인정보 수집 및 이용 동의</label>
@@ -511,6 +526,7 @@
       job:   (form.querySelector('#job')    ?.value || '').trim(),
       height:(form.querySelector('#height') ?.value || ''),
       district:(form.querySelector('#district') ?.value || '').trim(),
+      referralSource:(form.querySelector('#referralSource') ?.value || ''),
       agree: (form.querySelector('#agree')  ?.checked || false)
     };
 

@@ -109,6 +109,32 @@
         flex-direction: column;
         gap: 8px;
       }
+      #alpha-profile-root .field-range .range-inputs {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      #alpha-profile-root .range-inputs input {
+        flex: 1;
+        border: 1px solid #dfe3ec;
+        border-radius: 12px;
+        padding: 14px 16px;
+        font-size: 16px;
+        font-family: inherit;
+      }
+      #alpha-profile-root .range-inputs input:focus {
+        outline: 2px solid rgba(83, 119, 246, 0.4);
+        border-color: #6a8bff;
+      }
+      #alpha-profile-root .range-separator {
+        font-weight: 700;
+        color: #a3adc2;
+      }
+      #alpha-profile-root .range-hint {
+        margin: 0;
+        font-size: 14px;
+        color: #9aa3b7;
+      }
       #alpha-profile-root label {
         font-weight: 600;
         color: #7e7e7e;
@@ -1012,135 +1038,55 @@
         <fieldset>
           <legend>선호 조건</legend>
           <div class="field-grid">
-            <div class="field">
-              <label for="profilePreferredHeights" id="profilePreferredHeightsLabel">
+            <div class="field field-range">
+              <label for="profilePreferredHeightMin" id="profilePreferredHeightsLabel">
                 선호하는 키
                 <span class="badge-preference" aria-hidden="true">매칭용</span>
                 <span class="sr-only">매칭을 위해 참고되는 정보</span>
               </label>
-              <div class="multi-dropdown" data-select-id="profilePreferredHeights">
-                <button
-                  type="button"
-                  class="multi-dropdown-trigger"
-                  aria-haspopup="listbox"
-                  aria-expanded="false"
-                  aria-controls="profilePreferredHeightsPanel"
-                >
-                  <span class="multi-dropdown-label">선택 없음</span>
-                </button>
-                <div
-                  id="profilePreferredHeightsPanel"
-                  class="multi-dropdown-panel"
-                  data-multi-select="profilePreferredHeights"
-                  role="listbox"
-                  aria-multiselectable="true"
-                  hidden
-                >
-                  <label class="multi-dropdown-option">
-                    <input type="checkbox" value="160cm 이하" />
-                    <span>160cm 이하</span>
-                  </label>
-                  <label class="multi-dropdown-option">
-                    <input type="checkbox" value="161-165cm" />
-                    <span>161-165cm</span>
-                  </label>
-                  <label class="multi-dropdown-option">
-                    <input type="checkbox" value="166-170cm" />
-                    <span>166-170cm</span>
-                  </label>
-                  <label class="multi-dropdown-option">
-                    <input type="checkbox" value="171-175cm" />
-                    <span>171-175cm</span>
-                  </label>
-                  <label class="multi-dropdown-option">
-                    <input type="checkbox" value="176-180cm" />
-                    <span>176-180cm</span>
-                  </label>
-                  <label class="multi-dropdown-option">
-                    <input type="checkbox" value="181cm 이상" />
-                    <span>181cm 이상</span>
-                  </label>
-                </div>
+              <div class="range-inputs">
+                <input
+                  type="text"
+                  id="profilePreferredHeightMin"
+                  inputmode="numeric"
+                  placeholder="폼1 예: 175cm"
+                  aria-describedby="profilePreferredHeightHint"
+                />
+                <span class="range-separator" aria-hidden="true">~</span>
+                <input
+                  type="text"
+                  id="profilePreferredHeightMax"
+                  inputmode="numeric"
+                  placeholder="폼2 예: 180cm"
+                  aria-describedby="profilePreferredHeightHint"
+                />
               </div>
-              <select
-                id="profilePreferredHeights"
-                multiple
-                class="multi-select-hidden"
-                aria-hidden="true"
-                tabindex="-1"
-              >
-                <option value="160cm 이하">160cm 이하</option>
-                <option value="161-165cm">161-165cm</option>
-                <option value="166-170cm">166-170cm</option>
-                <option value="171-175cm">171-175cm</option>
-                <option value="176-180cm">176-180cm</option>
-                <option value="181cm 이상">181cm 이상</option>
-              </select>
+              <p class="range-hint" id="profilePreferredHeightHint">폼1: 175cm · 폼2: 180cm</p>
             </div>
-            <div class="field">
-              <label for="profilePreferredAges" id="profilePreferredAgesLabel">
+            <div class="field field-range">
+              <label for="profilePreferredAgeYoungest" id="profilePreferredAgesLabel">
                 선호 나이
                 <span class="badge-preference" aria-hidden="true">매칭용</span>
                 <span class="sr-only">매칭을 위해 참고되는 정보</span>
               </label>
-              <div class="multi-dropdown" data-select-id="profilePreferredAges">
-                <button
-                  type="button"
-                  class="multi-dropdown-trigger"
-                  aria-haspopup="listbox"
-                  aria-expanded="false"
-                  aria-controls="profilePreferredAgesPanel"
-                >
-                  <span class="multi-dropdown-label">선택 없음</span>
-                </button>
-                <div
-                  id="profilePreferredAgesPanel"
-                  class="multi-dropdown-panel"
-                  data-multi-select="profilePreferredAges"
-                  role="listbox"
-                  aria-multiselectable="true"
-                  hidden
-                >
-                  <label class="multi-dropdown-option">
-                    <input type="checkbox" value="20대 초반" />
-                    <span>20대 초반</span>
-                  </label>
-                  <label class="multi-dropdown-option">
-                    <input type="checkbox" value="20대 중반" />
-                    <span>20대 중반</span>
-                  </label>
-                  <label class="multi-dropdown-option">
-                    <input type="checkbox" value="20대 후반" />
-                    <span>20대 후반</span>
-                  </label>
-                  <label class="multi-dropdown-option">
-                    <input type="checkbox" value="30대 초반" />
-                    <span>30대 초반</span>
-                  </label>
-                  <label class="multi-dropdown-option">
-                    <input type="checkbox" value="30대 중반" />
-                    <span>30대 중반</span>
-                  </label>
-                  <label class="multi-dropdown-option">
-                    <input type="checkbox" value="30대 후반 이상" />
-                    <span>30대 후반 이상</span>
-                  </label>
-                </div>
+              <div class="range-inputs">
+                <input
+                  type="text"
+                  id="profilePreferredAgeYoungest"
+                  inputmode="numeric"
+                  placeholder="폼1 예: 97년생"
+                  aria-describedby="profilePreferredAgeHint"
+                />
+                <span class="range-separator" aria-hidden="true">~</span>
+                <input
+                  type="text"
+                  id="profilePreferredAgeOldest"
+                  inputmode="numeric"
+                  placeholder="폼2 예: 93년생"
+                  aria-describedby="profilePreferredAgeHint"
+                />
               </div>
-              <select
-                id="profilePreferredAges"
-                multiple
-                class="multi-select-hidden"
-                aria-hidden="true"
-                tabindex="-1"
-              >
-                <option value="20대 초반">20대 초반</option>
-                <option value="20대 중반">20대 중반</option>
-                <option value="20대 후반">20대 후반</option>
-                <option value="30대 초반">30대 초반</option>
-                <option value="30대 중반">30대 중반</option>
-                <option value="30대 후반 이상">30대 후반 이상</option>
-              </select>
+              <p class="range-hint" id="profilePreferredAgeHint">폼1: 97년생 · 폼2: 93년생</p>
             </div>
             <div class="field">
               <label for="profilePreferredLifestyle" id="profilePreferredLifestyleLabel">
@@ -1540,8 +1486,10 @@
       const necessaryInput = document.getElementById('profileNecessaryCondition')
       const likesDislikesInput = document.getElementById('profileLikesDislikes')
       const aboutMeInput = document.getElementById('profileAboutMe')
-      const preferredHeightsSelect = document.getElementById('profilePreferredHeights')
-      const preferredAgesSelect = document.getElementById('profilePreferredAges')
+      const preferredHeightMinInput = document.getElementById('profilePreferredHeightMin')
+      const preferredHeightMaxInput = document.getElementById('profilePreferredHeightMax')
+      const preferredAgeYoungestInput = document.getElementById('profilePreferredAgeYoungest')
+      const preferredAgeOldestInput = document.getElementById('profilePreferredAgeOldest')
       const preferredLifestyleSelect = document.getElementById('profilePreferredLifestyle')
       const preferredAppearanceSelect = document.getElementById('profilePreferredAppearance')
       const valuesSelect = document.getElementById('profileValues')
@@ -1569,6 +1517,22 @@
       let infoBubbleCleanupTimer = null
       const dropdownBySelectId = new Map()
       const openDropdowns = new Set()
+      const HEIGHT_PREFERENCE_BUCKETS = [
+        { label: '160cm 이하', min: 0, max: 160 },
+        { label: '161-165cm', min: 161, max: 165 },
+        { label: '166-170cm', min: 166, max: 170 },
+        { label: '171-175cm', min: 171, max: 175 },
+        { label: '176-180cm', min: 176, max: 180 },
+        { label: '181cm 이상', min: 181, max: Infinity },
+      ]
+      const AGE_PREFERENCE_BUCKETS = [
+        { label: '20대 초반', min: 20, max: 24 },
+        { label: '20대 중반', min: 25, max: 27 },
+        { label: '20대 후반', min: 28, max: 29 },
+        { label: '30대 초반', min: 30, max: 33 },
+        { label: '30대 중반', min: 34, max: 36 },
+        { label: '30대 후반 이상', min: 37, max: 80 },
+      ]
 
       let selectedValues = []
       const uploadSessionId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
@@ -1923,8 +1887,111 @@
         }
         return []
       }
-      if (preferredHeightsSelect) setMultiSelectValues(preferredHeightsSelect, [])
-      if (preferredAgesSelect) setMultiSelectValues(preferredAgesSelect, [])
+      function parseHeightNumber(value) {
+        const match = String(value || '').match(/(\d{2,3})/)
+        if (!match) return null
+        const parsed = Number(match[1])
+        return Number.isFinite(parsed) ? parsed : null
+      }
+      function deriveHeightBuckets(minValue, maxValue) {
+        const hasMin = Number.isFinite(minValue)
+        const hasMax = Number.isFinite(maxValue)
+        if (!hasMin && !hasMax) return []
+        const rangeMin = hasMin ? minValue : 0
+        const rangeMax = hasMax ? maxValue : Infinity
+        return HEIGHT_PREFERENCE_BUCKETS.filter(({ min, max }) => {
+          const start = Math.max(rangeMin, min)
+          const end = Math.min(rangeMax, max)
+          return start <= end
+        }).map(({ label }) => label)
+      }
+      function buildPreferredHeightRangePayload(minRaw, maxRaw) {
+        const minValue = parseHeightNumber(minRaw)
+        const maxValue = parseHeightNumber(maxRaw)
+        let rangeMin = Number.isFinite(minValue) ? minValue : null
+        let rangeMax = Number.isFinite(maxValue) ? maxValue : null
+        if (rangeMin != null && rangeMax != null && rangeMin > rangeMax) {
+          ;[rangeMin, rangeMax] = [rangeMax, rangeMin]
+        }
+        const minLabel = rangeMin != null ? `${rangeMin}cm` : ''
+        const maxLabel = rangeMax != null ? `${rangeMax}cm` : ''
+        let label = ''
+        if (minLabel && maxLabel) {
+          label = `${minLabel} ~ ${maxLabel}`
+        } else if (minLabel) {
+          label = `${minLabel} 이상`
+        } else if (maxLabel) {
+          label = `${maxLabel} 이하`
+        }
+        const buckets = deriveHeightBuckets(rangeMin, rangeMax)
+        return { minLabel, maxLabel, label, buckets }
+      }
+      function parseBirthYearValue(value) {
+        const match = String(value || '').match(/(\d{2,4})/)
+        if (!match) return null
+        let year = Number(match[1])
+        if (!Number.isFinite(year)) return null
+        if (match[1].length === 2) {
+          const now = new Date()
+          const currentYear = now.getFullYear()
+          const currentTwoDigit = currentYear % 100
+          const baseCentury = currentYear - currentTwoDigit
+          year = year <= currentTwoDigit ? baseCentury + year : baseCentury - 100 + year
+        }
+        const currentYear = new Date().getFullYear()
+        if (year < 1900 || year > currentYear) return null
+        return year
+      }
+      function formatBirthYearShortLabel(year) {
+        if (!Number.isFinite(year)) return ''
+        return `${String(year).slice(-2)}년생`
+      }
+      function deriveAgeBuckets(minAge, maxAge) {
+        const hasMin = Number.isFinite(minAge)
+        const hasMax = Number.isFinite(maxAge)
+        if (!hasMin && !hasMax) return []
+        const rangeMin = hasMin ? minAge : AGE_PREFERENCE_BUCKETS[0].min
+        const rangeMax = hasMax ? maxAge : AGE_PREFERENCE_BUCKETS[AGE_PREFERENCE_BUCKETS.length - 1].max
+        return AGE_PREFERENCE_BUCKETS.filter(({ min, max }) => {
+          const start = Math.max(rangeMin, min)
+          const end = Math.min(rangeMax, max)
+          return start <= end
+        }).map(({ label }) => label)
+      }
+      function buildPreferredAgeRangePayload(youngRaw, oldRaw) {
+        const youngestYear = parseBirthYearValue(youngRaw)
+        const oldestYear = parseBirthYearValue(oldRaw)
+        const years = [youngestYear, oldestYear].filter((value) => Number.isFinite(value))
+        if (!years.length) {
+          return {
+            youngestLabel: '',
+            oldestLabel: '',
+            label: '',
+            buckets: [],
+          }
+        }
+        const sorted = years.slice().sort((a, b) => b - a)
+        const resolvedYoungest = sorted[0]
+        const resolvedOldest = sorted[sorted.length - 1]
+        const youngestLabel = formatBirthYearShortLabel(resolvedYoungest)
+        const oldestLabel = formatBirthYearShortLabel(resolvedOldest)
+        let label = ''
+        if (youngestLabel && oldestLabel && youngestLabel !== oldestLabel) {
+          label = `${youngestLabel} ~ ${oldestLabel}`
+        } else {
+          label = youngestLabel || oldestLabel
+        }
+        const nowYear = new Date().getFullYear()
+        const youngestAge = Number.isFinite(resolvedYoungest) ? nowYear - resolvedYoungest : null
+        const oldestAge = Number.isFinite(resolvedOldest) ? nowYear - resolvedOldest : null
+        let ageMin = Number.isFinite(youngestAge) ? youngestAge : null
+        let ageMax = Number.isFinite(oldestAge) ? oldestAge : null
+        if (ageMin != null && ageMax != null && ageMin > ageMax) {
+          ;[ageMin, ageMax] = [ageMax, ageMin]
+        }
+        const buckets = deriveAgeBuckets(ageMin, ageMax)
+        return { youngestLabel, oldestLabel, label, buckets }
+      }
       if (preferredLifestyleSelect) setMultiSelectValues(preferredLifestyleSelect, [])
 
       cleanupStoredPendingUploads().catch((error) => {
@@ -2689,8 +2756,24 @@
         addString('aboutMe', aboutMeInput?.value || '')
         addString('preferredAppearance', preferredAppearanceSelect?.value || '')
 
-        addArray('preferredHeights', getMultiSelectValues(preferredHeightsSelect))
-        addArray('preferredAges', getMultiSelectValues(preferredAgesSelect))
+        const preferredHeightRange = buildPreferredHeightRangePayload(
+          preferredHeightMinInput?.value,
+          preferredHeightMaxInput?.value,
+        )
+        if (preferredHeightRange.minLabel) addString('preferredHeightMin', preferredHeightRange.minLabel)
+        if (preferredHeightRange.maxLabel) addString('preferredHeightMax', preferredHeightRange.maxLabel)
+        if (preferredHeightRange.label) addString('preferredHeightLabel', preferredHeightRange.label)
+        addArray('preferredHeights', preferredHeightRange.buckets)
+
+        const preferredAgeRange = buildPreferredAgeRangePayload(
+          preferredAgeYoungestInput?.value,
+          preferredAgeOldestInput?.value,
+        )
+        if (preferredAgeRange.youngestLabel)
+          addString('preferredAgeYoungest', preferredAgeRange.youngestLabel)
+        if (preferredAgeRange.oldestLabel) addString('preferredAgeOldest', preferredAgeRange.oldestLabel)
+        if (preferredAgeRange.label) addString('preferredAgeLabel', preferredAgeRange.label)
+        addArray('preferredAges', preferredAgeRange.buckets)
         addArray('preferredLifestyle', getMultiSelectValues(preferredLifestyleSelect))
         addArray('values', Array.isArray(values) ? values : [])
 
@@ -2797,8 +2880,10 @@
           sufficientCondition: sufficientInput?.value || '',
           necessaryCondition: necessaryInput?.value || '',
           aboutMe: aboutMeInput?.value || '',
-          preferredHeights: getMultiSelectValues(preferredHeightsSelect),
-          preferredAges: getMultiSelectValues(preferredAgesSelect),
+          preferredHeightMin: preferredHeightMinInput?.value || '',
+          preferredHeightMax: preferredHeightMaxInput?.value || '',
+          preferredAgeYoungest: preferredAgeYoungestInput?.value || '',
+          preferredAgeOldest: preferredAgeOldestInput?.value || '',
           preferredLifestyle: getMultiSelectValues(preferredLifestyleSelect),
           preferredAppearance: preferredAppearanceSelect?.value || '',
           values,
@@ -2840,10 +2925,10 @@
         if (sufficientInput) sufficientInput.value = draft.sufficientCondition || ''
         if (necessaryInput) necessaryInput.value = draft.necessaryCondition || ''
         if (aboutMeInput) aboutMeInput.value = draft.aboutMe || ''
-        if (preferredHeightsSelect)
-          setMultiSelectValues(preferredHeightsSelect, ensureArray(draft.preferredHeights))
-        if (preferredAgesSelect)
-          setMultiSelectValues(preferredAgesSelect, ensureArray(draft.preferredAges))
+        if (preferredHeightMinInput) preferredHeightMinInput.value = draft.preferredHeightMin || ''
+        if (preferredHeightMaxInput) preferredHeightMaxInput.value = draft.preferredHeightMax || ''
+        if (preferredAgeYoungestInput) preferredAgeYoungestInput.value = draft.preferredAgeYoungest || ''
+        if (preferredAgeOldestInput) preferredAgeOldestInput.value = draft.preferredAgeOldest || ''
         if (preferredLifestyleSelect)
           setMultiSelectValues(preferredLifestyleSelect, ensureArray(draft.preferredLifestyle))
         if (preferredAppearanceSelect) preferredAppearanceSelect.value = draft.preferredAppearance || ''
@@ -3052,10 +3137,12 @@
           formEl.reset()
           selectedValues = []
           setMultiSelectValues(valuesSelect, [])
-          setMultiSelectValues(preferredHeightsSelect, [])
-          setMultiSelectValues(preferredAgesSelect, [])
           setMultiSelectValues(preferredLifestyleSelect, [])
           if (preferredAppearanceSelect) preferredAppearanceSelect.value = ''
+          if (preferredHeightMinInput) preferredHeightMinInput.value = ''
+          if (preferredHeightMaxInput) preferredHeightMaxInput.value = ''
+          if (preferredAgeYoungestInput) preferredAgeYoungestInput.value = ''
+          if (preferredAgeOldestInput) preferredAgeOldestInput.value = ''
           uploadStateByInput.clear()
           pendingTempUploads.clear()
           persistPendingUploadPaths()
