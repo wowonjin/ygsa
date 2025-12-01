@@ -929,6 +929,7 @@
         let currentTargetProfile = null
         let matchPopupTimer = null
         let lastLookupPhoneKey = ''
+        const matchedCandidateIds = new Set()
 
         const resolvedOrigin =
           (typeof window !== 'undefined' && window.BACKEND_ORIGIN) ||
@@ -1008,6 +1009,7 @@
             resultsSection.hidden = true
             throw new Error('표시할 매칭 카드가 없습니다.')
           }
+          syncMatchedCandidateIds(Array.isArray(data?.matchedCandidateIds) ? data.matchedCandidateIds : [])
           const targetName = data?.target?.name || '회원님'
           const nameWithHonorific = targetName.endsWith('님') ? targetName : `${targetName}님`
           resultTitle.textContent = `${nameWithHonorific}을 위한 추천`
@@ -1030,11 +1032,20 @@
           resultsSection.hidden = false
         }
 
+        function syncMatchedCandidateIds(ids = []) {
+          matchedCandidateIds.clear()
+          ids
+            .map((value) => (value == null ? '' : String(value).trim()))
+            .filter(Boolean)
+            .forEach((id) => matchedCandidateIds.add(id))
+        }
+
         function renderMatchCard(record, order) {
           if (!record) return null
           const wrapper = document.createElement('article')
           wrapper.className = 'match-card'
           wrapper.tabIndex = 0
+          const candidateId = getCandidateIdentifier(record)
           const preview = document.createElement('div')
           const toneClass = getProfileToneClass(record.gender)
           preview.className = `profile-card-preview ${toneClass}`.trim()
@@ -1069,7 +1080,7 @@
           wrapper.appendChild(preview)
           const actions = document.createElement('div')
           actions.className = 'match-card-actions'
-          const actionButton = createMatchSelectButton(record)
+          const actionButton = createMatchSelectButton(record, candidateId)
           actions.appendChild(actionButton)
           preview.insertAdjacentElement('afterend', actions)
           initProfileCardSlider(preview)
@@ -1212,26 +1223,32 @@
           `
         }
 
-        function createMatchSelectButton(record) {
+        function createMatchSelectButton(record, candidateId) {
           const button = document.createElement('button')
           button.type = 'button'
           button.className = 'match-card-select-btn'
           button.textContent = '매칭 선택하기'
-          if (!currentTargetProfile || !currentTargetProfile.id) {
+          const targetReady = currentTargetProfile && currentTargetProfile.id
+          const candidateKey = candidateId ? String(candidateId) : ''
+          if (!targetReady || !candidateKey) {
             button.disabled = true
             button.title = '추천 대상 정보를 찾을 수 없습니다.'
           }
+          if (candidateKey && matchedCandidateIds.has(candidateKey)) {
+            markMatchButtonCompleted(button)
+          }
           button.addEventListener('click', (event) => {
             event.stopPropagation()
-            handleCardMatchSelect(record, button)
+            handleCardMatchSelect(record, button, candidateId)
           })
           return button
         }
 
-        async function handleCardMatchSelect(record, button) {
+        async function handleCardMatchSelect(record, button, candidateIdOverride) {
           const originalScrollY = window.scrollY || document.documentElement.scrollTop || 0
           const originalButtonTop = button?.getBoundingClientRect()?.top || 0
-          const payload = buildMatchSelectionPayload(record)
+          const candidateId = candidateIdOverride || getCandidateIdentifier(record)
+          const payload = buildMatchSelectionPayload(record, candidateId)
           if (!payload) {
             showMessage('매칭 정보를 준비할 수 없습니다. 관리자에게 문의해주세요.', true)
             return
@@ -1239,6 +1256,9 @@
           try {
             await sendMatchRequest(payload)
             markMatchButtonCompleted(button)
+            if (candidateId) {
+              matchedCandidateIds.add(String(candidateId))
+            }
             showMatchConfirmationPopup()
             window.requestAnimationFrame(() => {
               window.scrollTo(0, originalScrollY)
@@ -1254,12 +1274,17 @@
           }
         }
 
-        function buildMatchSelectionPayload(record) {
+        function buildMatchSelectionPayload(record, candidateIdArg) {
           if (!record || !currentTargetProfile || !lastLookupPhoneKey) return null
-          const candidateId = getCandidateIdentifier(record)
+          const candidateId = candidateIdArg || getCandidateIdentifier(record)
           const targetId = currentTargetProfile.id || ''
           if (!candidateId || !targetId) return null
           const matchedAt = Date.now()
+          const candidatePhone = normalizePhoneKey(record.phone || record.phoneNumber || '')
+          const candidateName = record.name || record.characterName || '추천 후보'
+          const candidateGender = record.gender || ''
+          const targetName = currentTargetProfile.name || '회원님'
+          const targetGender = currentTargetProfile.gender || ''
           return {
             id: `${targetId}-${candidateId}-${matchedAt}`,
             candidateId,
@@ -1267,6 +1292,12 @@
             targetPhone: lastLookupPhoneKey,
             matchedAt,
             week: buildWeekMeta(new Date(matchedAt)),
+            category: 'intro',
+            candidateName,
+            candidateGender,
+            candidatePhone,
+            targetName,
+            targetGender,
           }
         }
 
@@ -1588,6 +1619,10 @@
         function normalizeHeightValue(raw) {
           const digits = String(raw || '').replace(/[^0-9]/g, '').slice(0, 3)
           return digits ? `${digits}cm` : ''
+        }
+
+        function normalizePhoneKey(value) {
+          return String(value || '').replace(/[^0-9]/g, '')
         }
 
         function formatSalaryRange(value) {

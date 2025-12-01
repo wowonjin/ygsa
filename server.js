@@ -362,6 +362,19 @@ app.post('/api/match-history/lookup', async (req, res) => {
       return res.status(404).json({ ok: false, message: '매칭 기록이 없습니다.' })
     }
 
+    const matchedIntroEntries = relevant.filter(
+      (entry) => sanitizeMatchHistoryCategory(entry.category) !== 'confirmed',
+    )
+    const matchedCandidateIds = Array.from(
+      new Set(matchedIntroEntries.map((entry) => entry.candidateId).filter(Boolean)),
+    )
+    const matchedCandidates = matchedIntroEntries.map((entry) => ({
+      candidateId: entry.candidateId,
+      matchedAt: entry.matchedAt,
+      candidateName: entry.candidateName || '',
+      candidatePhone: entry.candidatePhone || '',
+    }))
+
     let activeWeekKey = requestedWeek && requestedWeek.trim() ? requestedWeek.trim() : ''
     if (!activeWeekKey) {
       activeWeekKey = buildWeekKey(relevant[0]?.week)
@@ -395,6 +408,8 @@ app.post('/api/match-history/lookup', async (req, res) => {
         target: buildMatchTargetPayload(targetRecord),
         week: responseWeek,
         matches: selection.map(({ record }) => buildMatchCardPayload(record)),
+        matchedCandidateIds,
+        matchedCandidates,
       },
     })
   } catch (error) {
@@ -799,6 +814,12 @@ function normalizeMatchHistoryEntry(entry) {
   const matchedAt = Number(entry.matchedAt)
   const normalizedMatchedAt =
     Number.isFinite(matchedAt) && matchedAt > 0 ? matchedAt : Date.now()
+  const category = sanitizeMatchHistoryCategory(entry.category || entry.type || '')
+  const candidateName = sanitizeText(entry.candidateName || entry.candidate?.name)
+  const candidateGender = sanitizeText(entry.candidateGender || entry.candidate?.gender)
+  const candidatePhone = normalizePhoneNumber(entry.candidatePhone || entry.candidate?.phone)
+  const targetName = sanitizeText(entry.targetName || entry.target?.name)
+  const targetGender = sanitizeText(entry.targetGender || entry.target?.gender)
   return {
     id: sanitizeText(entry.id) || `match_${nanoid()}`,
     candidateId,
@@ -806,6 +827,12 @@ function normalizeMatchHistoryEntry(entry) {
     targetPhone,
     matchedAt: normalizedMatchedAt,
     week: sanitizeWeekDescriptor(entry.week, normalizedMatchedAt),
+    category,
+    candidateName,
+    candidateGender,
+    candidatePhone,
+    targetName,
+    targetGender,
   }
 }
 
@@ -828,6 +855,11 @@ function sanitizeWeekDescriptor(week, fallbackTime) {
   }
   const fallback = Number.isFinite(fallbackTime) ? fallbackTime : Date.now()
   return getWeekInfoFromDate(new Date(fallback))
+}
+
+function sanitizeMatchHistoryCategory(value) {
+  const normalized = sanitizeText(value).toLowerCase()
+  return normalized === 'confirmed' ? 'confirmed' : 'intro'
 }
 
 function getWeekInfoFromDate(dateInput) {

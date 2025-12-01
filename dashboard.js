@@ -79,6 +79,7 @@
               ...entry,
               confirmedAt: entry.confirmedAt || Date.now(),
               week: entry.week || buildWeekMeta(entry.confirmedAt || Date.now()),
+              category: MATCH_HISTORY_CATEGORY.CONFIRMED,
             }))
             .sort((a, b) => (b.confirmedAt || 0) - (a.confirmedAt || 0))
         } catch (error) {
@@ -374,6 +375,7 @@
       const matchSelectionEmptyEl = document.getElementById('matchSelectionEmpty')
       const matchHistoryList = document.getElementById('matchHistoryList')
       const matchHistorySummaryEl = document.getElementById('matchHistorySummary')
+      const matchHistoryTitleEl = document.getElementById('matchHistoryTitle')
       const genderFilter = document.getElementById('genderFilter')
       const heightFilter = document.getElementById('heightFilter')
       const sortSelect = document.getElementById('sortSelect')
@@ -515,6 +517,10 @@
       const MATCH_HISTORY_STORAGE_KEY = 'ygsa_match_history_v1'
       const MATCH_HISTORY_RESYNC_KEY = 'ygsa_match_history_resync_at'
       const MATCH_HISTORY_RESYNC_INTERVAL_MS = 6 * 60 * 60 * 1000
+      const MATCH_HISTORY_CATEGORY = {
+        INTRO: 'intro',
+        CONFIRMED: 'confirmed',
+      }
       let genderStatsData = { male: 0, female: 0 }
       if (IS_MOIM_VIEW) {
         updateWeekFilterLabel()
@@ -2281,6 +2287,17 @@
         return String(raw || '').replace(/[^0-9]/g, '')
       }
 
+      function normalizeMatchHistoryCategory(value) {
+        const normalized = String(value || '').trim().toLowerCase()
+        return normalized === MATCH_HISTORY_CATEGORY.CONFIRMED
+          ? MATCH_HISTORY_CATEGORY.CONFIRMED
+          : MATCH_HISTORY_CATEGORY.INTRO
+      }
+
+      function isConfirmedMatchEntry(entry) {
+        return normalizeMatchHistoryCategory(entry?.category) === MATCH_HISTORY_CATEGORY.CONFIRMED
+      }
+
       function setSelectValue(selectEl, value) {
         if (!selectEl) return
         const options = Array.from(selectEl.options || []).map((opt) => opt.value)
@@ -4029,13 +4046,26 @@
           .filter((item) => item?.name)
           .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'ko-KR'))
         sorted.forEach((item) => {
-          const option = document.createElement('option')
-          option.value = buildMatchOptionLabel(item)
-          if (item.id) {
-            option.dataset.id = item.id
+          const descriptor = buildMatchOptionLabel(item)
+          const primaryOption = createMatchOptionElement(item, descriptor)
+          if (primaryOption) {
+            fragment.appendChild(primaryOption)
           }
-          option.dataset.phone = item.phone || ''
-          fragment.appendChild(option)
+          const phoneValues = new Set()
+          const phoneLabel = buildMatchPhoneOptionLabel(item) || descriptor
+          ;[
+            formatPhoneNumber(item.phone),
+            item.phone,
+            normalizePhoneKey(item.phone),
+          ].forEach((value) => {
+            const trimmed = typeof value === 'string' ? value.trim() : ''
+            if (!trimmed || phoneValues.has(trimmed)) return
+            phoneValues.add(trimmed)
+            const option = createMatchOptionElement(item, trimmed, phoneLabel)
+            if (option) {
+              fragment.appendChild(option)
+            }
+          })
         })
         matchMemberOptions.innerHTML = ''
         matchMemberOptions.appendChild(fragment)
@@ -4317,7 +4347,14 @@
           updateMatchHistoryUI()
         }
         renderMatchTargetInfo(record)
+        updateMatchHistoryTitle(record)
         updateMatchResetVisibility(Boolean(matchSelectedMemberId))
+      }
+
+      function updateMatchHistoryTitle(record) {
+        if (!matchHistoryTitleEl) return
+        const name = typeof record?.name === 'string' ? record.name.trim() : ''
+        matchHistoryTitleEl.textContent = name ? `${name}님의 이번주 소개` : '대상자님의 이번주 소개'
       }
 
       function renderMatchTargetInfo(record) {
@@ -4605,6 +4642,33 @@
         return descriptor || String(item.name || '')
       }
 
+      function buildMatchPhoneOptionLabel(item) {
+        if (!item) return ''
+        const descriptor = [
+          formatPhoneNumber(item.phone) || item.phone || '',
+          item.name || '',
+          item.gender || '',
+          item.height || '',
+        ]
+          .filter(Boolean)
+          .join(' · ')
+        return descriptor || String(item.phone || '')
+      }
+
+      function createMatchOptionElement(item, value, displayLabel) {
+        if (!value) return null
+        const option = document.createElement('option')
+        option.value = value
+        if (displayLabel) {
+          option.label = displayLabel
+        }
+        if (item?.id) {
+          option.dataset.id = item.id
+        }
+        option.dataset.phone = item?.phone || ''
+        return option
+      }
+
       function formatPreferenceText(values, fallback) {
         if (Array.isArray(values) && values.length) {
           return values.join(', ')
@@ -4705,7 +4769,7 @@
         updateMatchSelectionSummary()
         updateMatchHistoryUI()
         runMatchRecommendation()
-        showToast(`${historyEntry.candidate?.name || '후보'} 님을 매칭 기록에 추가했습니다.`)
+        showToast(`${historyEntry.candidate?.name || '후보'} 님을 이번주 소개에 추가했습니다.`)
       }
 
       function updateMatchSelectionSummary() {
@@ -4796,6 +4860,7 @@
             year: weekInfo.year,
             week: weekInfo.week,
           },
+          category: MATCH_HISTORY_CATEGORY.INTRO,
         }
       }
 
@@ -4805,13 +4870,13 @@
         const activeEntries = getActiveMatchHistoryEntries()
         matchHistorySummaryEl.textContent = `${activeEntries.length}명`
         if (!matchSelectionTargetId && !matchSelectionTargetPhoneKey) {
-          matchHistoryList.innerHTML =
-            '<p class="match-history-empty">대상자를 선택하면 매칭 기록이 표시됩니다.</p>'
+        matchHistoryList.innerHTML =
+          '<p class="match-history-empty">대상자를 선택하면 이번주 소개가 표시됩니다.</p>'
           return
         }
         if (!activeEntries.length) {
           matchHistoryList.innerHTML =
-            '<p class="match-history-empty">이 대상자에 대한 매칭 기록이 없습니다.</p>'
+          '<p class="match-history-empty">이 대상자에 대한 이번주 소개가 없습니다.</p>'
           return
         }
         const groups = buildMatchHistoryGroups(activeEntries)
@@ -4846,7 +4911,7 @@
             `,
           )
           .join('')
-          : '<p class="match-history-empty">이 대상자에 대한 매칭 기록이 없습니다.</p>'
+          : '<p class="match-history-empty">이 대상자에 대한 이번주 소개가 없습니다.</p>'
       }
 
       function getActiveMatchHistoryEntries() {
@@ -4855,6 +4920,7 @@
         }
         const normalizedKey = matchSelectionTargetPhoneKey
         return matchHistory.filter((entry) => {
+          if (isConfirmedMatchEntry(entry)) return false
           if (matchSelectionTargetId && entry.targetId === matchSelectionTargetId) return true
           if (!normalizedKey) return false
           const entryPhone = normalizePhoneKey(entry.targetPhone || entry.target?.phone || '')
@@ -4887,7 +4953,10 @@
       function getCurrentWeekConfirmedMatches() {
         const weekInfo = getWeekInfo(new Date())
         return confirmedMatches.filter(
-          (entry) => entry.week?.year === weekInfo.year && entry.week?.week === weekInfo.week,
+          (entry) =>
+            isConfirmedMatchEntry(entry) &&
+            entry.week?.year === weekInfo.year &&
+            entry.week?.week === weekInfo.week,
         )
       }
 
@@ -4918,6 +4987,12 @@
                   ? buildCandidateMetaLine(entry.candidate)
                   : '프로필 정보 준비 중'
                 const matchedLabel = formatDate(entry.confirmedAt)
+                const targetPhone = formatPhoneNumber(
+                  entry.target?.phone || entry.targetPhone || entry.target?.phoneMasked || '',
+                )
+                const candidatePhone = formatPhoneNumber(
+                  entry.candidate?.phone || entry.candidatePhone || '',
+                )
                 return `
                   <li class="matched-couples-item" data-match-id="${escapeHtml(entry.id || '')}">
                     <div class="matched-couples-names">
@@ -4926,6 +5001,11 @@
                       <strong>${escapeHtml(candidateName)}</strong>
                     </div>
                     <p class="matched-couples-meta">${escapeHtml(candidateMeta)}</p>
+                    <p class="matched-couples-meta">
+                      <span>대상자 ${escapeHtml(targetPhone || '연락처 없음')}</span>
+                      <span>·</span>
+                      <span>후보 ${escapeHtml(candidatePhone || '연락처 없음')}</span>
+                    </p>
                     <div class="matched-couples-footer">
                       <span class="matched-couples-date">${escapeHtml(matchedLabel)}</span>
                       <button type="button" class="matched-couples-remove">삭제</button>
@@ -4968,7 +5048,7 @@
           updateMatchedCouplesButton()
           renderMatchedCouplesModal()
           rebuildMatchedCandidateIds()
-          showToast('매칭 기록을 삭제했습니다.')
+          showToast('이번주 소개를 삭제했습니다.')
         } catch (error) {
           console.error('[match-confirmed] 삭제 실패', error)
           showToast(error?.message || '매칭 삭제에 실패했습니다.')
@@ -5042,6 +5122,7 @@
           confirmedAt,
           week: buildWeekMeta(confirmedAt),
           targetPhone: targetRecord?.phone || selection.targetPhone || '',
+          category: MATCH_HISTORY_CATEGORY.CONFIRMED,
         }
         confirmedMatches.unshift(matchEntry)
         saveConfirmedMatches()
@@ -5080,6 +5161,9 @@
         const targetPhoneRaw =
           overrides.targetPhone || entry.targetPhone || entry.target?.phone || ''
         const targetPhone = normalizePhoneKey(targetPhoneRaw)
+        const candidatePhone = normalizePhoneKey(
+          overrides.candidatePhone || entry.candidatePhone || entry.candidate?.phone,
+        )
         if (!candidateId || !targetId || !targetPhone) return null
         const matchedAt = overrides.matchedAt || entry.confirmedAt || entry.matchedAt || Date.now()
         return {
@@ -5089,6 +5173,13 @@
           targetPhone,
           matchedAt,
           week: entry.week || buildWeekMeta(matchedAt),
+          category: MATCH_HISTORY_CATEGORY.CONFIRMED,
+          candidateName: overrides.candidateName || entry.candidate?.name || entry.candidateName || '',
+          candidateGender:
+            overrides.candidateGender || entry.candidate?.gender || entry.candidateGender || '',
+          candidatePhone,
+          targetName: overrides.targetName || entry.target?.name || entry.targetName || '',
+          targetGender: overrides.targetGender || entry.target?.gender || entry.targetGender || '',
         }
       }
 
@@ -5100,7 +5191,9 @@
             throw new Error(body?.message || '응답이 올바르지 않습니다.')
           }
           const rawEntries = Array.isArray(body?.data) ? body.data : []
-          confirmedMatches = rawEntries.map((entry) => mapServerMatchEntry(entry))
+          confirmedMatches = rawEntries
+            .map((entry) => mapServerMatchEntry(entry))
+            .filter((entry) => entry && isConfirmedMatchEntry(entry))
           saveConfirmedMatches()
           updateMatchedCouplesButton()
           rebuildMatchedCandidateIds()
@@ -5114,21 +5207,32 @@
         const confirmedAt = entry.matchedAt || entry.confirmedAt || Date.now()
         const targetRecord = items.find((item) => item.id === entry.targetId)
         const candidateRecord = items.find((item) => item.id === entry.candidateId)
+        const category = normalizeMatchHistoryCategory(entry.category || entry.type)
+        const formattedTargetPhone = formatPhoneNumber(entry.targetPhone || '')
+        const formattedCandidatePhone = formatPhoneNumber(entry.candidatePhone || '')
         const targetSnapshot = targetRecord
           ? buildCandidateSnapshot(targetRecord)
           : {
               id: entry.targetId || '',
-              name: targetRecord?.name || '',
-              gender: targetRecord?.gender || '',
-              phoneMasked: formatPhoneNumber(entry.targetPhone || ''),
+              name: entry.targetName || '',
+              gender: entry.targetGender || '',
+              phone: formattedTargetPhone,
+              phoneMasked: formattedTargetPhone || entry.targetPhoneMasked || '',
             }
+        if (!targetSnapshot.phone && formattedTargetPhone) {
+          targetSnapshot.phone = formattedTargetPhone
+        }
         const candidateSnapshot = candidateRecord
           ? buildCandidateSnapshot(candidateRecord)
           : {
               id: entry.candidateId || '',
-              name: candidateRecord?.name || '',
-              gender: candidateRecord?.gender || '',
+              name: entry.candidateName || '',
+              gender: entry.candidateGender || '',
+              phone: formattedCandidatePhone,
             }
+        if (!candidateSnapshot.phone && formattedCandidatePhone) {
+          candidateSnapshot.phone = formattedCandidatePhone
+        }
         return {
           id: entry.id || `${targetSnapshot.id}-${candidateSnapshot.id}-${confirmedAt}`,
           target: targetSnapshot,
@@ -5136,6 +5240,8 @@
           confirmedAt,
           week: entry.week || buildWeekMeta(confirmedAt),
           targetPhone: entry.targetPhone || '',
+          candidatePhone: entry.candidatePhone || '',
+          category,
         }
       }
 
@@ -5145,27 +5251,28 @@
           if (!raw) return []
           const parsed = JSON.parse(raw)
           if (!Array.isArray(parsed)) return []
-          return parsed
-            .map((entry) => {
-              const matchedAt = entry.matchedAt || Date.now()
-              const weekData = entry.week && entry.week.startTime
-                ? entry.week
-                : (() => {
-                    const info = getWeekInfo(new Date(matchedAt))
-                    return {
-                      label: info.label,
-                      startTime: info.start.getTime(),
-                      endTime: info.end.getTime(),
-                      year: info.year,
-                      week: info.week,
-                    }
-                  })()
-              return {
-                ...entry,
-                matchedAt,
-                week: weekData,
-              }
-            })
+        return parsed
+          .map((entry) => {
+            const matchedAt = entry.matchedAt || Date.now()
+            const weekData = entry.week && entry.week.startTime
+              ? entry.week
+              : (() => {
+                  const info = getWeekInfo(new Date(matchedAt))
+                  return {
+                    label: info.label,
+                    startTime: info.start.getTime(),
+                    endTime: info.end.getTime(),
+                    year: info.year,
+                    week: info.week,
+                  }
+                })()
+            return {
+              ...entry,
+              matchedAt,
+              week: weekData,
+              category: normalizeMatchHistoryCategory(entry.category),
+            }
+          })
             .sort((a, b) => (b.matchedAt || 0) - (a.matchedAt || 0))
         } catch (error) {
           console.warn('[match] 기록 불러오기 실패', error)
@@ -5255,10 +5362,12 @@
         if (!entry?.candidateId) return null
         const candidateRecord = items.find((item) => item.id === entry.candidateId)
         const targetRecord = items.find((item) => item.id === entry.targetId)
+        const category = normalizeMatchHistoryCategory(entry.category)
         return {
           ...entry,
           candidate: candidateRecord ? buildCandidateSnapshot(candidateRecord) : entry.candidate || null,
           target: targetRecord ? buildCandidateSnapshot(targetRecord) : entry.target || null,
+          category,
         }
       }
 
@@ -5322,7 +5431,7 @@
       }
 
       function reportMatchHistorySyncError(message, options = {}) {
-        const text = message || '매칭 기록을 서버에 저장하지 못했습니다.'
+        const text = message || '이번주 소개를 서버에 저장하지 못했습니다.'
         if (!options?.silent) {
           showToast(text)
         }
@@ -5334,6 +5443,7 @@
         const targetId = entry.target?.id || targetRecord?.id || matchSelectionTargetId
         const phoneSource = entry.target?.phone || targetRecord?.phone || ''
         const targetPhone = normalizePhoneKey(phoneSource)
+        const candidatePhone = normalizePhoneKey(entry.candidate?.phone || entry.candidatePhone)
         if (!targetId || !targetPhone) return null
         return {
           id: entry.id,
@@ -5342,6 +5452,12 @@
           targetPhone,
           matchedAt: entry.matchedAt,
           week: entry.week,
+          category: MATCH_HISTORY_CATEGORY.INTRO,
+          candidateName: entry.candidate?.name || entry.candidateName || '',
+          candidateGender: entry.candidate?.gender || entry.candidateGender || '',
+          candidatePhone,
+          targetName: entry.target?.name || targetRecord?.name || '',
+          targetGender: entry.target?.gender || targetRecord?.gender || '',
         }
       }
 
@@ -5375,7 +5491,7 @@
         deleteMatchHistoryEntryOnServer(removed?.id)
         updateMatchHistoryUI()
         runMatchRecommendation()
-        showToast('매칭 기록에서 제거했습니다.')
+        showToast('이번주 소개에서 제거했습니다.')
       }
 
       function clearMatchTarget() {
@@ -5394,6 +5510,7 @@
         updateMatchResetVisibility(false)
         updateMatchSelectionSummary()
         updateMatchHistoryUI()
+        updateMatchHistoryTitle(null)
       }
 
       function updateMatchResetVisibility(isActive) {
