@@ -104,6 +104,7 @@ app.post('/api/consult', async (req, res) => {
     phoneConsultStatus: normalizePhoneStatus(payload.phoneConsultStatus, 'pending'),
     meetingSchedule: '',
     notes: sanitizeNotes(payload.notes),
+    matchReviews: sanitizeMatchReviews(payload.matchReviews),
     status: 'new',
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -132,9 +133,28 @@ app.post('/api/consult/profile', async (req, res) => {
 
   try {
     const list = await readConsultations()
-    const index = list.findIndex((item) => normalizePhoneNumber(item.phone) === phone)
+    let index = list.findIndex((item) => normalizePhoneNumber(item.phone) === phone)
+    let createdFromProfile = false
+
     if (index === -1) {
-      return res.status(404).json({ ok: false, message: '예약한 번호가 없습니다.' })
+      const timestamp = new Date().toISOString()
+      const seedRecord = buildProfileSeedRecord({ ...(req.body || {}), phone })
+      const newRecord = normalizeStoredRecord({
+        id: nanoid(),
+        ...seedRecord,
+        phone,
+        depositStatus: seedRecord.depositStatus || 'pending',
+        phoneConsultStatus: seedRecord.phoneConsultStatus || 'pending',
+        status: seedRecord.status || 'new',
+        formType: seedRecord.formType || 'consult',
+        notes: seedRecord.notes || '',
+        matchReviews: seedRecord.matchReviews || [],
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      })
+      list.push(newRecord)
+      index = list.length - 1
+      createdFromProfile = true
     }
 
     const updatedAt = new Date().toISOString()
@@ -151,8 +171,11 @@ app.post('/api/consult/profile', async (req, res) => {
 
     list[index] = updatedRecord
     await writeConsultations(list)
-    broadcast({ type: 'consult:update', payload: updatedRecord })
-    res.json({ ok: true, data: updatedRecord })
+    broadcast({
+      type: createdFromProfile ? 'consult:new' : 'consult:update',
+      payload: updatedRecord,
+    })
+    res.json({ ok: true, data: updatedRecord, created: createdFromProfile })
   } catch (error) {
     console.error('[consult:profile]', error)
     res.status(500).json({ ok: false, message: '프로필 정보를 저장하지 못했습니다.' })
@@ -655,6 +678,10 @@ app.patch('/api/consult/:id', async (req, res) => {
     updates.photos = sanitizedPhotos
   }
 
+  if (Object.prototype.hasOwnProperty.call(req.body || {}, 'matchReviews')) {
+    updates.matchReviews = sanitizeMatchReviews(req.body.matchReviews)
+  }
+
   if (!Object.keys(updates).length) {
     return res.status(400).json({ ok: false, message: '변경할 항목이 없습니다.' })
   }
@@ -1143,6 +1170,50 @@ function sanitizeProfileUpdate(body) {
   return { phone, updates, agreements }
 }
 
+function buildProfileSeedRecord(source = {}) {
+  const record = {}
+  const assignText = (key, value, sanitizer = sanitizeText) => {
+    const sanitized = typeof sanitizer === 'function' ? sanitizer(value) : sanitizeText(value)
+    if (sanitized) {
+      record[key] = sanitized
+    }
+  }
+  assignText('name', source.name)
+  assignText('gender', source.gender)
+  assignText('birth', source.birth)
+  assignText('job', source.job)
+  assignText('district', source.district)
+  assignText('education', source.education)
+  assignText('referralSource', source.referralSource)
+  assignText('mbti', source.mbti)
+  assignText('salaryRange', source.salaryRange)
+  assignText('profileAppeal', source.profileAppeal, sanitizeNotes)
+  assignText('likesDislikes', source.likesDislikes, sanitizeNotes)
+  assignText('sufficientCondition', source.sufficientCondition, sanitizeNotes)
+  assignText('necessaryCondition', source.necessaryCondition, sanitizeNotes)
+  assignText('aboutMe', source.aboutMe, sanitizeNotes)
+  assignText('status', source.status)
+  assignText('formType', source.formType)
+  assignText('notes', source.notes, sanitizeNotes)
+  const normalizedHeight = normalizeHeight(source.height)
+  if (normalizedHeight) {
+    record.height = normalizedHeight
+  }
+  if (Object.prototype.hasOwnProperty.call(source, 'depositStatus')) {
+    const nextStatus = sanitizeDepositStatus(source.depositStatus, '')
+    if (nextStatus) {
+      record.depositStatus = nextStatus
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(source, 'phoneConsultStatus')) {
+    const phoneStatus = normalizePhoneStatus(source.phoneConsultStatus, '')
+    if (phoneStatus) {
+      record.phoneConsultStatus = phoneStatus
+    }
+  }
+  return record
+}
+
 function normalizePhoneNumber(value) {
   return sanitizeText(value).replace(/\D/g, '')
 }
@@ -1173,6 +1244,7 @@ function sanitizePayload(body) {
     manners: Boolean(agreementsSource.manners ?? agreementsSource.rules ?? body?.rulesAgree),
     refund: Boolean(agreementsSource.refund ?? body?.refundAgree),
   }
+  payload.matchReviews = sanitizeMatchReviews(body?.matchReviews)
 
   return payload
 }
@@ -1265,6 +1337,7 @@ function normalizeStoredRecord(entry) {
   record.likesDislikes = sanitizeNotes(record.likesDislikes)
   record.valuesCustom = sanitizeNotes(record.valuesCustom)
   record.aboutMe = sanitizeNotes(record.aboutMe)
+  record.matchReviews = sanitizeMatchReviews(record.matchReviews)
   record.preferredHeights = sanitizeStringArray(record.preferredHeights)
   record.preferredAges = sanitizeStringArray(record.preferredAges)
   record.preferredLifestyle = sanitizeStringArray(record.preferredLifestyle)
@@ -1331,6 +1404,47 @@ function sanitizeStringArray(input) {
     return value ? [value] : []
   }
   return []
+}
+
+function sanitizeMatchReviews(input) {
+  if (!Array.isArray(input)) return []
+  const normalized = input
+    .map((entry, index) => sanitizeMatchReviewEntry(entry, index))
+    .filter(Boolean)
+  if (normalized.length > 1) {
+    normalized.sort((a, b) => (a.sequence || 0) - (b.sequence || 0))
+  }
+  return normalized
+}
+
+function sanitizeMatchReviewEntry(entry, index = 0) {
+  if (!entry || typeof entry !== 'object') return null
+  const id = sanitizeText(entry.id) || `review_${nanoid()}`
+  const sequenceRaw = Number(entry.sequence ?? entry.roundIndex ?? index + 1)
+  const sequence = Number.isFinite(sequenceRaw) && sequenceRaw > 0 ? sequenceRaw : index + 1
+  const roundLabel = sanitizeText(
+    entry.roundLabel ?? entry.round ?? entry.session ?? entry.roundName ?? '',
+  )
+  const partnerName = sanitizeText(entry.partnerName ?? entry.partner ?? entry.opponent ?? '')
+  const comment = sanitizeNotes(entry.comment ?? entry.note ?? entry.feedback ?? '')
+  const ratingValue = Number(entry.rating)
+  const rating =
+    Number.isFinite(ratingValue) && ratingValue > 0 && ratingValue <= 5
+      ? Number(ratingValue.toFixed(2))
+      : null
+  const recordedAt = safeToISOString(entry.recordedAt, '')
+  if (!roundLabel && !partnerName && !comment && rating == null) {
+    return null
+  }
+  return {
+    id,
+    sequence,
+    roundLabel,
+    partnerName,
+    comment,
+    rating,
+    recordedAt,
+  }
 }
 
 function sanitizeProfileShare(entry) {
