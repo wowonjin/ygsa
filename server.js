@@ -577,6 +577,7 @@ app.patch('/api/consult/:id', async (req, res) => {
     mbti: sanitizeText,
     university: sanitizeText,
     salaryRange: sanitizeText,
+    referralSource: sanitizeText,
     smoking: sanitizeText,
     religion: sanitizeText,
     longDistance: sanitizeText,
