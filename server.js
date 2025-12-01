@@ -397,15 +397,24 @@ app.post('/api/match-history/lookup', async (req, res) => {
 
     const selection = []
     const seen = new Set()
-    const sourceList = weekFilteredIntro.length ? weekFilteredIntro : introEntries
 
-    for (const entry of sourceList) {
-      if (!entry?.candidateId || seen.has(entry.candidateId)) continue
-      const candidateRecord = records.find((item) => item.id === entry.candidateId)
-      if (!candidateRecord) continue
-      selection.push({ entry, record: candidateRecord })
-      seen.add(entry.candidateId)
-      if (selection.length >= limit) break
+    const addEntriesToSelection = (entries) => {
+      for (const entry of entries) {
+        if (!entry?.candidateId || seen.has(entry.candidateId)) continue
+        const candidateRecord = records.find((item) => item.id === entry.candidateId)
+        if (!candidateRecord) continue
+        selection.push({ entry, record: candidateRecord })
+        seen.add(entry.candidateId)
+        if (selection.length >= limit) break
+      }
+    }
+
+    const primarySource = weekFilteredIntro.length ? weekFilteredIntro : introEntries
+    addEntriesToSelection(primarySource)
+
+    if (selection.length < limit && confirmedEntries.length) {
+      const confirmedSource = confirmedEntries.filter((entry) => !seen.has(entry.candidateId))
+      addEntriesToSelection(confirmedSource)
     }
 
     if (!selection.length) {
@@ -425,6 +434,7 @@ app.post('/api/match-history/lookup', async (req, res) => {
             matchEntryId: entry.id,
             matchRecordedAt: entry.matchedAt,
             matchCandidateId: entry.candidateId,
+            matchCategory: sanitizeMatchHistoryCategory(entry.category),
           }
         }),
         matchedCandidateIds,

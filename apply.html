@@ -1085,9 +1085,26 @@
           actions.appendChild(actionButton)
           preview.insertAdjacentElement('afterend', actions)
           initProfileCardSlider(preview)
+          applyMatchedCardState(wrapper, actionButton, candidateId, record.matchCategory)
           setupCardReveal(wrapper)
           return wrapper
         }
+        function applyMatchedCardState(wrapper, button, candidateId, category) {
+          if (!wrapper || !button) return
+          const candidateKey = candidateId ? String(candidateId) : ''
+          const normalizedCategory = String(category || '').trim().toLowerCase()
+          const alreadyMatched =
+            normalizedCategory === 'confirmed' || (candidateKey && matchedCandidateIds.has(candidateKey))
+          if (!alreadyMatched) return
+          markMatchButtonCompleted(button)
+          wrapper.classList.add('is-open')
+          const cover = wrapper.querySelector('.match-card-cover')
+          if (cover) {
+            cover.style.opacity = '0'
+            cover.style.pointerEvents = 'none'
+          }
+        }
+
 
         function showMessage(text, isError = false) {
           if (!messageEl) return
@@ -1234,9 +1251,6 @@
           if (!targetReady || !candidateKey) {
             button.disabled = true
             button.title = '추천 대상 정보를 찾을 수 없습니다.'
-          }
-          if (candidateKey && matchedCandidateIds.has(candidateKey)) {
-            markMatchButtonCompleted(button)
           }
           button.addEventListener('click', (event) => {
             event.stopPropagation()
