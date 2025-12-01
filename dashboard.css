@@ -1,4 +1,18 @@
-﻿body.modal-open {
+﻿    .form-label {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 6px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: rgba(59, 130, 246, 0.2);
+      color: #93c5fd;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+body.modal-open {
         overflow: hidden;
       }
       :root {
@@ -218,19 +232,22 @@
         flex-wrap: wrap;
       }
       .quick-links a {
-        border: 1px solid #2f353d;
-        background: transparent;
-        color: #f0f6fc;
+        border: 1px solid rgba(107, 114, 128, 0.7);
+        background: #2e2e2e;
+        color: #f3f4f6;
         padding: 8px 14px;
-        border-radius: 10px;
+        border-radius: 12px;
         font-weight: 600;
         text-decoration: none;
         display: inline-flex;
         align-items: center;
-        transition: transform 0.15s ease, background 0.2s ease, box-shadow 0.2s ease;
+        transition: transform 0.15s ease, background 0.2s ease, border-color 0.2s ease,
+          color 0.2s ease;
       }
       .quick-links a:hover {
-        background: rgba(240, 246, 252, 0.08);
+        background: rgba(55, 65, 81, 0.95);
+        border-color: rgba(148, 163, 184, 0.9);
+        color: #ffffff;
         transform: translateY(-1px);
         box-shadow: 0 10px 24px rgba(13, 17, 23, 0.35);
       }
@@ -277,6 +294,12 @@
         font-weight: 600;
         cursor: pointer;
         transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .scheduler-calendar-btn .material-symbols-rounded {
+        font-size: 18px;
       }
       .scheduler-calendar-btn:hover {
         background: rgba(59, 130, 246, 0.28);
@@ -969,7 +992,7 @@
       width: min(1080px, 95vw);
       min-height: calc(100vh - 72px);
       max-height: calc(100vh - 72px);
-      background: #0d1117;
+      background: #242424;
       border: 1px solid rgba(48, 54, 61, 0.9);
       border-radius: 28px;
       box-shadow: 0 32px 120px rgba(1, 4, 9, 0.78);
@@ -1264,21 +1287,21 @@
       .modal-form label .select-hint {
         display: none;
       }
-      .modal-form input[type='text'],
-      .modal-form input[type='tel'],
-      .modal-form select,
-      .modal-form input[type='date'],
-      .modal-form textarea,
-      .modal-form .time-select {
-        width: 100%;
-        border: 1px solid #30363d;
-        background: #101010;
-        color: #f0f6fc;
-        border-radius: 10px;
-        padding: 12px 14px;
-        font-family: inherit;
-        font-size: 14px;
-      }
+    .modal-form input[type='text'],
+    .modal-form input[type='tel'],
+    .modal-form select,
+    .modal-form input[type='date'],
+    .modal-form textarea,
+    .modal-form .time-select {
+      width: 100%;
+      border: 1px solid #4d4d4d;
+      background: #242424;
+      color: #f0f6fc;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-family: inherit;
+      font-size: 14px;
+    }
       .modal-form .field-range .range-inputs {
         display: flex;
         align-items: center;
@@ -1296,15 +1319,15 @@
         font-size: 12px;
         color: #6e7781;
       }
-      .modal-form select,
-      .modal-form .time-select {
-        background-color: #101010;
-      }
-      .modal-form select option,
-      .modal-form .time-select option {
-        background-color: #101010;
-        color: #f0f6fc;
-      }
+    .modal-form select,
+    .modal-form .time-select {
+      background-color: #242424;
+    }
+    .modal-form select option,
+    .modal-form .time-select option {
+      background-color: #242424;
+      color: #f0f6fc;
+    }
       .modal-form textarea {
         min-height: 100px;
         resize: vertical;
@@ -2835,21 +2858,6 @@
       }
 
     .match-btn {
-      border: 1px solid rgba(16, 185, 129, 0.6);
-      background: rgba(16, 185, 129, 0.15);
-      color: #6ee7b7;
-      border-radius: 999px;
-      padding: 8px 18px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
-    }
-    .match-btn:hover {
-      background: rgba(16, 185, 129, 0.28);
-      transform: translateY(-1px);
-      border-color: rgba(16, 185, 129, 0.9);
-    }
-    .matched-couples-btn {
       border: 1px solid rgba(99, 102, 241, 0.55);
       background: rgba(99, 102, 241, 0.18);
       color: #c7d2fe;
@@ -2859,10 +2867,38 @@
       cursor: pointer;
       transition: background 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
     }
-    .matched-couples-btn:hover {
+    .match-btn:hover {
       background: rgba(99, 102, 241, 0.3);
       transform: translateY(-1px);
       border-color: rgba(99, 102, 241, 0.8);
+    }
+    .toolbar .quick-links a,
+    .gender-chart-btn,
+    .match-btn,
+    .matched-couples-btn,
+    .toolbar-filters button,
+    #importBtn,
+    #exportBtn {
+      border: 1px solid rgba(107, 114, 128, 0.7);
+      background: #2e2e2e;
+      color: #f3f4f6;
+      border-radius: 12px;
+      padding: 8px 18px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    }
+    .toolbar .quick-links a:hover,
+    .gender-chart-btn:hover,
+    .match-btn:hover,
+    .matched-couples-btn:hover,
+    .toolbar-filters button:hover,
+    #importBtn:hover,
+    #exportBtn:hover {
+      background: rgba(55, 65, 81, 0.95);
+      border-color: rgba(148, 163, 184, 0.9);
+      color: #ffffff;
+      transform: translateY(-1px);
     }
       .match-overlay {
         position: fixed;

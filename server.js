@@ -1230,6 +1230,7 @@ function sanitizePayload(body) {
     height: normalizeHeight(body?.height ?? body?.region),
     district: sanitizeText(body?.district),
     education: sanitizeText(body?.education),
+    referralSource: sanitizeText(body?.referralSource),
     workStyle: sanitizeText(body?.workStyle),
     relationshipStatus: sanitizeText(body?.relationshipStatus || body?.relationship),
     participationGoal: sanitizeText(body?.participationGoal || body?.goal),

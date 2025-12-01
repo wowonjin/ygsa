@@ -77,7 +77,10 @@
         <div class="scheduler-title-group">
           <div class="scheduler-title-row">
             <h3 id="schedulerTitle">신청 스케줄러</h3>
-            <button type="button" id="calendarScrollBtn" class="scheduler-calendar-btn">캘린더 보기</button>
+              <button type="button" id="calendarScrollBtn" class="scheduler-calendar-btn">
+                <span class="material-symbols-rounded" aria-hidden="true">calendar_month</span>
+                <span>캘린더 보기</span>
+              </button>
           </div>
           <p id="schedulerSubtitle">최근 7일 신청 인원 흐름</p>
         </div>
@@ -320,13 +323,6 @@
                   />
                 </div>
                 <div class="field">
-                  <label for="detailMbti">
-                    MBTI
-                    <span class="detail-badge detail-badge-public" aria-hidden="true">공개</span>
-                  </label>
-                  <input id="detailMbti" type="text" placeholder="예: ENFP" />
-                </div>
-                <div class="field">
                   <label for="detailHeight">신장</label>
                   <input
                     id="detailHeight"
@@ -366,30 +362,6 @@
                   </select>
                 </div>
                 <div class="field">
-                  <label for="detailUniversity">
-                    대학교
-                    <span class="detail-badge detail-badge-match" aria-hidden="true">매칭 후 공개</span>
-                  </label>
-                  <input id="detailUniversity" type="text" placeholder="예: 서울대학교 (관악캠퍼스)" />
-                </div>
-                <div class="field">
-                  <label for="detailSalaryRange">
-                    연봉 (세전 기준)
-                    <span class="detail-badge detail-badge-match" aria-hidden="true">매칭 후 공개</span>
-                  </label>
-                  <select id="detailSalaryRange">
-                    <option value="">선택</option>
-                    <option value="1">1) 3000만원 미만</option>
-                    <option value="2">2) 3000-4000</option>
-                    <option value="3">3) 4000-6000</option>
-                    <option value="4">4) 6000-8000</option>
-                    <option value="5">5) 8000-1억</option>
-                    <option value="6">6) 1억-2억</option>
-                    <option value="7">7) 2억-3억</option>
-                    <option value="8">8) 3억 이상</option>
-                  </select>
-                </div>
-                <div class="field">
                   <label for="detailJob">
                     직업
                     <span class="detail-badge detail-badge-public" aria-hidden="true">공개</span>
@@ -420,7 +392,42 @@
                   </select>
                 </div>
                 <div class="field">
+                  <label for="detailMbti">
+                    <span class="form-label">Form</span>
+                    MBTI
+                    <span class="detail-badge detail-badge-public" aria-hidden="true">공개</span>
+                  </label>
+                  <input id="detailMbti" type="text" placeholder="예: ENFP" />
+                </div>
+                <div class="field">
+                  <label for="detailUniversity">
+                    <span class="form-label">Form</span>
+                    대학교
+                    <span class="detail-badge detail-badge-match" aria-hidden="true">매칭 후 공개</span>
+                  </label>
+                  <input id="detailUniversity" type="text" placeholder="예: 서울대학교 (관악캠퍼스)" />
+                </div>
+                <div class="field">
+                  <label for="detailSalaryRange">
+                    <span class="form-label">Form</span>
+                    연봉 (세전 기준)
+                    <span class="detail-badge detail-badge-match" aria-hidden="true">매칭 후 공개</span>
+                  </label>
+                  <select id="detailSalaryRange">
+                    <option value="">선택</option>
+                    <option value="1">1) 3000만원 미만</option>
+                    <option value="2">2) 3000-4000</option>
+                    <option value="3">3) 4000-6000</option>
+                    <option value="4">4) 6000-8000</option>
+                    <option value="5">5) 8000-1억</option>
+                    <option value="6">6) 1억-2억</option>
+                    <option value="7">7) 2억-3억</option>
+                    <option value="8">8) 3억 이상</option>
+                  </select>
+                </div>
+                <div class="field">
                   <label for="detailSmoking">
+                    <span class="form-label">Form</span>
                     흡연
                     <span class="detail-badge detail-badge-public" aria-hidden="true">공개</span>
                   </label>
@@ -433,6 +440,7 @@
                 </div>
                 <div class="field">
                   <label for="detailReligion">
+                    <span class="form-label">Form</span>
                     종교
                     <span class="detail-badge detail-badge-match" aria-hidden="true">매칭 후 공개</span>
                   </label>
