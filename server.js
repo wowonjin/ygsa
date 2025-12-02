@@ -6,6 +6,7 @@ const fsSync = require('fs')
 const { nanoid } = require('nanoid')
 const nodemailer = require('nodemailer')
 const twilio = require('twilio')
+const OpenAI = require('openai')
 require('dotenv').config()
 
 const app = express()
@@ -51,6 +52,20 @@ const PATCH_VALIDATION_FIELDS = [
 ]
 const PROFILE_SHARE_PAGE = 'profile-card.html'
 const PROFILE_SHARE_VIEW_DURATION_MS = 3 * 24 * 60 * 60 * 1000
+const MATCH_SCORE_MAX = 3
+const MATCH_AI_MAX_CANDIDATES = 5
+const MATCH_AI_REASON_MAX_LENGTH = 200
+const MATCH_AI_SUMMARY_MAX_LENGTH = 480
+const MATCH_AI_DEFAULT_MODEL = 'gpt-4o-mini'
+const MATCH_AI_TIMEOUT_MS = 20 * 1000
+const MATCH_AI_MODEL =
+  sanitizeEnvValue(process.env.OPENAI_MATCH_MODEL) || MATCH_AI_DEFAULT_MODEL
+const openAiClient = initialiseOpenAiClient()
+if (openAiClient) {
+  console.info(`[openai] 매칭 설명 모델 ${MATCH_AI_MODEL} 사용`)
+} else {
+  console.info('[openai] OPENAI_API_KEY 미설정 – 매칭 AI 설명 비활성화')
+}
 
 const emailTransport = initialiseMailTransport()
 const smsClient = initialiseSmsClient()
@@ -493,6 +508,41 @@ app.post('/api/match-history/lookup', async (req, res) => {
   } catch (error) {
     console.error('[match-history:lookup]', error)
     res.status(500).json({ ok: false, message: '매칭 정보를 불러오지 못했습니다.' })
+  }
+})
+
+app.post('/api/match/ai-notes', async (req, res) => {
+  if (!openAiClient) {
+    return res.status(503).json({
+      ok: false,
+      code: 'ai_disabled',
+      message: 'AI 추천 멘트를 사용하려면 OPENAI_API_KEY를 설정해주세요.',
+    })
+  }
+
+  const payload = sanitizeMatchAiPayload(req.body)
+  if (!payload) {
+    return res.status(400).json({
+      ok: false,
+      message: '대상과 후보 정보를 확인한 뒤 다시 시도해주세요.',
+    })
+  }
+
+  try {
+    const result = await generateMatchAiSummaries(payload)
+    res.json({ ok: true, data: result })
+  } catch (error) {
+    console.error('[match-ai:summaries]', error)
+    const statusCode =
+      error?.code === 'context_length_exceeded'
+        ? 422
+        : error?.code === 'ai_timeout'
+          ? 504
+          : 502
+    res.status(statusCode).json({
+      ok: false,
+      message: error?.message || 'AI 추천 멘트를 생성하지 못했습니다.',
+    })
   }
 })
 
@@ -1846,6 +1896,17 @@ function buildNotificationMessage(record, compact = false) {
   ].join('\n')
 }
 
+function initialiseOpenAiClient() {
+  const apiKey = sanitizeEnvValue(process.env.OPENAI_API_KEY)
+  if (!apiKey) return null
+  try {
+    return new OpenAI({ apiKey })
+  } catch (error) {
+    console.error('[openai:init] 클라이언트 생성 실패', error)
+    return null
+  }
+}
+
 function initialiseMailTransport() {
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, GMAIL_USER, GMAIL_PASS } =
     process.env
@@ -1911,6 +1972,14 @@ function sanitizeText(value) {
   return String(value ?? '').trim()
 }
 
+function truncateText(value, maxLength = 200) {
+  const text = sanitizeText(value)
+  if (!text) return ''
+  if (text.length <= maxLength) return text
+  const sliceLength = Math.max(maxLength - 3, 0)
+  return `${text.slice(0, sliceLength)}...`
+}
+
 function sanitizeNotes(value) {
   return sanitizeText(value)
 }
@@ -1962,6 +2031,234 @@ function sanitizeEnvValue(value) {
     return value.trim()
   }
   return ''
+}
+
+async function generateMatchAiSummaries(payload) {
+  if (!openAiClient) {
+    const error = new Error('AI 설정이 비활성화되었습니다.')
+    error.code = 'ai_disabled'
+    throw error
+  }
+  const completion = await openAiClient.chat.completions.create({
+    model: MATCH_AI_MODEL,
+    temperature: 0.65,
+    response_format: { type: 'json_object' },
+    max_tokens: 700,
+    messages: buildMatchAiMessages(payload),
+  })
+  const summaries = extractMatchAiSummaries(completion, payload)
+  return {
+    summaries,
+    usage: completion?.usage || null,
+  }
+}
+
+function buildMatchAiMessages(payload) {
+  const targetBlock = buildMatchAiTargetBlock(payload.target)
+  const candidateBlock = (payload.candidates || [])
+    .map((candidate, index) => buildMatchAiCandidateBlock(candidate, index))
+    .join('\n\n')
+  const requestBlock = [
+    '요청사항:',
+    '1. 각 후보마다 1~2문장, 최대 80자 존댓말',
+    '2. 대상 회원의 선호 조건과 후보의 강점을 반드시 연결',
+    '3. 실제 커플매니저 말투처럼 따뜻하고 구체적으로 설명',
+    '4. JSON만 반환: {"summaries":[{"id":"ID","summary":"텍스트"}]}',
+    '5. summary에는 줄바꿈이나 따옴표를 넣지 말 것',
+  ].join('\n')
+  return [
+    {
+      role: 'system',
+      content:
+        '너는 연결사 커플매니저다. 대상 회원에게 추천하는 이유를 사실 기반으로 부드럽게 설명한다. 과장이나 근거 없는 예측은 금지다.',
+    },
+    {
+      role: 'user',
+      content: `대상 회원 정보:\n${targetBlock}\n\n후보 리스트:\n${candidateBlock}\n\n${requestBlock}`,
+    },
+  ]
+}
+
+function buildMatchAiTargetBlock(target) {
+  if (!target) return '정보 없음'
+  const metaParts = [
+    target.gender,
+    Number.isFinite(target.age) ? `${target.age}세` : '',
+    target.height,
+    target.job,
+    target.mbti ? `MBTI ${target.mbti}` : '',
+    target.district,
+  ].filter(Boolean)
+  const preferenceParts = []
+  if (target.preferredHeights?.length) {
+    preferenceParts.push(`키 ${target.preferredHeights.join(', ')}`)
+  }
+  if (target.preferredAges?.length) {
+    preferenceParts.push(`나이 ${target.preferredAges.join(', ')}`)
+  }
+  if (target.preferredLifestyle?.length) {
+    preferenceParts.push(`라이프스타일 ${target.preferredLifestyle.join(', ')}`)
+  }
+  return [
+    `이름: ${target.name || '이름 비공개'}`,
+    `기본: ${metaParts.length ? metaParts.join(', ') : '정보 부족'}`,
+    `선호: ${preferenceParts.length ? preferenceParts.join(' / ') : '선호 조건 미입력'}`,
+  ].join('\n')
+}
+
+function buildMatchAiCandidateBlock(candidate, index) {
+  const metaParts = [
+    candidate.gender,
+    Number.isFinite(candidate.age) ? `${candidate.age}세` : '',
+    candidate.height,
+    candidate.job,
+    candidate.mbti ? `MBTI ${candidate.mbti}` : '',
+  ].filter(Boolean)
+  const reasonText = candidate.reasons && candidate.reasons.length
+    ? candidate.reasons.join(' / ')
+    : '조건 근거 없음'
+  return `${index + 1}. ${candidate.name || '이름 미입력'} (점수 ${candidate.score}/${MATCH_SCORE_MAX})
+- 기본 정보: ${metaParts.length ? metaParts.join(', ') : '정보 부족'}
+- 추천 근거: ${reasonText}`
+}
+
+function extractMatchAiSummaries(completion, payload) {
+  const rawContent = completion?.choices?.[0]?.message?.content || ''
+  if (!rawContent) return {}
+  const parsed =
+    parseJsonObject(rawContent) || parseJsonObject(rawContent.replace(/```json|```/gi, ''))
+  if (!parsed) return {}
+  const summariesArray = Array.isArray(parsed?.summaries)
+    ? parsed.summaries
+    : Array.isArray(parsed)
+      ? parsed
+      : []
+  if (!summariesArray.length) return {}
+  const allowedIds = new Set((payload.candidates || []).map((candidate) => candidate.id))
+  const summaries = {}
+  summariesArray.forEach((entry) => {
+    const id = sanitizeText(entry?.id)
+    const summary = truncateText(entry?.summary, MATCH_AI_SUMMARY_MAX_LENGTH)
+    if (!id || !allowedIds.has(id) || !summary) return
+    summaries[id] = summary
+  })
+  return summaries
+}
+
+function parseJsonObject(text) {
+  const normalized = sanitizeText(text)
+  if (!normalized) return null
+  try {
+    return JSON.parse(
+      normalized
+        .replace(/^```json/i, '')
+        .replace(/^```/, '')
+        .replace(/```$/, '')
+        .trim(),
+    )
+  } catch (error) {
+    return null
+  }
+}
+
+function sanitizeMatchAiPayload(body) {
+  if (!body || typeof body !== 'object') return null
+  const target = sanitizeMatchAiMember(body.target)
+  if (!target) return null
+  const seen = new Set()
+  const candidates = []
+  const rawCandidates = Array.isArray(body.candidates) ? body.candidates : []
+  for (const entry of rawCandidates) {
+    if (candidates.length >= MATCH_AI_MAX_CANDIDATES) break
+    const sanitized = sanitizeMatchAiCandidate(entry)
+    if (!sanitized || seen.has(sanitized.id)) continue
+    candidates.push(sanitized)
+    seen.add(sanitized.id)
+  }
+  if (!candidates.length) return null
+  return { target, candidates }
+}
+
+function sanitizeMatchAiMember(input) {
+  if (!input || typeof input !== 'object') return null
+  const id = sanitizeText(input.id)
+  const name = sanitizeText(input.name) || '회원'
+  return {
+    id: id || null,
+    name,
+    gender: sanitizeText(input.gender),
+    age: normalizeAgeValue(input.age, input.birth),
+    birthLabel: sanitizeText(input.birthLabel || input.birth),
+    height: sanitizeText(input.height),
+    job: sanitizeText(input.job),
+    mbti: sanitizeText(input.mbti),
+    district: sanitizeText(input.district),
+    preferredHeights: sanitizeStringArray(input.preferredHeights),
+    preferredAges: sanitizeStringArray(input.preferredAges),
+    preferredLifestyle: sanitizeStringArray(input.preferredLifestyle),
+  }
+}
+
+function sanitizeMatchAiCandidate(input) {
+  if (!input || typeof input !== 'object') return null
+  const id = sanitizeText(input.id)
+  if (!id) return null
+  return {
+    id,
+    name: sanitizeText(input.name) || '이름 미입력',
+    gender: sanitizeText(input.gender),
+    age: normalizeAgeValue(input.age, input.birth),
+    height: sanitizeText(input.height),
+    job: sanitizeText(input.job),
+    mbti: sanitizeText(input.mbti),
+    reasons: sanitizeMatchAiReasons(input.reasons),
+    score: clampMatchScore(input.score),
+  }
+}
+
+function sanitizeMatchAiReasons(reasons) {
+  if (!Array.isArray(reasons)) return []
+  return reasons
+    .map((reason) => truncateText(reason, MATCH_AI_REASON_MAX_LENGTH))
+    .filter(Boolean)
+}
+
+function normalizeAgeValue(ageValue, birthValue) {
+  const numericAge = Number(ageValue)
+  if (Number.isFinite(numericAge) && numericAge > 0 && numericAge < 100) {
+    return numericAge
+  }
+  const birthYear = extractBirthYear(birthValue)
+  if (!birthYear) return null
+  const currentYear = new Date().getFullYear()
+  const age = currentYear - birthYear
+  if (age < 15 || age > 90) return null
+  return age
+}
+
+function extractBirthYear(value) {
+  const digits = sanitizeText(value).replace(/\D/g, '')
+  if (!digits) return null
+  if (digits.length === 4) {
+    const year = Number(digits)
+    return Number.isFinite(year) ? year : null
+  }
+  if (digits.length === 2) {
+    const year = Number(digits)
+    if (!Number.isFinite(year)) return null
+    const now = new Date().getFullYear() % 100
+    const century = year > now ? 1900 : 2000
+    return century + year
+  }
+  return null
+}
+
+function clampMatchScore(value) {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return 0
+  if (numeric < 0) return 0
+  if (numeric > MATCH_SCORE_MAX) return MATCH_SCORE_MAX
+  return Number(numeric.toFixed(2))
 }
 
 function getFirebaseConfigFromEnv() {

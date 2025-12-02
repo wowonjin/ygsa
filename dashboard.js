@@ -218,6 +218,8 @@
       const API_IMPORT_URL = `${API_BASE_URL}/api/consult/import`
       const EVENTS_URL = `${API_BASE_URL}/events`
       const MATCH_HISTORY_API_URL = `${API_BASE_URL}/api/match-history`
+      const MATCH_AI_SUMMARY_URL = `${API_BASE_URL}/api/match/ai-notes`
+      const MATCH_AI_MAX_REQUEST = 5
       if (!BACKEND_ORIGIN_RAW) {
         console.info(`[ygsa] BACKEND_ORIGIN 미설정 – 기본값 ${API_BASE_URL} 사용`)
       }
@@ -522,6 +524,10 @@
       )
       let matchSelectionTargetPhoneKey = ''
       let profileCardRecord = null
+      let matchLatestResults = []
+      let matchLatestAiRequestId = 0
+      const matchAiInsightCache = new Map()
+      let matchAiFeatureDisabled = false
       const viewState = {
         search: '',
         status: 'all',
@@ -5443,7 +5449,20 @@
         } else {
           matchStatusEl.textContent = `${total}명 모두 표시합니다.`
         }
-        renderMatchResults(displayList)
+        matchLatestAiRequestId += 1
+        const decoratedResults = displayList.map((entry) => {
+          const cachedSummary = getCachedMatchAiSummary(target, entry.candidate)
+          return {
+            ...entry,
+            aiSummary: cachedSummary || '',
+            aiStatus: cachedSummary ? 'ready' : 'pending',
+          }
+        })
+        matchLatestResults = decoratedResults
+        renderMatchResults(matchLatestResults)
+        if (!matchAiFeatureDisabled) {
+          hydrateMatchResultsWithAi(target, matchLatestResults)
+        }
       }
 
       function renderMatchResults(results) {
@@ -5462,6 +5481,21 @@
             ]
               .filter(Boolean)
               .join(' · ')
+            const aiStatus = entry.aiStatus || ''
+            let aiReasonHtml = ''
+            if (aiStatus === 'loading') {
+              aiReasonHtml =
+                '<li class="match-ai-reason is-loading">커플매니저 코멘트를 불러오는 중입니다...</li>'
+            } else if (aiStatus === 'error') {
+              aiReasonHtml =
+                '<li class="match-ai-reason is-error">AI 코멘트를 불러오지 못했습니다.</li>'
+            } else if (entry.aiSummary) {
+              aiReasonHtml = `<li class="match-ai-reason">${escapeHtml(entry.aiSummary)}</li>`
+            }
+            const fallbackReasons = (entry.reasons || [])
+              .map((reason) => `<li>${escapeHtml(reason)}</li>`)
+              .join('')
+            const reasonsHtml = `${aiReasonHtml}${fallbackReasons}`
             return `
               <li class="match-result-card" data-id="${escapeHtml(entry.candidate.id || '')}">
                 <div class="match-result-head">
@@ -5488,8 +5522,8 @@
                     <button type="button" class="match-result-add-btn match-select-btn">선택하기</button>
                   </div>
                 </div>
-                <ul class="match-reasons">
-                  ${entry.reasons.map((reason) => `<li>${escapeHtml(reason)}</li>`).join('')}
+                <ul class="match-reasons" data-ai-state="${escapeHtml(aiStatus)}">
+                  ${reasonsHtml}
                 </ul>
               </li>
             `
@@ -5554,23 +5588,26 @@
           score += 1
           reasons.push(`라이프스타일 공통분모: ${lifestyleOverlap.join(', ')}`)
         }
-        if (!score) return null
         const createdAt = candidate.createdAt ? new Date(candidate.createdAt).getTime() : 0
         const statusKey = candidateStatus
+        const meta = {
+          gender: candidate.gender || '',
+          birthLabel: candidateBirthLabel,
+          ageLabel: formatAgeLabel(candidateAge),
+          heightLabel: candidateHeight ? `${candidateHeight}cm` : candidate.height || '',
+          lifestyleOverlapCount: lifestyleOverlap.length,
+          createdAt,
+          statusLabel: PHONE_STATUS_LABELS[statusKey] || '',
+          statusClass: STATUS_CLASS_NAMES[statusKey] || '',
+        }
+        if (!score) {
+          reasons.push('선호 조건과 정확히 일치하지 않지만 상담 완료 회원입니다.')
+        }
         return {
           candidate,
           score,
           reasons,
-          meta: {
-            gender: candidate.gender || '',
-            birthLabel: candidateBirthLabel,
-            ageLabel: formatAgeLabel(candidateAge),
-            heightLabel: candidateHeight ? `${candidateHeight}cm` : candidate.height || '',
-            lifestyleOverlapCount: lifestyleOverlap.length,
-            createdAt,
-            statusLabel: PHONE_STATUS_LABELS[statusKey] || '',
-            statusClass: STATUS_CLASS_NAMES[statusKey] || '',
-          },
+          meta,
         }
       }
 
@@ -5701,6 +5738,188 @@
           priorityCount: priorityList.length,
           displayedPriorityCount,
         }
+      }
+
+      function hydrateMatchResultsWithAi(targetRecord, resultEntries) {
+        if (
+          !targetRecord ||
+          matchAiFeatureDisabled ||
+          !Array.isArray(resultEntries) ||
+          !resultEntries.length
+        ) {
+          return
+        }
+        const pendingEntries = resultEntries.filter((entry) => entry.aiStatus !== 'ready')
+        if (!pendingEntries.length) return
+        const requestPayload = buildMatchAiRequestPayload(targetRecord, pendingEntries)
+        if (!requestPayload) {
+          let needsRender = false
+          pendingEntries.forEach((entry) => {
+            if (entry.aiStatus !== 'ready') {
+              entry.aiStatus = 'error'
+              needsRender = true
+            }
+          })
+          if (needsRender) {
+            renderMatchResults(resultEntries)
+          }
+          return
+        }
+        pendingEntries.forEach((entry) => {
+          entry.aiStatus = 'loading'
+        })
+        renderMatchResults(resultEntries)
+        const requestId = ++matchLatestAiRequestId
+        const requestedIds = new Set(requestPayload.candidates.map((candidate) => candidate.id))
+        fetchMatchAiSummaries(requestPayload)
+          .then((data) => {
+            if (requestId !== matchLatestAiRequestId) return
+            applyMatchAiSummaries(targetRecord, data?.summaries || {})
+          })
+          .catch((error) => {
+            if (error?.code === 'ai_disabled') {
+              matchAiFeatureDisabled = true
+              matchLatestResults = (matchLatestResults || []).map((entry) =>
+                entry.aiStatus === 'loading' ? { ...entry, aiStatus: 'idle' } : entry,
+              )
+              renderMatchResults(matchLatestResults)
+              return
+            }
+            if (requestId !== matchLatestAiRequestId) return
+            let shouldRender = false
+            matchLatestResults = (matchLatestResults || []).map((entry) => {
+              const candidateKey = getMatchCandidateKey(entry?.candidate)
+              if (!candidateKey || !requestedIds.has(candidateKey)) {
+                return entry
+              }
+              if (entry.aiStatus === 'loading') {
+                shouldRender = true
+                return { ...entry, aiStatus: 'error' }
+              }
+              return entry
+            })
+            if (shouldRender) {
+              renderMatchResults(matchLatestResults)
+            }
+            console.warn('[match-ai] 추천 멘트 생성 실패', error)
+          })
+      }
+
+      function buildMatchAiRequestPayload(targetRecord, entries) {
+        const targetPayload = buildMatchAiTargetPayload(targetRecord)
+        if (!targetPayload) return null
+        const seen = new Set()
+        const candidates = []
+        for (const entry of entries) {
+          if (candidates.length >= MATCH_AI_MAX_REQUEST) break
+          const candidatePayload = buildMatchAiCandidatePayload(entry)
+          if (!candidatePayload || seen.has(candidatePayload.id)) continue
+          candidates.push(candidatePayload)
+          seen.add(candidatePayload.id)
+        }
+        if (!candidates.length) return null
+        return {
+          target: targetPayload,
+          candidates,
+        }
+      }
+
+      function buildMatchAiTargetPayload(record) {
+        if (!record) return null
+        const id = getMatchCandidateKey(record)
+        if (!id) return null
+        return {
+          id,
+          name: record.name || '',
+          gender: record.gender || '',
+          birth: record.birth || '',
+          height: record.height || '',
+          job: record.job || '',
+          mbti: record.mbti || '',
+          district: record.district || '',
+          preferredHeights: Array.isArray(record.preferredHeights) ? record.preferredHeights : [],
+          preferredAges: Array.isArray(record.preferredAges) ? record.preferredAges : [],
+          preferredLifestyle: Array.isArray(record.preferredLifestyle)
+            ? record.preferredLifestyle
+            : [],
+        }
+      }
+
+      function buildMatchAiCandidatePayload(entry) {
+        if (!entry || !entry.candidate) return null
+        const id = getMatchCandidateKey(entry.candidate)
+        if (!id) return null
+        return {
+          id,
+          name: entry.candidate.name || '',
+          gender: entry.candidate.gender || '',
+          birth: entry.candidate.birth || '',
+          height: entry.candidate.height || '',
+          job: entry.candidate.job || '',
+          mbti: entry.candidate.mbti || '',
+          reasons: Array.isArray(entry.reasons) ? entry.reasons : [],
+          score: entry.score || 0,
+        }
+      }
+
+      async function fetchMatchAiSummaries(payload) {
+        const response = await fetch(MATCH_AI_SUMMARY_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        const body = await response.json().catch(() => ({}))
+        if (!response.ok || !body?.ok) {
+          const error = new Error(body?.message || 'AI 추천 멘트를 생성하지 못했습니다.')
+          error.code = body?.code || ''
+          throw error
+        }
+        return body.data || {}
+      }
+
+      function applyMatchAiSummaries(targetRecord, summariesMap) {
+        if (!targetRecord || !summariesMap || !matchLatestResults?.length) return
+        let shouldRender = false
+        matchLatestResults = matchLatestResults.map((entry) => {
+          const candidateKey = getMatchCandidateKey(entry?.candidate)
+          if (!candidateKey) return entry
+          const summary = summariesMap[candidateKey]
+          if (!summary) return entry
+          const cacheKey = buildMatchAiCacheKey(targetRecord, entry.candidate)
+          if (cacheKey) {
+            matchAiInsightCache.set(cacheKey, summary)
+          }
+          if (entry.aiSummary === summary && entry.aiStatus === 'ready') return entry
+          shouldRender = true
+          return {
+            ...entry,
+            aiSummary: summary,
+            aiStatus: 'ready',
+          }
+        })
+        if (shouldRender) {
+          renderMatchResults(matchLatestResults)
+        }
+      }
+
+      function getCachedMatchAiSummary(targetRecord, candidateRecord) {
+        const cacheKey = buildMatchAiCacheKey(targetRecord, candidateRecord)
+        if (!cacheKey) return ''
+        return matchAiInsightCache.get(cacheKey) || ''
+      }
+
+      function buildMatchAiCacheKey(targetRecord, candidateRecord) {
+        const targetKey = getMatchCandidateKey(targetRecord)
+        const candidateKey = getMatchCandidateKey(candidateRecord)
+        if (!targetKey || !candidateKey) return ''
+        const targetVersion = targetRecord?.updatedAt || targetRecord?.matchedAt || ''
+        const candidateVersion = candidateRecord?.updatedAt || candidateRecord?.matchedAt || ''
+        return `${targetKey}:${targetVersion}|${candidateKey}:${candidateVersion}`
+      }
+
+      function getMatchCandidateKey(record) {
+        if (!record || typeof record !== 'object') return ''
+        return record.id || normalizePhoneKey(record.phone) || ''
       }
 
       function getHeightMatch(preferences, heightValue) {

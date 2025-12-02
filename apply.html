@@ -208,9 +208,8 @@
       }
 
       .matches-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(320px, 360px));
-        justify-content: center;
+        display: flex;
+        flex-wrap: wrap;
         gap: 24px;
       }
 
@@ -220,6 +219,9 @@
         gap: 18px;
         perspective: 1600px;
         overflow: visible;
+        flex: 1 1 calc((100% - 48px) / 3);
+        min-width: 260px;
+        max-width: 360px;
       }
 
       .match-card-tagline {
@@ -286,8 +288,8 @@
       }
 
       .match-card.match-card-incoming .match-card-cover {
-        background: radial-gradient(circle at top, rgba(16, 185, 129, 0.75), rgba(15, 23, 42, 0.95));
-        box-shadow: 0 20px 55px rgba(16, 185, 129, 0.35);
+        background: radial-gradient(circle at top, rgba(244, 114, 182, 0.85), rgba(190, 24, 93, 0.95));
+        box-shadow: 0 20px 55px rgba(244, 114, 182, 0.4);
       }
 
       .match-card-cover span {
@@ -456,34 +458,64 @@
         border-color: #166534;
       }
 
-      .incoming-requests {
-        margin-top: 48px;
-        padding: 28px;
-        border-radius: 24px;
-        border: 1px solid rgba(83, 119, 246, 0.16);
-        background: rgba(83, 119, 246, 0.04);
+      .match-card-select-btn.incoming-select-btn {
+        background: #f472b6;
+        border-color: #ec4899;
+        color: #fff;
+        box-shadow: 0 12px 24px rgba(244, 114, 182, 0.35);
       }
 
+      .match-card-select-btn.incoming-select-btn:hover {
+        background: #ec4899;
+        border-color: #db2777;
+      }
+
+      .incoming-section {
+        margin-top: 56px;
+      }
+      .incoming-divider {
+        width: 100%;
+        height: 1px;
+        background: rgba(83, 119, 246, 0.2);
+        margin-bottom: 16px;
+      }
       .incoming-header {
         display: flex;
-        align-items: baseline;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 12px;
-        margin-bottom: 20px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        margin-bottom: 28px;
+        text-align: left;
       }
 
       .incoming-eyebrow {
         margin: 0;
-        font-size: 13px;
-        letter-spacing: 0.25em;
+        font-size: 16px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
         color: #5377f6;
+        font-weight: 500;
+      }
+
+      .incoming-title-row {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+        text-align: left;
+      }
+
+      .incoming-title-row h3 {
+        margin: 8px 0 0;
+        font-size: clamp(24px, 5vw, 36px);
+        color: #4f4f4f;
+        font-weight: 700;
       }
 
       .incoming-subtitle {
-        margin: 4px 0 0;
-        color: #475569;
-        font-size: 15px;
+        margin: 0;
+        color: #7e7e7e;
+        font-size: 16px;
       }
 
       .incoming-empty {
@@ -952,17 +984,17 @@
           </div>
         </div>
         <div class="matches-grid" id="matchCards"></div>
-        <section class="incoming-requests" id="incomingRequestsSection" hidden>
+        <div class="incoming-section" id="incomingSection" hidden>
           <header class="incoming-header">
-            <p class="incoming-eyebrow">[추가 카드]</p>
-            <div>
+            <div class="incoming-divider"></div>
+            <div class="incoming-title-row">
               <h3>나와 연결되고 싶은 사람</h3>
               <p class="incoming-subtitle">실시간 요청 카드</p>
             </div>
           </header>
           <div class="matches-grid" id="incomingCards"></div>
           <p class="incoming-empty" id="incomingEmpty">아직 도착한 실시간 요청 카드가 없습니다.</p>
-        </section>
+        </div>
       </section>
     </main>
     <div class="contact-modal-overlay" id="contactModal" hidden>
@@ -1075,7 +1107,7 @@
         const resultMeta = document.getElementById('resultMeta')
         const weekLabel = document.getElementById('weekLabel')
         const matchCards = document.getElementById('matchCards')
-        const incomingSection = document.getElementById('incomingRequestsSection')
+        const incomingSection = document.getElementById('incomingSection')
         const incomingCards = document.getElementById('incomingCards')
         const incomingEmpty = document.getElementById('incomingEmpty')
         const contactModal = document.getElementById('contactModal')
@@ -1085,6 +1117,12 @@
         const contactModalCloseBtn = document.getElementById('contactModalCloseBtn')
         const MATCH_MANAGER_URL =
           (window.MATCH_MANAGER_URL && String(window.MATCH_MANAGER_URL).trim()) || ''
+        const FIRST_UNLOCK_TIMESTAMP = new Date('2025-12-03T10:00:00+09:00').getTime()
+        const WEEK_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000
+        const UNLOCK_MESSAGE = '12월 3일 (수) 오전 10시부터 확인이 가능합니다.'
+        const NEXT_UNLOCK_MESSAGE = '12월 10일 (수) 오전 10시부터 확인이 가능합니다.'
+        const ACCESS_WINDOW_MS = 72 * 60 * 60 * 1000
+        const ACCESS_GRANTS_STORAGE_KEY = 'match_access_grants_v1'
         let currentTargetProfile = null
         let matchPopupTimer = null
         let lastLookupPhoneKey = ''
@@ -1096,6 +1134,8 @@
           contactById: new Map(),
           currentDeckIds: new Set(),
         }
+        const PENDING_SELECTIONS_STORAGE_KEY = 'match_pending_selections_v1'
+        let pendingSelectionSet = new Set()
         contactModalCloseBtn?.addEventListener('click', hideContactModal)
         contactModal?.addEventListener('click', (event) => {
           if (event.target === contactModal) {
@@ -1114,6 +1154,39 @@
         const MATCH_LOOKUP_URL = `${(resolvedOrigin || '').replace(/\/$/, '') || ''}/api/match-history/lookup`
 
         form?.addEventListener('submit', handleSubmit)
+        checkInitialUnlockState()
+
+        function getCurrentUnlockTime(now = Date.now()) {
+          if (!Number.isFinite(FIRST_UNLOCK_TIMESTAMP)) return 0
+          if (now < FIRST_UNLOCK_TIMESTAMP) {
+            return FIRST_UNLOCK_TIMESTAMP
+          }
+          const weeksSinceFirst = Math.floor((now - FIRST_UNLOCK_TIMESTAMP) / WEEK_INTERVAL_MS)
+          return FIRST_UNLOCK_TIMESTAMP + weeksSinceFirst * WEEK_INTERVAL_MS
+        }
+
+        function getNextUnlockMessage(now = Date.now()) {
+          const currentUnlock = getCurrentUnlockTime(now)
+          const nextUnlock = currentUnlock + WEEK_INTERVAL_MS
+          const date = new Date(nextUnlock)
+          const formatter = new Intl.DateTimeFormat('ko-KR', {
+            month: 'long',
+            day: 'numeric',
+            weekday: 'short',
+            hour: 'numeric',
+            minute: 'numeric',
+            hour12: false,
+          })
+          return `${formatter.format(date)}부터 확인이 가능합니다.`
+        }
+
+        function checkInitialUnlockState() {
+          const now = Date.now()
+          const unlockTime = getCurrentUnlockTime(now)
+          if (unlockTime && now < unlockTime) {
+            showMessage(UNLOCK_MESSAGE, true)
+          }
+        }
 
         async function handleSubmit(event) {
           event.preventDefault()
@@ -1123,7 +1196,23 @@
             showMessage('전화번호를 입력해주세요.', true)
             return
           }
+          const now = Date.now()
+          const unlockTime = getCurrentUnlockTime(now)
+          if (unlockTime && now < unlockTime) {
+            showMessage(UNLOCK_MESSAGE, true)
+            return
+          }
+          const grant = loadAccessGrant(phone)
+          if (grant && now - grant < ACCESS_WINDOW_MS) {
+            // ok
+          } else if (grant && now - grant >= ACCESS_WINDOW_MS) {
+            showMessage(`이번주 소개 기간이 종료되었습니다. ${getNextUnlockMessage(now)}`, true)
+            return
+          } else {
+            saveAccessGrant(phone, now)
+          }
           lastLookupPhoneKey = phone
+          pendingSelectionSet = loadPendingSelections(lastLookupPhoneKey)
           setLoading(true)
           showMessage('')
           try {
@@ -1193,6 +1282,7 @@
             ? data.confirmedMatchCards
             : []
           syncMatchState({ incomingRequests, matchedCandidates: matchedContacts })
+          cleanupPendingSelections()
           const targetName = data?.target?.name || '회원님'
           const nameWithHonorific = targetName.endsWith('님') ? targetName : `${targetName}님`
           resultTitle.textContent = `${nameWithHonorific}을 위한 추천`
@@ -1209,9 +1299,14 @@
             if (candidateId) {
               matchState.currentDeckIds.add(candidateId)
             }
+            const isPendingSelection =
+              candidateId &&
+              pendingSelectionSet.has(candidateId) &&
+              !matchState.confirmedById.has(candidateId)
             const card = renderMatchCard(record, index + 1, {
               initialContact: matchState.confirmedById.get(candidateId),
               incomingRequest: matchState.incomingById.get(candidateId),
+              pendingSelection: isPendingSelection,
             })
             if (card) {
               matchCards.appendChild(card)
@@ -1318,6 +1413,7 @@
             coverSubtitle = null,
             incomingRequest = null,
             initialContact = null,
+            pendingSelection = false,
           } = options
           const wrapper = document.createElement('article')
           wrapper.className = ['match-card', isIncomingOnly ? 'match-card-incoming' : '']
@@ -1362,9 +1458,26 @@
           wrapper.appendChild(preview)
           const actions = document.createElement('div')
           actions.className = 'match-card-actions'
-          const actionButton = createMatchSelectButton(record, candidateId, matchEntryId)
+          const actionButton = createMatchSelectButton(record, candidateId, matchEntryId, {
+            isIncomingOnly,
+          })
           if (initialContact) {
             setButtonContactData(actionButton, initialContact)
+          }
+          if (pendingSelection && !matchState.confirmedById.has(candidateId)) {
+            markMatchButtonCompleted(actionButton, { mutual: false })
+            revealMatchCard(wrapper)
+          }
+          if (
+            matchState.confirmedById.has(candidateId) ||
+            matchedCandidateIds.has(candidateId) ||
+            (record.matchCategory && String(record.matchCategory).toLowerCase() === 'confirmed')
+          ) {
+            markMatchButtonCompleted(actionButton, {
+              mutual: true,
+              contact: matchState.contactById.get(candidateId) || initialContact || getContactInfo(candidateId),
+            })
+            revealMatchCard(wrapper)
           }
           actions.appendChild(actionButton)
           preview.insertAdjacentElement('afterend', actions)
@@ -1382,12 +1495,7 @@
           if (!alreadyMatched) return
           const contactInfo = getContactInfo(candidateKey)
           markMatchButtonCompleted(button, { mutual: true, contact: contactInfo })
-          wrapper.classList.add('is-open')
-          const cover = wrapper.querySelector('.match-card-cover')
-          if (cover) {
-            cover.style.opacity = '0'
-            cover.style.pointerEvents = 'none'
-          }
+          revealMatchCard(wrapper)
         }
 
 
@@ -1526,11 +1634,16 @@
           `
         }
 
-        function createMatchSelectButton(record, candidateId, matchEntryId) {
+        function createMatchSelectButton(record, candidateId, matchEntryId, options = {}) {
           const button = document.createElement('button')
           button.type = 'button'
           button.className = 'match-card-select-btn'
-          button.textContent = '매칭 선택하기'
+          if (options.isIncomingOnly) {
+            button.classList.add('incoming-select-btn')
+            button.textContent = '매칭 수락하기'
+          } else {
+            button.textContent = '매칭 선택하기'
+          }
           const targetReady = currentTargetProfile && currentTargetProfile.id
           const candidateKey = candidateId ? String(candidateId) : ''
           if (!targetReady || !candidateKey) {
@@ -1584,13 +1697,15 @@
             })
             if (hasIncomingRequest) {
               matchedCandidateIds.add(candidateKey)
-              matchState.incomingById.delete(candidateKey)
-              matchState.incomingList = matchState.incomingList.filter(
-                (req) => req?.requesterId !== candidateKey,
-              )
-              renderIncomingRequests()
+              if (pendingSelectionSet.delete(candidateKey)) {
+                savePendingSelections(lastLookupPhoneKey, pendingSelectionSet)
+              }
+            } else if (candidateKey) {
+              if (!pendingSelectionSet.has(candidateKey)) {
+                pendingSelectionSet.add(candidateKey)
+                savePendingSelections(lastLookupPhoneKey, pendingSelectionSet)
+              }
             }
-            showMatchConfirmationPopup()
             window.requestAnimationFrame(() => {
               window.scrollTo(0, originalScrollY)
               const newButtonTop = button?.getBoundingClientRect()?.top || originalButtonTop
@@ -1723,6 +1838,81 @@
           delete button.dataset.contactName
           delete button.dataset.contactPhone
           delete button.dataset.contactPhoneMasked
+        }
+
+        function loadAccessGrant(phoneKey) {
+          if (!phoneKey) return null
+          try {
+            const raw = localStorage.getItem(ACCESS_GRANTS_STORAGE_KEY)
+            if (!raw) return null
+            const parsed = JSON.parse(raw)
+            const grant = parsed?.[phoneKey]
+            return typeof grant === 'number' && Number.isFinite(grant) ? grant : null
+          } catch (error) {
+            console.warn('[match:access] 불러오기 실패', error)
+            return null
+          }
+        }
+
+        function saveAccessGrant(phoneKey, timestamp) {
+          if (!phoneKey || !Number.isFinite(timestamp)) return
+          try {
+            const raw = localStorage.getItem(ACCESS_GRANTS_STORAGE_KEY)
+            const data = raw ? JSON.parse(raw) : {}
+            data[phoneKey] = timestamp
+            localStorage.setItem(ACCESS_GRANTS_STORAGE_KEY, JSON.stringify(data))
+          } catch (error) {
+            console.warn('[match:access] 저장 실패', error)
+          }
+        }
+
+        function revealMatchCard(wrapper) {
+          if (!wrapper) return
+          wrapper.classList.add('is-open')
+          const cover = wrapper.querySelector('.match-card-cover')
+          if (cover) {
+            cover.style.opacity = '0'
+            cover.style.pointerEvents = 'none'
+          }
+        }
+
+        function loadPendingSelections(phoneKey) {
+          if (!phoneKey) return new Set()
+          try {
+            const raw = localStorage.getItem(PENDING_SELECTIONS_STORAGE_KEY)
+            if (!raw) return new Set()
+            const parsed = JSON.parse(raw)
+            const list = Array.isArray(parsed?.[phoneKey]) ? parsed[phoneKey] : []
+            return new Set(list.filter(Boolean))
+          } catch (error) {
+            console.warn('[match:pending] 불러오기 실패', error)
+            return new Set()
+          }
+        }
+
+        function savePendingSelections(phoneKey, set) {
+          if (!phoneKey) return
+          try {
+            const raw = localStorage.getItem(PENDING_SELECTIONS_STORAGE_KEY)
+            const data = raw ? JSON.parse(raw) : {}
+            data[phoneKey] = Array.from(set)
+            localStorage.setItem(PENDING_SELECTIONS_STORAGE_KEY, JSON.stringify(data))
+          } catch (error) {
+            console.warn('[match:pending] 저장 실패', error)
+          }
+        }
+
+        function cleanupPendingSelections() {
+          if (!lastLookupPhoneKey || !pendingSelectionSet.size) return
+          let changed = false
+          matchState.confirmedById.forEach((_, candidateId) => {
+            if (pendingSelectionSet.delete(candidateId)) {
+              changed = true
+            }
+          })
+          if (changed) {
+            savePendingSelections(lastLookupPhoneKey, pendingSelectionSet)
+          }
         }
 
         function getButtonContactData(button) {
