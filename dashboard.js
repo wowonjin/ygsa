@@ -6235,6 +6235,7 @@
             week: weekInfo.week,
           },
           category: MATCH_HISTORY_CATEGORY.INTRO,
+          targetSelected: false,
         }
       }
 
@@ -6833,6 +6834,7 @@
           candidatePhone,
           targetName: entry.target?.name || targetRecord?.name || '',
           targetGender: entry.target?.gender || targetRecord?.gender || '',
+          targetSelected: Boolean(entry.targetSelected),
         }
       }
 

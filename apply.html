@@ -1117,6 +1117,12 @@
         const contactModalCloseBtn = document.getElementById('contactModalCloseBtn')
         const MATCH_MANAGER_URL =
           (window.MATCH_MANAGER_URL && String(window.MATCH_MANAGER_URL).trim()) || ''
+        const ADMIN_OVERRIDE_PHONES = new Set([
+          '01086116390',
+          '01025157369',
+          '01091457553',
+          '01091401123',
+        ])
         const FIRST_UNLOCK_TIMESTAMP = new Date('2025-12-03T10:00:00+09:00').getTime()
         const WEEK_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000
         const UNLOCK_MESSAGE = '12월 3일 (수) 오전 10시부터 확인이 가능합니다.'
@@ -1188,28 +1194,36 @@
           }
         }
 
+        function isAdminOverridePhone(phoneDigits) {
+          const key = String(phoneDigits || '').trim()
+          return key ? ADMIN_OVERRIDE_PHONES.has(key) : false
+        }
+
         async function handleSubmit(event) {
           event.preventDefault()
           if (!phoneInput) return
           const phone = phoneInput.value.replace(/[^0-9]/g, '').trim()
+          const isAdminOverride = isAdminOverridePhone(phone)
           if (!phone) {
             showMessage('전화번호를 입력해주세요.', true)
             return
           }
           const now = Date.now()
           const unlockTime = getCurrentUnlockTime(now)
-          if (unlockTime && now < unlockTime) {
+          if (unlockTime && now < unlockTime && !isAdminOverride) {
             showMessage(UNLOCK_MESSAGE, true)
             return
           }
-          const grant = loadAccessGrant(phone)
-          if (grant && now - grant < ACCESS_WINDOW_MS) {
-            // ok
-          } else if (grant && now - grant >= ACCESS_WINDOW_MS) {
-            showMessage(`이번주 소개 기간이 종료되었습니다. ${getNextUnlockMessage(now)}`, true)
-            return
-          } else {
-            saveAccessGrant(phone, now)
+          if (!isAdminOverride) {
+            const grant = loadAccessGrant(phone)
+            if (grant && now - grant < ACCESS_WINDOW_MS) {
+              // ok
+            } else if (grant && now - grant >= ACCESS_WINDOW_MS) {
+              showMessage(`이번주 소개 기간이 종료되었습니다. ${getNextUnlockMessage(now)}`, true)
+              return
+            } else {
+              saveAccessGrant(phone, now)
+            }
           }
           lastLookupPhoneKey = phone
           pendingSelectionSet = loadPendingSelections(lastLookupPhoneKey)
@@ -1294,15 +1308,22 @@
 
           matchCards.innerHTML = ''
           matchState.currentDeckIds = new Set()
+          let pendingSelectionsDirty = false
           matches.forEach((record, index) => {
             const candidateId = getCandidateIdentifier(record)
             if (candidateId) {
               matchState.currentDeckIds.add(candidateId)
             }
-            const isPendingSelection =
+            const isServerRecordedSelection =
               candidateId &&
-              pendingSelectionSet.has(candidateId) &&
+              Boolean(record?.targetSelected) &&
               !matchState.confirmedById.has(candidateId)
+            if (isServerRecordedSelection && candidateId && pendingSelectionSet.delete(candidateId)) {
+              pendingSelectionsDirty = true
+            }
+            const isPendingSelection =
+              !matchState.confirmedById.has(candidateId) &&
+              ((candidateId && pendingSelectionSet.has(candidateId)) || isServerRecordedSelection)
             const card = renderMatchCard(record, index + 1, {
               initialContact: matchState.confirmedById.get(candidateId),
               incomingRequest: matchState.incomingById.get(candidateId),
@@ -1337,6 +1358,9 @@
             heroSection.hidden = true
           }
           resultsSection.hidden = false
+          if (pendingSelectionsDirty && lastLookupPhoneKey) {
+            savePendingSelections(lastLookupPhoneKey, pendingSelectionSet)
+          }
         }
 
         function syncMatchedCandidateIds(ids = []) {
@@ -1756,6 +1780,7 @@
             candidatePhone,
             targetName,
             targetGender,
+            targetSelected: true,
           }
         }
 

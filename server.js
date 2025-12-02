@@ -481,6 +481,7 @@ app.post('/api/match-history/lookup', async (req, res) => {
           matchRecordedAt: entry.matchedAt,
           matchCandidateId: entry.candidateId,
           matchCategory: sanitizeMatchHistoryCategory(entry.category),
+          targetSelected: Boolean(entry.targetSelected),
         }
       })
       .filter(Boolean)
@@ -497,6 +498,7 @@ app.post('/api/match-history/lookup', async (req, res) => {
             matchRecordedAt: entry.matchedAt,
             matchCandidateId: entry.candidateId,
             matchCategory: sanitizeMatchHistoryCategory(entry.category),
+            targetSelected: Boolean(entry.targetSelected),
           }
         }),
         matchedCandidateIds,
@@ -948,6 +950,12 @@ function sanitizeMatchHistoryPayload(body) {
   return normalizeMatchHistoryEntry(body)
 }
 
+function normalizeBooleanFlag(value) {
+  if (value === true || value === 'true' || value === 1 || value === '1') return true
+  if (value === false || value === 'false' || value === 0 || value === '0') return false
+  return Boolean(value)
+}
+
 function normalizeMatchHistoryEntry(entry) {
   if (!entry || typeof entry !== 'object') return null
   const candidateId = sanitizeText(entry.candidateId)
@@ -963,6 +971,7 @@ function normalizeMatchHistoryEntry(entry) {
   const candidatePhone = normalizePhoneNumber(entry.candidatePhone || entry.candidate?.phone)
   const targetName = sanitizeText(entry.targetName || entry.target?.name)
   const targetGender = sanitizeText(entry.targetGender || entry.target?.gender)
+  const targetSelected = normalizeBooleanFlag(entry.targetSelected)
   return {
     id: sanitizeText(entry.id) || `match_${nanoid()}`,
     candidateId,
@@ -976,6 +985,7 @@ function normalizeMatchHistoryEntry(entry) {
     candidatePhone,
     targetName,
     targetGender,
+    targetSelected,
   }
 }
 
@@ -1033,6 +1043,13 @@ function mergeMatchHistoryEntries(existing = {}, incoming = {}) {
   if (!hasContent(merged.matchedAt) && hasContent(existing.matchedAt)) {
     merged.matchedAt = existing.matchedAt
   }
+  if (incoming.targetSelected !== undefined) {
+    merged.targetSelected = normalizeBooleanFlag(incoming.targetSelected)
+  } else if (existing.targetSelected !== undefined) {
+    merged.targetSelected = normalizeBooleanFlag(existing.targetSelected)
+  } else {
+    merged.targetSelected = false
+  }
   return merged
 }
 
@@ -1082,7 +1099,7 @@ function buildIncomingRequestsPayload({ viewer, records, history }) {
   if (!viewerId) return []
   const requestMap = new Map()
   history
-    .filter((entry) => entry?.candidateId === viewerId)
+    .filter((entry) => entry?.candidateId === viewerId && entry?.targetSelected)
     .forEach((entry) => {
       const requester = records.find((item) => item.id === entry.targetId)
       if (!requester) return
