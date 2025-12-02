@@ -445,9 +445,14 @@
       const detailPaymentDateInput = document.getElementById('detailPaymentDate')
       const detailPaymentAddBtn = document.getElementById('detailPaymentAddBtn')
       const detailNotesInput = document.getElementById('detailNotes')
+      const detailPaymentTotalEl = document.getElementById('detailPaymentTotal')
       const matchFeedbackList = document.getElementById('matchFeedbackList')
       const matchFeedbackEmptyState = document.getElementById('matchFeedbackEmpty')
-      const matchFeedbackSection = document.querySelector('.detail-match-feedback')
+      const matchFeedbackRoundInput = document.getElementById('matchFeedbackRound')
+      const matchFeedbackPartnerInput = document.getElementById('matchFeedbackPartner')
+      const matchFeedbackRatingSelect = document.getElementById('matchFeedbackRating')
+      const matchFeedbackNoteInput = document.getElementById('matchFeedbackNote')
+      const matchFeedbackSaveBtn = document.getElementById('matchFeedbackSaveBtn')
       const moimDetailView = document.getElementById('moimDetailView')
       const detailScheduleInfo = document.getElementById('detailScheduleInfo')
       const detailAttachmentsSection = document.getElementById('detailAttachmentsSection')
@@ -696,13 +701,19 @@
       detailDateInput.addEventListener('change', handleDetailDateChange)
       detailTimeSelect.addEventListener('change', handleDetailTimeChange)
       detailClearScheduleBtn.addEventListener('click', handleClearSchedule)
-      matchFeedbackSection?.addEventListener('click', (event) => {
+      matchFeedbackSaveBtn?.addEventListener('click', (event) => {
+        event.preventDefault()
+        handleMatchFeedbackSave()
+      })
+      matchFeedbackList?.addEventListener('click', (event) => {
         const target = event.target instanceof Element ? event.target : null
         if (!target) return
-        const addButton = target.closest('.match-feedback-add')
-        if (addButton) {
-          event.preventDefault()
-          addMatchFeedbackEntry()
+        const deleteButton = target.closest('.match-feedback-entry-delete')
+        if (deleteButton) {
+          const entry = deleteButton.closest('.match-feedback-entry')
+          entry?.remove()
+          updateMatchFeedbackEmptyState()
+          resetMatchFeedbackForm()
         }
       })
       detailPhotoFaceBtn?.addEventListener('click', () => detailPhotoFaceInput?.click())
@@ -1673,88 +1684,88 @@
         if (!matchFeedbackEmptyState) return
         const hasItems = Boolean(
           matchFeedbackList?.querySelector &&
-            matchFeedbackList.querySelector('.match-feedback-item'),
+            matchFeedbackList.querySelector('.match-feedback-entry'),
         )
         matchFeedbackEmptyState.hidden = hasItems
       }
 
-      function buildRatingOptions(selectedRating) {
-        return [1, 2, 3, 4, 5]
-          .map((value) => {
-            const isSelected = Number(selectedRating) === value ? 'selected' : ''
-            return `<option value="${value}" ${isSelected}>${value}점</option>`
-          })
-          .join('')
+      function encodeFeedbackComment(value) {
+        return encodeURIComponent(value || '')
       }
 
-      function addMatchFeedbackEntry(entry = {}) {
-        if (!matchFeedbackList) return null
-        const currentCount = matchFeedbackList.querySelectorAll('.match-feedback-item').length
-        if (!entry.id && currentCount >= MATCH_FEEDBACK_MAX) {
-          showToast(`후기는 최대 ${MATCH_FEEDBACK_MAX}개까지 추가할 수 있습니다.`)
-          return null
+      function decodeFeedbackComment(value) {
+        if (!value) return ''
+        try {
+          return decodeURIComponent(value)
+        } catch (error) {
+          return value
         }
-        const id = typeof entry.id === 'string' && entry.id ? entry.id : generateMatchFeedbackId()
-        const roundLabelRaw =
+      }
+
+      function getMatchFeedbackEntryCount() {
+        if (!matchFeedbackList) return 0
+        return matchFeedbackList.querySelectorAll('.match-feedback-entry').length
+      }
+
+      function formatMatchFeedbackComment(comment) {
+        if (!comment) {
+          return '<span class="match-feedback-entry-comment-empty">내용 미입력</span>'
+        }
+        return escapeHtml(comment).replace(/\n/g, '<br />')
+      }
+
+      function createMatchFeedbackEntryElement(entry) {
+        const item = document.createElement('li')
+        item.className = 'match-feedback-entry'
+        const entryId = typeof entry.id === 'string' && entry.id ? entry.id : generateMatchFeedbackId()
+        const roundLabel =
           typeof entry.roundLabel === 'string' && entry.roundLabel.trim()
-            ? entry.roundLabel
-            : `${currentCount + 1}회차`
-        const partnerName = entry.partnerName || ''
+            ? entry.roundLabel.trim()
+            : '회차 미입력'
+        const partnerName = typeof entry.partnerName === 'string' ? entry.partnerName.trim() : ''
         const ratingValue = Number(entry.rating)
-        const comment = entry.comment || ''
+        const hasRating = Number.isFinite(ratingValue) && ratingValue >= 1 && ratingValue <= 5
+        const comment = typeof entry.comment === 'string' ? entry.comment : ''
         const recordedAt = entry.recordedAt || ''
-        const item = document.createElement('div')
-        item.className = 'match-feedback-item'
-        item.dataset.feedbackId = id
-        if (recordedAt) {
-          item.dataset.recordedAt = recordedAt
+        item.dataset.feedbackId = entryId
+        item.dataset.roundLabel = roundLabel
+        item.dataset.partnerName = partnerName
+        item.dataset.rating = hasRating ? String(ratingValue) : ''
+        item.dataset.comment = encodeFeedbackComment(comment)
+        item.dataset.recordedAt = recordedAt
+        const details = []
+        if (partnerName) {
+          details.push(`<span>${escapeHtml(partnerName)}</span>`)
         }
+        if (hasRating) {
+          details.push(`<span class="match-feedback-entry-score">평점 ${ratingValue}점</span>`)
+        }
+        const timestampLabel = recordedAt ? formatDate(recordedAt) : ''
         item.innerHTML = `
-          <div class="match-feedback-row">
-            <label>
-              회차
-              <input
-                type="text"
-                class="match-feedback-round"
-                placeholder="예: 1회차"
-                value="${escapeHtml(roundLabelRaw)}"
-              />
-            </label>
-            <label>
-              평점
-              <select class="match-feedback-rating">
-                <option value="">선택</option>
-                ${buildRatingOptions(ratingValue)}
-              </select>
-            </label>
-            <label>
-              상대 이름
-              <input
-                type="text"
-                class="match-feedback-partner"
-                placeholder="예: 김연결"
-                value="${escapeHtml(partnerName)}"
-              />
-            </label>
-            <div class="match-feedback-actions">
-              <button type="button" class="match-feedback-add" aria-label="후기 추가">추가하기</button>
-              <button type="button" class="match-feedback-remove" aria-label="후기 삭제">삭제</button>
+          <div class="match-feedback-entry-head">
+            <div class="match-feedback-entry-details">
+              <strong>${escapeHtml(roundLabel)}</strong>
+              ${details.join('')}
+            </div>
+            <div class="match-feedback-entry-actions">
+              ${
+                timestampLabel
+                  ? `<span class="match-feedback-entry-time">${escapeHtml(timestampLabel)}</span>`
+                  : ''
+              }
+              <button type="button" class="match-feedback-entry-delete" aria-label="후기 삭제">
+                삭제
+              </button>
             </div>
           </div>
-          <label class="match-feedback-note-label">
-            후기
-            <textarea
-              class="match-feedback-note"
-              rows="3"
-              placeholder="만남 기록을 적어주세요."
-            >${escapeHtml(comment)}</textarea>
-          </label>
+          <p class="match-feedback-entry-comment">${formatMatchFeedbackComment(comment)}</p>
         `
-        const removeBtn = item.querySelector('.match-feedback-remove')
-        removeBtn?.addEventListener('click', () => {
-          item.remove()
-          updateMatchFeedbackEmptyState()
-        })
+        return item
+      }
+
+      function appendMatchFeedbackEntry(entry) {
+        if (!matchFeedbackList) return null
+        const item = createMatchFeedbackEntryElement(entry)
         matchFeedbackList.appendChild(item)
         updateMatchFeedbackEmptyState()
         return item
@@ -1763,35 +1774,77 @@
       function renderMatchFeedbackEntries(entries) {
         if (!matchFeedbackList) return
         clearMatchFeedbackEntries()
-        const source = Array.isArray(entries) && entries.length ? entries.slice() : []
+        const source = Array.isArray(entries) ? entries.slice() : []
         if (source.length) {
           source
             .sort((a, b) => (Number(a.sequence) || 0) - (Number(b.sequence) || 0))
-            .forEach((entry) => addMatchFeedbackEntry(entry))
-        } else {
-          addMatchFeedbackEntry({ roundLabel: '1회차' })
+            .forEach((entry) => appendMatchFeedbackEntry(entry))
         }
         updateMatchFeedbackEmptyState()
+        resetMatchFeedbackForm()
+      }
+
+      function resetMatchFeedbackForm() {
+        const nextIndex = getMatchFeedbackEntryCount() + 1
+        if (matchFeedbackRoundInput) {
+          matchFeedbackRoundInput.value = `${nextIndex}회차`
+        }
+        if (matchFeedbackPartnerInput) {
+          matchFeedbackPartnerInput.value = ''
+        }
+        if (matchFeedbackRatingSelect) {
+          matchFeedbackRatingSelect.value = ''
+        }
+        if (matchFeedbackNoteInput) {
+          matchFeedbackNoteInput.value = ''
+        }
+      }
+
+      resetMatchFeedbackForm()
+
+      function handleMatchFeedbackSave() {
+        if (!matchFeedbackList) return
+        const currentCount = getMatchFeedbackEntryCount()
+        if (currentCount >= MATCH_FEEDBACK_MAX) {
+          showToast(`후기는 최대 ${MATCH_FEEDBACK_MAX}개까지 저장할 수 있습니다.`)
+          return
+        }
+        const roundLabel = matchFeedbackRoundInput?.value.trim() || ''
+        const partnerName = matchFeedbackPartnerInput?.value.trim() || ''
+        const comment = matchFeedbackNoteInput?.value.trim() || ''
+        const ratingValueRaw = Number(matchFeedbackRatingSelect?.value)
+        const ratingValue =
+          Number.isFinite(ratingValueRaw) && ratingValueRaw >= 1 && ratingValueRaw <= 5
+            ? ratingValueRaw
+            : null
+        if (!roundLabel && !partnerName && !comment && ratingValue == null) {
+          showToast('후기 내용을 입력해주세요.')
+          return
+        }
+        const entry = {
+          id: generateMatchFeedbackId(),
+          roundLabel: roundLabel || `${currentCount + 1}회차`,
+          partnerName,
+          rating: ratingValue,
+          comment,
+          recordedAt: new Date().toISOString(),
+        }
+        appendMatchFeedbackEntry(entry)
+        resetMatchFeedbackForm()
       }
 
       function collectMatchFeedbackEntries() {
         if (!matchFeedbackList) return []
-        const items = Array.from(matchFeedbackList.querySelectorAll('.match-feedback-item'))
+        const items = Array.from(matchFeedbackList.querySelectorAll('.match-feedback-entry'))
         return items
           .map((item, index) => {
-            const roundInput = item.querySelector('.match-feedback-round')
-            const partnerInput = item.querySelector('.match-feedback-partner')
-            const ratingSelect = item.querySelector('.match-feedback-rating')
-            const noteInput = item.querySelector('.match-feedback-note')
-            const roundLabel = roundInput?.value.trim() || ''
-            const partnerName = partnerInput?.value.trim() || ''
-            const ratingValue = Number(ratingSelect?.value)
+            const roundLabel = item.dataset.roundLabel || ''
+            const partnerName = item.dataset.partnerName || ''
+            const ratingValue = Number(item.dataset.rating)
             const hasRating = Number.isFinite(ratingValue) && ratingValue >= 1 && ratingValue <= 5
-            const comment = noteInput?.value.trim() || ''
+            const comment = decodeFeedbackComment(item.dataset.comment || '')
             const hasContent = roundLabel || partnerName || comment || hasRating
-            if (!hasContent) {
-              return null
-            }
+            if (!hasContent) return null
             const storedId = item.dataset.feedbackId || generateMatchFeedbackId()
             const recordedAt = item.dataset.recordedAt || new Date().toISOString()
             return {
@@ -1961,6 +2014,27 @@
         return null
       }
 
+      function getPaymentTotalAmount(entries) {
+        if (!Array.isArray(entries) || !entries.length) return 0
+        return entries.reduce((sum, entry) => {
+          const digits = sanitizePaymentAmount(entry?.paymentAmount || '')
+          const amount = digits ? Number(digits) : 0
+          return sum + (Number.isFinite(amount) ? amount : 0)
+        }, 0)
+      }
+
+      function updatePaymentTotalDisplay(entries) {
+        if (!detailPaymentTotalEl) return
+        const totalAmount = getPaymentTotalAmount(entries)
+        if (totalAmount > 0) {
+          detailPaymentTotalEl.textContent = `총 결제 금액 ${totalAmount.toLocaleString('ko-KR')}원`
+          detailPaymentTotalEl.classList.remove('payment-total-empty')
+        } else {
+          detailPaymentTotalEl.textContent = '총 결제 금액 0원'
+          detailPaymentTotalEl.classList.add('payment-total-empty')
+        }
+      }
+
       function renderPaymentHistory(source) {
         if (!paymentHistoryList || !paymentHistoryEmpty) return
         if (Array.isArray(source)) {
@@ -1969,6 +2043,7 @@
           detailPaymentEntries = getPaymentHistoryEntries(source)
         }
         const entries = Array.isArray(detailPaymentEntries) ? detailPaymentEntries : []
+        updatePaymentTotalDisplay(entries)
         paymentHistoryList.innerHTML = ''
         if (!entries.length) {
           paymentHistoryEmpty.hidden = false

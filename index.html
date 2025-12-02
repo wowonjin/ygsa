@@ -353,19 +353,6 @@
                   </select>
                 </div>
                 <div class="field">
-                  <label for="detailJob">
-                    직업
-                    <span class="detail-badge detail-badge-public" aria-hidden="true">공개</span>
-                  </label>
-                  <input
-                    id="detailJob"
-                    type="text"
-                    placeholder="예: 중견 무역회사 해외영업"
-                    autocomplete="organization"
-                    required
-                  />
-                </div>
-                <div class="field">
                   <label for="detailDistrict">거주 구</label>
                   <input id="detailDistrict" type="text" placeholder="서울특별시 강남구" required />
                 </div>
@@ -381,6 +368,34 @@
                     <option value="네이버블로그">네이버블로그</option>
                     <option value="기타/미입력">기타/미입력</option>
                   </select>
+                </div>
+              </div>
+              <div class="detail-field-grid columns-3 detail-form-field-grid">
+                <div class="field">
+                  <label for="detailJob">
+                    <span class="form-label">Form</span>
+                    직업/직무
+                    <span class="detail-badge detail-badge-public" aria-hidden="true">공개</span>
+                  </label>
+                  <input
+                    id="detailJob"
+                    type="text"
+                    placeholder="예: 중견 무역회사 해외영업"
+                    autocomplete="organization"
+                    required
+                  />
+                </div>
+                <div class="field">
+                  <label for="detailJobDetail">
+                    <span class="form-label">Form</span>
+                    직업/직무 상세
+                    <span class="detail-badge detail-badge-public" aria-hidden="true">공개</span>
+                  </label>
+                  <input
+                    id="detailJobDetail"
+                    type="text"
+                    placeholder="예: 중견 무역회사 해외영업팀에서 북미 시장 담당"
+                  />
                 </div>
                 <div class="field">
                   <label for="detailMbti">
@@ -443,16 +458,6 @@
                     <option value="불교">불교</option>
                     <option value="기타">기타</option>
                   </select>
-                </div>
-                <div class="field full-width">
-                  <label for="detailJobDetail">
-                    직업/직무 상세
-                    <span class="detail-badge detail-badge-public" aria-hidden="true">공개</span>
-                  </label>
-                  <textarea
-                    id="detailJobDetail"
-                    placeholder="예: 중견 무역회사 해외영업팀에서 북미 시장 담당"
-                  ></textarea>
                 </div>
               </div>
             </fieldset>
@@ -801,11 +806,58 @@
               <legend>만남 후기 &amp; 매칭 평점</legend>
               <div class="detail-field-grid">
                 <div class="field full-width detail-match-feedback">
-                  <div
-                    id="matchFeedbackList"
-                    class="match-feedback-list"
-                    aria-live="polite"
-                  ></div>
+                  <div class="match-feedback-form" id="matchFeedbackForm">
+                    <div class="match-feedback-form-grid">
+                      <label>
+                        회차
+                        <input
+                          id="matchFeedbackRound"
+                          type="text"
+                          placeholder="예: 1회차"
+                          autocomplete="off"
+                        />
+                      </label>
+                      <label>
+                        평점
+                        <select id="matchFeedbackRating">
+                          <option value="">선택</option>
+                          <option value="1">1점</option>
+                          <option value="2">2점</option>
+                          <option value="3">3점</option>
+                          <option value="4">4점</option>
+                          <option value="5">5점</option>
+                        </select>
+                      </label>
+                      <label>
+                        상대 이름
+                        <input
+                          id="matchFeedbackPartner"
+                          type="text"
+                          placeholder="예: 김연결"
+                          autocomplete="off"
+                        />
+                      </label>
+                    </div>
+                    <label class="match-feedback-form-note">
+                      후기
+                      <textarea
+                        id="matchFeedbackNote"
+                        rows="3"
+                        placeholder="만남 기록을 입력해주세요."
+                      ></textarea>
+                    </label>
+                    <div class="match-feedback-form-actions">
+                      <button type="button" id="matchFeedbackSaveBtn" class="match-feedback-save-btn">
+                        저장
+                      </button>
+                    </div>
+                  </div>
+                  <div class="match-feedback-history-wrap">
+                    <ul id="matchFeedbackList" class="match-feedback-history" aria-live="polite"></ul>
+                    <p id="matchFeedbackEmpty" class="match-feedback-empty" hidden>
+                      아직 저장된 후기가 없습니다.
+                    </p>
+                  </div>
                 </div>
               </div>
             </fieldset>
@@ -817,6 +869,7 @@
             >
               <legend>결제 내역</legend>
           <div class="membership-payment-field">
+            <p id="detailPaymentTotal" class="payment-total-amount">총 결제 금액 0원</p>
             <label class="membership-payment-label" for="detailMembershipType">회원권 / 결제 정보</label>
             <div class="inline-group membership-payment-inline">
               <select id="detailMembershipType" aria-label="회원권 종류">
