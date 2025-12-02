@@ -456,6 +456,19 @@ app.post('/api/match-history/lookup', async (req, res) => {
       records,
       history,
     })
+    const confirmedMatchCards = confirmedEntries
+      .map((entry) => {
+        const candidateRecord = records.find((item) => item.id === entry.candidateId)
+        if (!candidateRecord) return null
+        return {
+          ...buildMatchCardPayload(candidateRecord),
+          matchEntryId: entry.id,
+          matchRecordedAt: entry.matchedAt,
+          matchCandidateId: entry.candidateId,
+          matchCategory: sanitizeMatchHistoryCategory(entry.category),
+        }
+      })
+      .filter(Boolean)
     res.json({
       ok: true,
       data: {
@@ -474,6 +487,7 @@ app.post('/api/match-history/lookup', async (req, res) => {
         matchedCandidateIds,
         matchedCandidates,
         incomingRequests,
+        confirmedMatchCards,
       },
     })
   } catch (error) {

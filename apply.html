@@ -209,7 +209,8 @@
 
       .matches-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(320px, 360px));
+        justify-content: center;
         gap: 24px;
       }
 
@@ -1188,6 +1189,9 @@
           syncMatchedCandidateIds(Array.isArray(data?.matchedCandidateIds) ? data.matchedCandidateIds : [])
           const incomingRequests = Array.isArray(data?.incomingRequests) ? data.incomingRequests : []
           const matchedContacts = Array.isArray(data?.matchedCandidates) ? data.matchedCandidates : []
+          const confirmedMatchCards = Array.isArray(data?.confirmedMatchCards)
+            ? data.confirmedMatchCards
+            : []
           syncMatchState({ incomingRequests, matchedCandidates: matchedContacts })
           const targetName = data?.target?.name || '회원님'
           const nameWithHonorific = targetName.endsWith('님') ? targetName : `${targetName}님`
@@ -1213,6 +1217,25 @@
               matchCards.appendChild(card)
             }
           })
+          confirmedMatchCards
+            .filter((card) => {
+              const candidateId = getCandidateIdentifier(card)
+              return candidateId && !matchState.currentDeckIds.has(candidateId)
+            })
+            .forEach((card) => {
+              const candidateId = getCandidateIdentifier(card)
+              if (candidateId) {
+                matchState.currentDeckIds.add(candidateId)
+              }
+              const cardElement = renderMatchCard(card, null, {
+                coverTitle: '확정 카드',
+                coverSubtitle: '이미 매칭되었습니다',
+                initialContact: matchState.confirmedById.get(candidateId),
+              })
+              if (cardElement) {
+                matchCards.appendChild(cardElement)
+              }
+            })
           matchState.incomingList = incomingRequests
           renderIncomingRequests()
           if (heroSection) {
@@ -1294,6 +1317,7 @@
             coverTitle = null,
             coverSubtitle = null,
             incomingRequest = null,
+            initialContact = null,
           } = options
           const wrapper = document.createElement('article')
           wrapper.className = ['match-card', isIncomingOnly ? 'match-card-incoming' : '']
@@ -1339,6 +1363,9 @@
           const actions = document.createElement('div')
           actions.className = 'match-card-actions'
           const actionButton = createMatchSelectButton(record, candidateId, matchEntryId)
+          if (initialContact) {
+            setButtonContactData(actionButton, initialContact)
+          }
           actions.appendChild(actionButton)
           preview.insertAdjacentElement('afterend', actions)
           initProfileCardSlider(preview)
