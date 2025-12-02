@@ -2970,22 +2970,8 @@
         hydrateUploadsFromDraft(draft.uploads)
       }
 
-      draftSaveButton?.addEventListener('click', async () => {
-        try {
-          const phoneKey = normalizePhoneKey(phoneInput?.value || '')
-          if (!phoneKey) {
-            alert('임시 저장을 위해 연락처를 먼저 입력해주세요.')
-            return
-          }
-          await persistUploadsForDraft(phoneKey)
-          const draft = collectDraftData()
-          const storageKey = buildDraftStorageKey(phoneKey)
-          localStorage.setItem(storageKey, JSON.stringify(draft))
-          alert('입력한 내용을 임시 저장했습니다.')
-        } catch (error) {
-          console.error('[draft] save failed', error)
-          showMessage('임시 저장에 실패했습니다. 브라우저 저장소를 확인해주세요.', 'error')
-        }
+      draftSaveButton?.addEventListener('click', () => {
+        handleDraftSave({ notify: 'alert' })
       })
 
       draftLoadButton?.addEventListener('click', () => {
@@ -3020,6 +3006,7 @@
         if (!submissionModal) return
         submissionModal.hidden = true
       }
+
 
       agreementToggles.forEach((button) => {
         const targetId = button.dataset.target
@@ -3060,6 +3047,41 @@
         }
       }
 
+      async function handleDraftSave({ notify = 'alert' } = {}) {
+        const phoneKey = normalizePhoneKey(phoneInput?.value || '')
+        const needsAlert = notify !== 'inline'
+        if (!phoneKey) {
+          const message = '임시 저장을 위해 연락처를 먼저 입력해주세요.'
+          if (needsAlert) {
+            alert(message)
+          } else {
+            showMessage(message, 'error')
+          }
+          return false
+        }
+        try {
+          await persistUploadsForDraft(phoneKey)
+          const draft = collectDraftData()
+          const storageKey = buildDraftStorageKey(phoneKey)
+          localStorage.setItem(storageKey, JSON.stringify(draft))
+          if (needsAlert) {
+            alert('입력한 내용을 임시 저장했습니다.')
+          } else {
+            showMessage('입력 내용을 임시 저장했습니다. 나중에 불러올 수 있어요.', 'success')
+          }
+          return true
+        } catch (error) {
+          console.error('[draft] save failed', error)
+          const message = '임시 저장에 실패했습니다. 브라우저 저장소를 확인해주세요.'
+          if (needsAlert) {
+            alert(message)
+          } else {
+            showMessage(message, 'error')
+          }
+          return false
+        }
+      }
+
       function setSubmitting(isSubmitting) {
         if (submitBtn) {
           submitBtn.disabled = isSubmitting
@@ -3067,33 +3089,25 @@
         }
       }
 
-      window.addEventListener('beforeunload', () => {
-        try {
-          persistPendingUploadPaths()
-        } catch (error) {
-          /* noop */
-        }
-      })
-
-      formEl?.addEventListener('submit', async (event) => {
-        event.preventDefault()
+      async function performFinalSubmit() {
+        if (!formEl) return false
         showMessage('', '')
 
         if (!formEl.reportValidity()) {
           showMessage('누락된 항목이 없는지 확인해주세요.', 'error')
-          return
+          return false
         }
 
         const values = getMultiSelectValues(valuesSelect)
         if (values.length > 1) {
           showMessage('가치관은 한 개만 선택해주세요.', 'error')
-          return
+          return false
         }
         selectedValues = values
 
         if (!agreementInfo.checked || !agreementManners.checked) {
           showMessage('모든 동의 항목에 체크해주세요.', 'error')
-          return
+          return false
         }
 
         const hasPendingUploads = Array.from(uploadStateByInput.values()).some((entries) =>
@@ -3101,16 +3115,20 @@
         )
         if (hasPendingUploads) {
           showMessage('파일 업로드가 끝날 때까지 기다려주세요.', 'error')
-          return
+          return false
         }
 
         const phoneKey = normalizePhoneKey(phoneInput?.value || '')
         if (!phoneKey) {
           showMessage('연락처를 입력해주세요.', 'error')
-          return
+          return false
         }
         const draftStorageKey = buildDraftStorageKey(phoneKey)
         const preservedDraftRaw = draftStorageKey ? readDraftSnapshot(draftStorageKey) : null
+        const draftSaved = await handleDraftSave({ notify: 'inline' })
+        if (!draftSaved) {
+          return false
+        }
 
         try {
           showMessage('첨부 파일을 정리하고 있습니다…', '')
@@ -3119,7 +3137,7 @@
         } catch (error) {
           console.error('[firebase] finalize uploads failed', error)
           showMessage('첨부 파일을 저장하지 못했습니다. 다시 시도해주세요.', 'error')
-          return
+          return false
         }
 
         const { documentsPayload, photosPayload } = buildAttachmentPayload()
@@ -3135,7 +3153,7 @@
 
         if (!payload.phone) {
           showMessage('연락처를 입력해주세요.', 'error')
-          return
+          return false
         }
 
         try {
@@ -3188,12 +3206,28 @@
           if (typeof preservedDraftRaw === 'string') {
             preserveDraftSnapshot(draftStorageKey, preservedDraftRaw)
           }
+          return true
         } catch (error) {
           const message = error?.message || '프로필 저장에 실패했습니다. 다시 시도해주세요.'
           showMessage(message, 'error')
+          return false
         } finally {
           setSubmitting(false)
         }
+      }
+
+      window.addEventListener('beforeunload', () => {
+        try {
+          persistPendingUploadPaths()
+        } catch (error) {
+          /* noop */
+        }
+      })
+
+      formEl?.addEventListener('submit', (event) => {
+        event.preventDefault()
+        if (submitBtn?.disabled) return
+        performFinalSubmit()
       })
     </script>
   </body>

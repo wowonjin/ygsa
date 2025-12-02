@@ -5398,7 +5398,8 @@
           (Array.isArray(target.preferredHeights) && target.preferredHeights.length) ||
           (Array.isArray(target.preferredAges) && target.preferredAges.length) ||
           (Array.isArray(target.preferredLifestyle) && target.preferredLifestyle.length)
-        const { list, total } = computeMatchResults(target)
+        const introducedCandidateKeys = buildTargetCandidateHistorySet(target)
+        const { list, total } = computeMatchResults(target, introducedCandidateKeys)
         const priorityEntries = buildPriorityMatchResults(target)
         const merged = mergePriorityMatchResults(priorityEntries, list)
         const displayList = merged.list
@@ -5529,9 +5530,9 @@
           .join('')
       }
 
-      function computeMatchResults(target) {
+      function computeMatchResults(target, introducedCandidateKeys) {
         const evaluated = items
-          .map((candidate) => evaluateMatchCandidate(target, candidate))
+          .map((candidate) => evaluateMatchCandidate(target, candidate, introducedCandidateKeys))
           .filter(Boolean)
           .sort((a, b) => {
             if (b.score !== a.score) return b.score - a.score
@@ -5549,10 +5550,18 @@
         }
       }
 
-      function evaluateMatchCandidate(target, candidate) {
+      function evaluateMatchCandidate(target, candidate, introducedCandidateKeys) {
         if (!target || !candidate || target.id === candidate.id) return null
-        if (isCandidateMatched(candidate.id)) return null
         if (matchSelectedCandidates.some((entry) => entry.id === candidate.id)) return null
+        const candidateKey = getMatchCandidateKey(candidate)
+        if (
+          introducedCandidateKeys instanceof Set &&
+          candidateKey &&
+          introducedCandidateKeys.has(candidateKey)
+        ) {
+          return null
+        }
+        const previouslyMatched = isCandidateMatched(candidate.id)
         const candidateStatus = PHONE_STATUS_VALUES.includes(candidate.phoneConsultStatus)
           ? candidate.phoneConsultStatus
           : 'pending'
@@ -5597,9 +5606,13 @@
           createdAt,
           statusLabel: PHONE_STATUS_LABELS[statusKey] || '',
           statusClass: STATUS_CLASS_NAMES[statusKey] || '',
+          previouslyMatched,
         }
         if (!score) {
           reasons.push('선호 조건과 정확히 일치하지 않지만 상담 완료 회원입니다.')
+        }
+        if (previouslyMatched) {
+          reasons.push('최근 다른 대상자에게 소개된 이력이 있습니다.')
         }
         return {
           candidate,
@@ -5609,13 +5622,49 @@
         }
       }
 
+      function buildTargetCandidateHistorySet(targetRecord) {
+        const introducedSet = new Set()
+        if (!targetRecord || !Array.isArray(matchHistory) || !matchHistory.length) {
+          return introducedSet
+        }
+        const targetId = targetRecord.id || ''
+        const targetPhoneKey = normalizePhoneKey(targetRecord.phone)
+        matchHistory.forEach((entry) => {
+          if (!doesHistoryEntryMatchTarget(entry, targetId, targetPhoneKey)) return
+          const candidateKey =
+            entry?.candidateId ||
+            entry?.candidate?.id ||
+            normalizePhoneKey(entry?.candidatePhone || entry?.candidate?.phone || '')
+          if (candidateKey) {
+            introducedSet.add(candidateKey)
+          }
+        })
+        return introducedSet
+      }
+
+      function doesHistoryEntryMatchTarget(entry, targetId, targetPhoneKey) {
+        if (!entry) return false
+        if (targetId && entry.targetId === targetId) {
+          return true
+        }
+        if (!targetPhoneKey) return false
+        const entryTargetPhoneKey = normalizePhoneKey(
+          entry.targetPhone ||
+            entry.target?.phone ||
+            entry.target?.phoneMasked ||
+            entry.target?.phoneOriginal ||
+            '',
+        )
+        return Boolean(entryTargetPhoneKey && entryTargetPhoneKey === targetPhoneKey)
+      }
+
       function buildPriorityMatchResults(targetRecord) {
         if (!targetRecord) return []
         const reverseEntries = getReverseMatchEntriesForTarget(targetRecord)
         if (!reverseEntries.length) return []
         return reverseEntries
           .map(({ record, matchedAt }) => {
-            if (isCandidateInSelection(record) || isCandidateMatched(record?.id)) {
+            if (isCandidateInSelection(record)) {
               return null
             }
             const evaluated = evaluateMatchCandidate(targetRecord, record)
@@ -6085,10 +6134,6 @@
         }
         if (record.id === matchSelectedMemberId) {
           showToast('대상자 본인은 후보로 선택할 수 없습니다.')
-          return
-        }
-        if (isCandidateMatched(record.id)) {
-          showToast('이미 매칭된 회원입니다.')
           return
         }
         if (matchSelectedCandidates.some((entry) => entry.id === record.id)) {
