@@ -5668,6 +5668,22 @@
         return Boolean(entryTargetPhoneKey && entryTargetPhoneKey === targetPhoneKey)
       }
 
+      function doesHistoryEntryMatchCandidate(entry, targetId, targetPhoneKey) {
+        if (!entry) return false
+        if (targetId && entry.candidateId === targetId) {
+          return true
+        }
+        if (!targetPhoneKey) return false
+        const entryCandidatePhoneKey = normalizePhoneKey(
+          entry.candidatePhone ||
+            entry.candidate?.phone ||
+            entry.candidate?.phoneMasked ||
+            entry.candidate?.phoneOriginal ||
+            '',
+        )
+        return Boolean(entryCandidatePhoneKey && entryCandidatePhoneKey === targetPhoneKey)
+      }
+
       function buildPriorityMatchResults(targetRecord) {
         if (!targetRecord) return []
         const reverseEntries = getReverseMatchEntriesForTarget(targetRecord)
@@ -6298,18 +6314,19 @@
         updateMatchedCouplesButton()
         if (!matchHistoryList || !matchHistorySummaryEl) return
         const activeEntries = getActiveMatchHistoryEntries()
-        matchHistorySummaryEl.textContent = `${activeEntries.length}명`
+        const enrichedEntries = mergeConfirmedEntriesForActiveTarget(activeEntries)
+        matchHistorySummaryEl.textContent = `${enrichedEntries.length}명`
         if (!matchSelectionTargetId && !matchSelectionTargetPhoneKey) {
         matchHistoryList.innerHTML =
           '<p class="match-history-empty">대상자를 선택하면 이번주 소개가 표시됩니다.</p>'
           return
         }
-        if (!activeEntries.length) {
+        if (!enrichedEntries.length) {
           matchHistoryList.innerHTML =
           '<p class="match-history-empty">이 대상자에 대한 이번주 소개가 없습니다.</p>'
           return
         }
-        const groups = buildMatchHistoryGroups(activeEntries)
+        const groups = buildMatchHistoryGroups(enrichedEntries)
         matchHistoryList.innerHTML = groups.length
           ? groups
           .map(
@@ -6359,6 +6376,49 @@
         })
       }
 
+      function mergeConfirmedEntriesForActiveTarget(activeEntries = []) {
+        const list = Array.isArray(activeEntries) ? [...activeEntries] : []
+        if (!matchSelectionTargetId && !matchSelectionTargetPhoneKey) {
+          return list
+        }
+        const seenIds = new Set(list.map((entry) => entry.id).filter(Boolean))
+        const currentWeek = getWeekInfo(new Date())
+        const isCurrentWeekEntry = (week = null) =>
+          week &&
+          Number(week.year) === currentWeek.year &&
+          Number(week.week) === currentWeek.week
+        const targetId = matchSelectionTargetId || ''
+        const targetPhoneKey = matchSelectionTargetPhoneKey || ''
+        const confirmedForTarget = confirmedMatches
+          .filter((entry) => doesHistoryEntryMatchTarget(entry, targetId, targetPhoneKey))
+          .filter((entry) => isCurrentWeekEntry(entry.week))
+          .filter((entry) => !seenIds.has(entry.id))
+          .map(mapConfirmedMatchToHistoryEntry)
+          .filter(Boolean)
+        const reverseConfirmedEntries = matchHistory
+          .filter((entry) => isConfirmedMatchEntry(entry))
+          .filter((entry) => doesHistoryEntryMatchCandidate(entry, targetId, targetPhoneKey))
+          .filter((entry) => isCurrentWeekEntry(entry.week))
+          .map(mapCandidatePerspectiveEntry)
+          .filter((entry) => entry && !seenIds.has(entry.id))
+        if (!confirmedForTarget.length && !reverseConfirmedEntries.length) {
+          return list
+        }
+        confirmedForTarget.forEach((entry) => {
+          if (entry?.id) {
+            seenIds.add(entry.id)
+          }
+          list.push(entry)
+        })
+        reverseConfirmedEntries.forEach((entry) => {
+          if (entry?.id) {
+            seenIds.add(entry.id)
+          }
+          list.push(entry)
+        })
+        return list.sort((a, b) => (b.matchedAt || 0) - (a.matchedAt || 0))
+      }
+
       function buildMatchHistoryGroups(history) {
         const map = new Map()
         history.forEach((entry) => {
@@ -6379,6 +6439,39 @@
           map.get(weekKey).items.push(entry)
         })
         return Array.from(map.values())
+      }
+
+      function mapConfirmedMatchToHistoryEntry(entry) {
+        if (!entry) return null
+        return {
+          id: entry.id || `${entry.targetId || 'target'}-${entry.candidateId || 'candidate'}`,
+          candidateId: entry.candidateId || entry.candidate?.id || '',
+          candidate: entry.candidate || null,
+          targetId: entry.targetId || entry.target?.id || '',
+          target: entry.target || null,
+          targetPhone: entry.targetPhone || entry.target?.phone || '',
+          matchedAt: entry.confirmedAt || entry.matchedAt || Date.now(),
+          week: entry.week || null,
+          category: MATCH_HISTORY_CATEGORY.CONFIRMED,
+          targetSelected: true,
+        }
+      }
+
+      function mapCandidatePerspectiveEntry(entry) {
+        if (!entry) return null
+        const partner = entry.target || null
+        return {
+          id: `${entry.id || 'candidate'}__reverse`,
+          candidateId: partner?.id || entry.targetId || '',
+          candidate: partner,
+          targetId: entry.candidate?.id || entry.candidateId || '',
+          target: entry.candidate || null,
+          targetPhone: entry.candidatePhone || entry.candidate?.phone || '',
+          matchedAt: entry.confirmedAt || entry.matchedAt || Date.now(),
+          week: entry.week || null,
+          category: MATCH_HISTORY_CATEGORY.CONFIRMED,
+          targetSelected: true,
+        }
       }
 
       function getMatchHistoryStatusLabel(entry) {
