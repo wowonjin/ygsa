@@ -6325,6 +6325,8 @@
                       const name = item.candidate?.name || '이름 미입력'
                       const partner = item.target?.name ? `· 대상 ${item.target.name}` : ''
                       const dateLabel = formatDate(item.matchedAt)
+                      const statusLabel = getMatchHistoryStatusLabel(item)
+                      const metaLabel = statusLabel ? `${dateLabel} · ${statusLabel}` : dateLabel
                       return `<div class="match-history-item" data-id="${escapeHtml(
                         item.id || '',
                       )}"><div class="match-history-item-row"><span>${escapeHtml(
@@ -6332,7 +6334,7 @@
                       )} ${escapeHtml(
                         partner,
                       )}</span><div class="match-history-item-actions"><small>${escapeHtml(
-                        dateLabel,
+                        metaLabel,
                       )}</small><button type="button" class="match-history-remove" aria-label="기록 삭제">×</button></div></div></div>`
                     })
                     .join('')}
@@ -6350,7 +6352,6 @@
         }
         const normalizedKey = matchSelectionTargetPhoneKey
         return matchHistory.filter((entry) => {
-          if (isConfirmedMatchEntry(entry)) return false
           if (matchSelectionTargetId && entry.targetId === matchSelectionTargetId) return true
           if (!normalizedKey) return false
           const entryPhone = normalizePhoneKey(entry.targetPhone || entry.target?.phone || '')
@@ -6378,6 +6379,16 @@
           map.get(weekKey).items.push(entry)
         })
         return Array.from(map.values())
+      }
+
+      function getMatchHistoryStatusLabel(entry) {
+        if (isConfirmedMatchEntry(entry)) {
+          return '매칭 완료'
+        }
+        if (entry?.targetSelected) {
+          return '회원 확인'
+        }
+        return ''
       }
 
       function getCurrentWeekConfirmedMatches() {
