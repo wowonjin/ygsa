@@ -455,38 +455,6 @@
         border-color: #166534;
       }
 
-      .contact-bubble {
-        margin-top: 10px;
-        padding: 14px;
-        border-radius: 16px;
-        border: 1px solid rgba(15, 23, 42, 0.08);
-        background: #f8fafc;
-        color: #0f172a;
-        font-size: 14px;
-        line-height: 1.5;
-        position: relative;
-        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
-      }
-
-      .contact-bubble::before {
-        content: '';
-        position: absolute;
-        top: -8px;
-        left: 28px;
-        width: 14px;
-        height: 14px;
-        background: inherit;
-        border-left: 1px solid rgba(15, 23, 42, 0.08);
-        border-top: 1px solid rgba(15, 23, 42, 0.08);
-        transform: rotate(45deg);
-      }
-
-      .contact-bubble strong {
-        display: block;
-        font-size: 15px;
-        margin-bottom: 4px;
-      }
-
       .incoming-requests {
         margin-top: 48px;
         padding: 28px;
@@ -522,6 +490,77 @@
         padding-top: 8px;
         color: #94a3b8;
         font-size: 14px;
+      }
+
+      .contact-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.55);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 4000;
+        padding: 16px;
+      }
+
+      .contact-modal {
+        background: #fff;
+        border-radius: 28px;
+        padding: 36px 40px;
+        max-width: 400px;
+        width: 100%;
+        text-align: left;
+        box-shadow: 0 35px 80px rgba(15, 23, 42, 0.25);
+      }
+
+      .contact-modal h3 {
+        margin: 0 0 12px;
+        font-size: 14px;
+        color: #5377f6;
+        font-weight: 600;
+      }
+
+      .contact-modal p {
+        margin: 6px 0;
+        font-size: 18px;
+        color: #475569;
+        text-align: left;
+      }
+
+      .contact-modal .contact-name {
+        font-size: 18px;
+        font-weight: 700;
+        color: #4f4f4f;
+      }
+
+      .contact-modal .contact-phone {
+        font-size: 18px;
+        font-weight: 700;
+        color: #4f4f4f;
+      }
+
+      .contact-modal .contact-guideline {
+        margin-top: 18px;
+        font-size: 15px;
+        line-height: 1.6;
+        color: #475569;
+        text-align: left;
+        white-space: pre-line;
+      }
+
+      .contact-modal button {
+        margin-top: 24px;
+        padding: 14px 22px;
+        border-radius: 16px;
+        border: none;
+        background: #5377f6;
+        color: #fff;
+        font-size: 16px;
+        cursor: pointer;
+      }
+
+      .contact-modal button:hover {
+        background: #4c6fe0;
       }
 
       .match-popup-overlay {
@@ -925,6 +964,15 @@
         </section>
       </section>
     </main>
+    <div class="contact-modal-overlay" id="contactModal" hidden>
+      <div class="contact-modal" role="dialog" aria-modal="true">
+        <h3>매칭 회원 정보</h3>
+        <p class="contact-name" id="contactModalName">성함: -</p>
+        <p class="contact-phone" id="contactModalPhone">휴대폰 번호: -</p>
+        <p class="contact-guideline" id="contactModalMessage"></p>
+        <button type="button" id="contactModalCloseBtn">확인</button>
+      </div>
+    </div>
     <script>
       window.BACKEND_ORIGIN = window.BACKEND_ORIGIN || 'https://ygsa-backend.onrender.com'
     </script>
@@ -1029,6 +1077,11 @@
         const incomingSection = document.getElementById('incomingRequestsSection')
         const incomingCards = document.getElementById('incomingCards')
         const incomingEmpty = document.getElementById('incomingEmpty')
+        const contactModal = document.getElementById('contactModal')
+        const contactModalName = document.getElementById('contactModalName')
+        const contactModalPhone = document.getElementById('contactModalPhone')
+        const contactModalMessage = document.getElementById('contactModalMessage')
+        const contactModalCloseBtn = document.getElementById('contactModalCloseBtn')
         const MATCH_MANAGER_URL =
           (window.MATCH_MANAGER_URL && String(window.MATCH_MANAGER_URL).trim()) || ''
         let currentTargetProfile = null
@@ -1042,6 +1095,17 @@
           contactById: new Map(),
           currentDeckIds: new Set(),
         }
+        contactModalCloseBtn?.addEventListener('click', hideContactModal)
+        contactModal?.addEventListener('click', (event) => {
+          if (event.target === contactModal) {
+            hideContactModal()
+          }
+        })
+        document.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape' && contactModal && !contactModal.hidden) {
+            hideContactModal()
+          }
+        })
 
         const resolvedOrigin =
           (typeof window !== 'undefined' && window.BACKEND_ORIGIN) ||
@@ -1225,14 +1289,19 @@
 
         function renderMatchCard(record, order, options = {}) {
           if (!record) return null
-          const { isIncomingOnly = false, coverTitle = null, coverSubtitle = null } = options
+          const {
+            isIncomingOnly = false,
+            coverTitle = null,
+            coverSubtitle = null,
+            incomingRequest = null,
+          } = options
           const wrapper = document.createElement('article')
           wrapper.className = ['match-card', isIncomingOnly ? 'match-card-incoming' : '']
             .filter(Boolean)
             .join(' ')
           wrapper.tabIndex = 0
           const candidateId = getCandidateIdentifier(record)
-          const matchEntryId = record.matchEntryId || ''
+          const matchEntryId = record.matchEntryId || incomingRequest?.requestId || ''
           const preview = document.createElement('div')
           const toneClass = getProfileToneClass(record.gender)
           preview.className = `profile-card-preview ${toneClass}`.trim()
@@ -1457,7 +1526,8 @@
           }
           const currentState = button.dataset.matchState
           if (currentState === 'mutual') {
-            toggleContactBubble(button)
+            const contact = getButtonContactData(button)
+            showContactModal(contact)
             return
           }
           if (currentState === 'completed' || currentState === 'requesting') {
@@ -1465,7 +1535,12 @@
           }
           const originalScrollY = window.scrollY || document.documentElement.scrollTop || 0
           const originalButtonTop = button?.getBoundingClientRect()?.top || 0
-          const payload = buildMatchSelectionPayload(record, candidateId, matchEntryId)
+          const candidateKey = String(candidateId)
+          const incomingRequest = matchState.incomingById.get(candidateKey)
+          const resolvedMatchEntryId = matchEntryId || incomingRequest?.requestId || ''
+          const payload = buildMatchSelectionPayload(record, candidateId, resolvedMatchEntryId, {
+            categoryOverride: incomingRequest ? 'confirmed' : 'intro',
+          })
           if (!payload) {
             showMessage('매칭 정보를 준비할 수 없습니다. 관리자에게 문의해주세요.', true)
             return
@@ -1474,8 +1549,7 @@
           button.disabled = true
           try {
             await sendMatchRequest(payload)
-            const candidateKey = String(candidateId)
-            const hasIncomingRequest = matchState.incomingById.has(candidateKey)
+            const hasIncomingRequest = Boolean(incomingRequest)
             const contactInfo = hasIncomingRequest ? getContactInfo(candidateKey) : null
             markMatchButtonCompleted(button, {
               mutual: hasIncomingRequest,
@@ -1509,7 +1583,7 @@
           }
         }
 
-        function buildMatchSelectionPayload(record, candidateIdArg, matchEntryId) {
+        function buildMatchSelectionPayload(record, candidateIdArg, matchEntryId, options = {}) {
           if (!record || !currentTargetProfile || !lastLookupPhoneKey) return null
           const candidateId = candidateIdArg || getCandidateIdentifier(record)
           const targetId = currentTargetProfile.id || ''
@@ -1523,6 +1597,10 @@
           const candidateGender = record.gender || ''
           const targetName = currentTargetProfile.name || '회원님'
           const targetGender = currentTargetProfile.gender || ''
+          const normalizedCategory =
+            String(options?.categoryOverride || 'confirmed').trim().toLowerCase() === 'confirmed'
+              ? 'confirmed'
+              : 'intro'
           return {
             id: matchEntryId || `${targetId}-${candidateId}-${matchedAt}`,
             candidateId,
@@ -1530,7 +1608,7 @@
             targetPhone: lastLookupPhoneKey,
             matchedAt,
             week: buildWeekMeta(new Date(matchedAt)),
-            category: 'confirmed',
+            category: normalizedCategory,
             candidateName,
             candidateGender,
             candidatePhone,
@@ -1602,7 +1680,7 @@
             button.disabled = true
             button.dataset.matchState = 'completed'
             button.textContent = '매칭이 신청되었습니다'
-            hideContactBubble(button)
+            clearButtonContactData(button)
           }
         }
 
@@ -1611,48 +1689,22 @@
           button.dataset.contactName = contact.name || ''
           button.dataset.contactPhone = contact.phone || ''
           button.dataset.contactPhoneMasked = contact.phoneMasked || ''
-          const bubble = ensureContactBubble(button)
-          bubble.innerHTML = `
-            <strong>${escapeHtml(contact.name || '상대 이름')}</strong>
-            <span>${escapeHtml(contact.phone || contact.phoneMasked || '')}</span>
-          `
-          bubble.hidden = true
         }
 
-        function ensureContactBubble(button) {
-          let bubble = button.nextElementSibling
-          if (!bubble || !bubble.classList.contains('contact-bubble')) {
-            bubble = document.createElement('div')
-            bubble.className = 'contact-bubble'
-            bubble.hidden = true
-            button.insertAdjacentElement('afterend', bubble)
-          }
-          return bubble
-        }
-
-        function toggleContactBubble(button) {
+        function clearButtonContactData(button) {
           if (!button) return
-          const bubble = button.nextElementSibling
-          if (!bubble || !bubble.classList.contains('contact-bubble')) return
-          const willOpen = Boolean(bubble.hidden)
-          closeAllContactBubbles(button)
-          bubble.hidden = !willOpen
+          delete button.dataset.contactName
+          delete button.dataset.contactPhone
+          delete button.dataset.contactPhoneMasked
         }
 
-        function hideContactBubble(button) {
-          if (!button) return
-          const bubble = button.nextElementSibling
-          if (bubble && bubble.classList.contains('contact-bubble')) {
-            bubble.hidden = true
+        function getButtonContactData(button) {
+          if (!button) return null
+          return {
+            name: button.dataset.contactName || '',
+            phone: button.dataset.contactPhone || '',
+            phoneMasked: button.dataset.contactPhoneMasked || '',
           }
-        }
-
-        function closeAllContactBubbles(exceptButton) {
-          document.querySelectorAll('.contact-bubble').forEach((bubble) => {
-            if (!bubble.previousElementSibling) return
-            if (bubble.previousElementSibling === exceptButton) return
-            bubble.hidden = true
-          })
         }
 
         function showMatchConfirmationPopup() {
@@ -1934,9 +1986,132 @@
           return `${head}-${middle}-${tail}`
         }
 
+        function formatPhoneDisplay(value) {
+          const digits = String(value || '').replace(/[^0-9]/g, '')
+          if (!digits) return value || ''
+          if (digits.length === 11) {
+            return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`
+          }
+          if (digits.length === 10) {
+            return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`
+          }
+          if (digits.length === 9) {
+            return `${digits.slice(0, 2)}-${digits.slice(2, 5)}-${digits.slice(5)}`
+          }
+          return digits.replace(/(\d{3,4})(?=\d)/g, '$1-')
+        }
+
         function getContactInfo(candidateId) {
           if (!candidateId) return null
           return matchState.contactById.get(candidateId) || null
+        }
+
+        function showContactModal(contact = {}) {
+          if (!contactModal || !contactModalName || !contactModalPhone || !contactModalMessage) return
+          const name = contact.name || '상대 이름'
+          const phoneRaw = contact.phone || contact.phoneMasked || '비공개'
+          const phone = formatPhoneDisplay(phoneRaw)
+          contactModalName.textContent = `성함: ${name}`
+          contactModalPhone.textContent = `휴대폰 번호: ${phone}`
+          contactModalMessage.textContent = buildContactGuidelineMessage()
+          contactModal.hidden = false
+          launchContactCelebration()
+        }
+
+        function hideContactModal() {
+          if (!contactModal) return
+          contactModal.hidden = true
+        }
+
+        function buildContactGuidelineMessage() {
+          const maleMessage =
+            '오늘 저녁 10시까지 매칭되신 여성분께 꼭 연락 부탁드립니다.\n\n혹시 마음이 바뀌셨더라도 예의를 갖추어 연락을 드리는 것이 바람직합니다.'
+          const femaleMessage =
+            '매칭되신 남성분께서 오늘 저녁 10시까지 연락을 주시면, 피곤하시더라도 간단히 한 번만이라도 회신 부탁드립니다.\n\n혹시 마음이 바뀌셨더라도 예의를 갖추어 연락을 드리는 것이 바람직합니다.'
+          const gender = String(currentTargetProfile?.gender || '').trim()
+          if (/남|male|man/i.test(gender)) return maleMessage
+          if (/여|female|woman/i.test(gender)) return femaleMessage
+          return femaleMessage
+        }
+
+        function launchContactCelebration() {
+          const canvas = document.createElement('canvas')
+          canvas.style.position = 'fixed'
+          canvas.style.top = '0'
+          canvas.style.left = '0'
+          canvas.style.width = '100%'
+          canvas.style.height = '100%'
+          canvas.style.pointerEvents = 'none'
+          canvas.style.zIndex = '4500'
+          document.body.appendChild(canvas)
+
+          const ctx = canvas.getContext('2d')
+          const colors = ['#fcd34d', '#fb7185', '#34d399', '#60a5fa', '#c084fc']
+          const gravity = 0.15
+          const drag = 0.985
+          const particles = []
+
+          function resize() {
+            canvas.width = window.innerWidth
+            canvas.height = window.innerHeight
+          }
+
+          resize()
+          window.addEventListener('resize', resize)
+
+          for (let i = 0; i < 160; i += 1) {
+            const angle = (Math.PI * 2 * i) / 40 + Math.random() * 0.5
+            const speed = Math.random() * 8 + 4
+            particles.push({
+              x: canvas.width / 2,
+              y: canvas.height * 0.3,
+              vx: Math.cos(angle) * speed,
+              vy: Math.sin(angle) * speed,
+              size: Math.random() * 6 + 4,
+              color: colors[Math.floor(Math.random() * colors.length)],
+              alpha: 1,
+              rotation: Math.random() * Math.PI,
+              rotationSpeed: (Math.random() - 0.5) * 0.2,
+            })
+          }
+
+          let animationId
+          const duration = 2500
+          const startTime = performance.now()
+
+          function render(now) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height)
+            particles.forEach((p) => {
+              p.vx *= drag
+              p.vy = p.vy * drag + gravity
+              p.x += p.vx
+              p.y += p.vy
+              p.rotation += p.rotationSpeed
+              p.alpha -= 0.006
+
+              ctx.save()
+              ctx.translate(p.x, p.y)
+              ctx.rotate(p.rotation)
+              ctx.globalAlpha = Math.max(p.alpha, 0)
+              ctx.fillStyle = p.color
+              ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 1.6)
+              ctx.restore()
+            })
+            if (now - startTime < duration) {
+              animationId = requestAnimationFrame(render)
+            } else {
+              cleanup()
+            }
+          }
+
+          function cleanup() {
+            cancelAnimationFrame(animationId)
+            window.removeEventListener('resize', resize)
+            canvas.remove()
+          }
+
+          animationId = requestAnimationFrame(render)
+          setTimeout(cleanup, duration + 500)
         }
 
         function formatSalaryRange(value) {

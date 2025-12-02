@@ -6895,6 +6895,58 @@
         }
       }
 
+      function handleSseConfirmedMatch(entry) {
+        if (!entry) return
+        try {
+          const merged = mergeMatchHistoryEntries([entry], matchHistory)
+          matchHistory = merged
+          saveMatchHistory()
+        } catch (error) {
+          console.warn('[sse] match history merge 실패', error)
+        }
+        rebuildMatchedCandidateIds()
+        const mapped = mapServerMatchEntry(entry)
+        if (mapped) {
+          const existingIndex = confirmedMatches.findIndex((item) => item.id === mapped.id)
+          if (existingIndex !== -1) {
+            confirmedMatches.splice(existingIndex, 1)
+          }
+          confirmedMatches.unshift(mapped)
+          saveConfirmedMatches()
+        }
+        updateMatchedCouplesButton()
+        if (matchedCouplesModal && !matchedCouplesModal.hidden) {
+          renderMatchedCouplesModal()
+        }
+        updateMatchHistoryUI()
+        if (entry?.candidateName && entry?.targetName) {
+          showToast(`${entry.targetName} × ${entry.candidateName} 커플이 확정되었습니다.`)
+        } else {
+          showToast('새로운 커플이 확정되었습니다.')
+        }
+      }
+
+      function handleSseMatchDeletion(entry) {
+        const matchId = entry?.id || entry
+        if (!matchId) return
+        const beforeConfirmed = confirmedMatches.length
+        confirmedMatches = confirmedMatches.filter((item) => item.id !== matchId)
+        if (beforeConfirmed !== confirmedMatches.length) {
+          saveConfirmedMatches()
+        }
+        const beforeHistory = matchHistory.length
+        matchHistory = matchHistory.filter((item) => item.id !== matchId)
+        if (beforeHistory !== matchHistory.length) {
+          saveMatchHistory()
+        }
+        rebuildMatchedCandidateIds()
+        updateMatchedCouplesButton()
+        if (matchedCouplesModal && !matchedCouplesModal.hidden) {
+          renderMatchedCouplesModal()
+        }
+        updateMatchHistoryUI()
+      }
+
       function setupSSE() {
         if (!('EventSource' in window)) return
         const source = new EventSource(EVENTS_URL)
@@ -6968,6 +7020,10 @@
               } else if (before !== items.length) {
                 showToast(`${ids.length}건이 삭제되었습니다.`)
               }
+            } else if (payload?.type === 'match:confirmed') {
+              handleSseConfirmedMatch(payload.payload)
+            } else if (payload?.type === 'match:deleted') {
+              handleSseMatchDeletion(payload.payload)
             }
           } catch (error) {
             console.error(error)

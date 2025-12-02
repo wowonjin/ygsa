@@ -334,6 +334,9 @@ app.post('/api/match-history', async (req, res) => {
       history.unshift(entry)
     }
     await writeMatchHistory(history)
+    if (sanitizeMatchHistoryCategory(nextEntry.category) === 'confirmed') {
+      broadcast({ type: 'match:confirmed', payload: nextEntry })
+    }
     res.json({ ok: true, data: nextEntry })
   } catch (error) {
     console.error('[match-history:create]', error)
@@ -355,6 +358,9 @@ app.delete('/api/match-history/:id', async (req, res) => {
     }
     const [removed] = history.splice(index, 1)
     await writeMatchHistory(history)
+    if (removed && sanitizeMatchHistoryCategory(removed.category) === 'confirmed') {
+      broadcast({ type: 'match:deleted', payload: removed })
+    }
     res.json({ ok: true, data: removed })
   } catch (error) {
     console.error('[match-history:delete]', error)
@@ -1016,6 +1022,8 @@ function buildIncomingRequestsPayload({ viewer, records, history }) {
     .forEach((entry) => {
       const requester = records.find((item) => item.id === entry.targetId)
       if (!requester) return
+      const category = sanitizeMatchHistoryCategory(entry.category)
+      if (category === 'confirmed') return
       const existing = requestMap.get(requester.id)
       if (!existing || (entry.matchedAt || 0) > (existing.requestRecordedAt || 0)) {
         requestMap.set(requester.id, {
@@ -1023,7 +1031,7 @@ function buildIncomingRequestsPayload({ viewer, records, history }) {
           requesterId: requester.id,
           requestRecordedAt: entry.matchedAt || Date.now(),
           requestWeek: entry.week || null,
-          status: sanitizeMatchHistoryCategory(entry.category),
+          status: category,
           profile: buildMatchCardPayload(requester),
           contact: {
             name: requester.name || '',
