@@ -1352,14 +1352,6 @@
               candidateId && matchState.incomingById.has(candidateId)
                 ? matchState.incomingById.get(candidateId)
                 : null
-            const shouldRouteToIncoming =
-              Boolean(candidateId) &&
-              Boolean(incomingRequestForCard) &&
-              !matchState.confirmedById.has(candidateId) &&
-              !record?.targetSelected
-            if (shouldRouteToIncoming) {
-              return
-            }
             if (candidateId) {
               matchState.currentDeckIds.add(candidateId)
             }
@@ -1457,6 +1449,7 @@
           matchState.incomingList.forEach((req) => {
             const requesterKey = normalizeCandidateKey(req?.requesterId)
             if (!requesterKey) return
+            if (matchState.currentDeckIds.has(requesterKey)) return
             if (matchState.confirmedById.has(requesterKey)) return
             visible.push({ request: req, requesterKey })
           })
@@ -2230,10 +2223,21 @@
 
         function getButtonContactData(button) {
           if (!button) return null
-          return {
+          const stored = {
             name: button.dataset.contactName || '',
             phone: button.dataset.contactPhone || '',
             phoneMasked: button.dataset.contactPhoneMasked || '',
+          }
+          if (stored.phone || stored.phoneMasked) {
+            return stored
+          }
+          const fallbackPhone = button.dataset.candidatePhone || ''
+          return {
+            name: stored.name || button.dataset.candidateName || '',
+            phone: fallbackPhone,
+            phoneMasked: fallbackPhone
+              ? maskPhoneNumber(fallbackPhone)
+              : stored.phoneMasked || '',
           }
         }
 
