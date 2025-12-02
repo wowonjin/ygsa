@@ -435,18 +435,24 @@ app.post('/api/match-history/lookup', async (req, res) => {
       targetPhone: entry.targetPhone || '',
     }))
 
-    if (!introEntries.length) {
+    if (!introEntries.length && !confirmedEntries.length) {
       return res.status(404).json({ ok: false, message: '이번주 소개가 없습니다.' })
     }
 
     let activeWeekKey = requestedWeek && requestedWeek.trim() ? requestedWeek.trim() : ''
     if (!activeWeekKey) {
-      activeWeekKey = buildWeekKey(introEntries[0]?.week)
+      const fallbackEntry = introEntries[0] || confirmedEntries[0] || null
+      if (fallbackEntry) {
+        activeWeekKey = buildWeekKey(fallbackEntry.week)
+      }
     }
 
     const weekFilteredIntro = activeWeekKey
       ? introEntries.filter((entry) => buildWeekKey(entry.week) === activeWeekKey)
       : introEntries
+    const weekFilteredConfirmed = activeWeekKey
+      ? confirmedEntries.filter((entry) => buildWeekKey(entry.week) === activeWeekKey)
+      : confirmedEntries
 
     const selection = []
     const seen = new Set()
@@ -462,7 +468,13 @@ app.post('/api/match-history/lookup', async (req, res) => {
       }
     }
 
-    const primarySource = weekFilteredIntro.length ? weekFilteredIntro : introEntries
+    const primarySource = weekFilteredIntro.length
+      ? weekFilteredIntro
+      : introEntries.length
+        ? introEntries
+        : weekFilteredConfirmed.length
+          ? weekFilteredConfirmed
+          : confirmedEntries
     addEntriesToSelection(primarySource)
 
     if (selection.length < limit && confirmedEntries.length) {
