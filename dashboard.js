@@ -5615,6 +5615,9 @@
         if (!reverseEntries.length) return []
         return reverseEntries
           .map(({ record, matchedAt }) => {
+            if (isCandidateInSelection(record) || isCandidateMatched(record?.id)) {
+              return null
+            }
             const evaluated = evaluateMatchCandidate(targetRecord, record)
             if (evaluated) {
               return {
@@ -5660,10 +5663,15 @@
         }
       }
 
+      function isCandidateInSelection(record) {
+        if (!record) return false
+        const candidateKey = record.id || normalizePhoneKey(record.phone)
+        if (!candidateKey) return false
+        return matchSelectedCandidates.some((entry) => entry.id === candidateKey)
+      }
+
       function getReverseMatchEntriesForTarget(targetRecord) {
         if (!targetRecord) return []
-        const targetGender = normalizeMatchGender(targetRecord.gender)
-        if (targetGender !== 'female') return []
         if (!Array.isArray(matchHistory) || !matchHistory.length) return []
         const currentWeek = getWeekInfo(new Date())
         const targetId = targetRecord.id || ''
