@@ -184,25 +184,6 @@
               </div>
               <p class="modal-subtitle" id="detailScheduleInfo"></p>
             </div>
-            <div class="field span-2 membership-payment-field">
-              <label class="membership-payment-label" for="detailMembershipType">회원권 / 결제 정보</label>
-              <div class="inline-group membership-payment-inline">
-                <select id="detailMembershipType" aria-label="회원권 종류">
-                  <option value="">회원권 선택</option>
-                  <option value="라이트">라이트</option>
-                  <option value="스탠다드">스탠다드</option>
-                  <option value="프리미엄">프리미엄</option>
-                </select>
-                <input
-                  id="detailPaymentAmount"
-                  type="text"
-                  inputmode="numeric"
-                  placeholder="결제 대금 (원)"
-                  aria-label="결제 대금"
-                />
-                <input id="detailPaymentDate" type="date" aria-label="입금 날짜" />
-              </div>
-            </div>
             <hr class="detail-divider" />
           </div>
           <div class="detail-section-tabs" role="tablist" aria-label="상세 정보 카테고리">
@@ -255,6 +236,16 @@
               aria-selected="false"
             >
               관리자 메모
+            </button>
+            <button
+              type="button"
+              class="detail-section-tab"
+              data-detail-section-target="feedback"
+              aria-controls="detailSectionFeedback"
+              role="tab"
+              aria-selected="false"
+            >
+              만남 후기
             </button>
             <button
               type="button"
@@ -799,20 +790,23 @@
                   <label for="detailNotes">관리자 메모</label>
                   <textarea id="detailNotes" placeholder="상담 기록이나 참고 사항을 입력하세요."></textarea>
                 </div>
-              <div class="field full-width detail-match-feedback">
-                <div class="match-feedback-head">
-                  <label id="matchFeedbackLabel">만남 후기 &amp; 매칭 평점</label>
-                  <button type="button" id="matchFeedbackAddBtn" class="match-feedback-add">회차 추가</button>
-                </div>
-                <p class="match-feedback-hint">매칭이 진행된 회차별로 상대방 후기와 5점 만점의 평점을 기록하세요.</p>
-                <div
-                  id="matchFeedbackList"
-                  class="match-feedback-list"
-                  aria-describedby="matchFeedbackLabel"
-                  aria-live="polite"
-                ></div>
-                <p id="matchFeedbackEmpty" class="match-feedback-empty" hidden>등록된 후기가 없습니다. ‘회차 추가’ 버튼을 눌러 새 후기를 작성하세요.</p>
               </div>
+            </fieldset>
+            <fieldset
+              class="detail-section detail-section-feedback"
+              id="detailSectionFeedback"
+              data-detail-section="feedback"
+              hidden
+            >
+              <legend>만남 후기 &amp; 매칭 평점</legend>
+              <div class="detail-field-grid">
+                <div class="field full-width detail-match-feedback">
+                  <div
+                    id="matchFeedbackList"
+                    class="match-feedback-list"
+                    aria-live="polite"
+                  ></div>
+                </div>
               </div>
             </fieldset>
             <fieldset
@@ -822,7 +816,28 @@
               hidden
             >
               <legend>결제 내역</legend>
-              <p class="payment-history-hint">회원권 결제 및 증빙 기록을 한눈에 확인하세요.</p>
+          <div class="membership-payment-field">
+            <label class="membership-payment-label" for="detailMembershipType">회원권 / 결제 정보</label>
+            <div class="inline-group membership-payment-inline">
+              <select id="detailMembershipType" aria-label="회원권 종류">
+                <option value="">회원권 선택</option>
+                <option value="라이트">라이트</option>
+                <option value="스탠다드">스탠다드</option>
+                <option value="프리미엄">프리미엄</option>
+              </select>
+              <input
+                id="detailPaymentAmount"
+                type="text"
+                inputmode="numeric"
+                placeholder="결제 대금 (원)"
+                aria-label="결제 대금"
+              />
+              <div class="payment-date-add">
+                <input id="detailPaymentDate" type="date" aria-label="입금 날짜" />
+                <button type="button" id="detailPaymentAddBtn" class="payment-add-btn">추가하기</button>
+              </div>
+            </div>
+          </div>
               <ul id="paymentHistoryList" class="payment-history-list" aria-live="polite"></ul>
               <p id="paymentHistoryEmpty" class="payment-history-empty" hidden>저장된 결제 내역이 없습니다.</p>
             </fieldset>

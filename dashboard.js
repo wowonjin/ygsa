@@ -443,10 +443,11 @@
       const detailMembershipTypeSelect = document.getElementById('detailMembershipType')
       const detailPaymentAmountInput = document.getElementById('detailPaymentAmount')
       const detailPaymentDateInput = document.getElementById('detailPaymentDate')
+      const detailPaymentAddBtn = document.getElementById('detailPaymentAddBtn')
       const detailNotesInput = document.getElementById('detailNotes')
       const matchFeedbackList = document.getElementById('matchFeedbackList')
-      const matchFeedbackAddBtn = document.getElementById('matchFeedbackAddBtn')
       const matchFeedbackEmptyState = document.getElementById('matchFeedbackEmpty')
+      const matchFeedbackSection = document.querySelector('.detail-match-feedback')
       const moimDetailView = document.getElementById('moimDetailView')
       const detailScheduleInfo = document.getElementById('detailScheduleInfo')
       const detailAttachmentsSection = document.getElementById('detailAttachmentsSection')
@@ -495,6 +496,7 @@
         idCard: null,
         employmentProof: null,
       }
+      let detailPaymentEntries = []
       const detailDocumentDirty = new Set()
       const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024
       const UPLOAD_SIZE_LABEL = '10MB'
@@ -539,7 +541,10 @@
         { label: '30대 중반', min: 34, max: 36 },
         { label: '30대 후반 이상', min: 37, max: 80 },
       ]
-      const MATCH_RESULT_LIMIT = 6
+      const MATCH_RESULT_LIMIT = null
+      const HAS_MATCH_RESULT_LIMIT =
+        Number.isFinite(MATCH_RESULT_LIMIT) && MATCH_RESULT_LIMIT > 0
+      const MATCH_RESULT_LIMIT_VALUE = HAS_MATCH_RESULT_LIMIT ? MATCH_RESULT_LIMIT : Infinity
       const MATCH_SCORE_MAX = 3
       const MATCH_HISTORY_STORAGE_KEY = 'ygsa_match_history_v1'
       const MATCH_HISTORY_RESYNC_KEY = 'ygsa_match_history_resync_at'
@@ -691,7 +696,15 @@
       detailDateInput.addEventListener('change', handleDetailDateChange)
       detailTimeSelect.addEventListener('change', handleDetailTimeChange)
       detailClearScheduleBtn.addEventListener('click', handleClearSchedule)
-      matchFeedbackAddBtn?.addEventListener('click', () => addMatchFeedbackEntry())
+      matchFeedbackSection?.addEventListener('click', (event) => {
+        const target = event.target instanceof Element ? event.target : null
+        if (!target) return
+        const addButton = target.closest('.match-feedback-add')
+        if (addButton) {
+          event.preventDefault()
+          addMatchFeedbackEntry()
+        }
+      })
       detailPhotoFaceBtn?.addEventListener('click', () => detailPhotoFaceInput?.click())
       detailPhotoFullBtn?.addEventListener('click', () => detailPhotoFullInput?.click())
       detailPhotoFaceInput?.addEventListener('change', (event) =>
@@ -1723,7 +1736,10 @@
                 value="${escapeHtml(partnerName)}"
               />
             </label>
-            <button type="button" class="match-feedback-remove" aria-label="후기 삭제">삭제</button>
+            <div class="match-feedback-actions">
+              <button type="button" class="match-feedback-add" aria-label="후기 추가">추가하기</button>
+              <button type="button" class="match-feedback-remove" aria-label="후기 삭제">삭제</button>
+            </div>
           </div>
           <label class="match-feedback-note-label">
             후기
@@ -1805,6 +1821,67 @@
         return `${Number(digits).toLocaleString('ko-KR')}원`
       }
 
+      function setupPaymentAmountInput() {
+        if (!detailPaymentAmountInput) return
+        const applyFormattedValue = () => {
+          const digits = sanitizePaymentAmount(detailPaymentAmountInput.value)
+          if (!digits) {
+            detailPaymentAmountInput.value = ''
+            return
+          }
+          const formatted = `${Number(digits).toLocaleString('ko-KR')}원`
+          detailPaymentAmountInput.value = formatted
+          const caretPos = Math.max(0, formatted.length - 1)
+          requestAnimationFrame(() => {
+            detailPaymentAmountInput.setSelectionRange(caretPos, caretPos)
+          })
+        }
+        detailPaymentAmountInput.addEventListener('input', applyFormattedValue)
+        detailPaymentAmountInput.addEventListener('focus', applyFormattedValue)
+        detailPaymentAmountInput.addEventListener('blur', applyFormattedValue)
+      }
+      function handlePaymentHistoryAdd() {
+        if (!detailCurrentRecord) {
+          showToast('대상을 찾을 수 없습니다.')
+          return
+        }
+        const membershipType = detailMembershipTypeSelect?.value?.trim() || ''
+        const paymentAmount = sanitizePaymentAmount(detailPaymentAmountInput?.value || '')
+        const paymentDateValue = detailPaymentDateInput?.value?.trim() || ''
+        if (!membershipType && !paymentAmount && !paymentDateValue) {
+          showToast('회원권, 결제 대금 또는 입금 날짜를 입력해주세요.')
+          return
+        }
+        const normalized = normalizePaymentHistoryEntry(
+          {
+            id: `temp_${Date.now()}`,
+            membershipType,
+            paymentAmount,
+            paymentDate: paymentDateValue,
+            recordedAt: new Date().toISOString(),
+          },
+          0,
+        )
+        if (!normalized) {
+          showToast('결제 정보를 다시 확인해주세요.')
+          return
+        }
+        detailPaymentEntries = [normalized, ...detailPaymentEntries]
+        detailCurrentRecord.paymentHistory = detailPaymentEntries.slice()
+        detailCurrentRecord.membershipType = normalized.membershipType
+        detailCurrentRecord.paymentAmount = normalized.paymentAmount
+        detailCurrentRecord.paymentDate = normalized.paymentDate
+        renderPaymentHistory(detailPaymentEntries)
+        setSelectValue(detailMembershipTypeSelect, '')
+        if (detailPaymentAmountInput) {
+          detailPaymentAmountInput.value = ''
+          detailPaymentAmountInput.dispatchEvent(new Event('blur'))
+        }
+        if (detailPaymentDateInput) detailPaymentDateInput.value = ''
+      }
+      setupPaymentAmountInput()
+      detailPaymentAddBtn?.addEventListener('click', handlePaymentHistoryAdd)
+
       function normalizePaymentHistoryEntry(entry, index = 0) {
         if (!entry || typeof entry !== 'object') return null
         const membershipType =
@@ -1884,25 +1961,31 @@
         return null
       }
 
-      function renderPaymentHistory(record) {
+      function renderPaymentHistory(source) {
         if (!paymentHistoryList || !paymentHistoryEmpty) return
+        if (Array.isArray(source)) {
+          detailPaymentEntries = source.slice()
+        } else if (source) {
+          detailPaymentEntries = getPaymentHistoryEntries(source)
+        }
+        const entries = Array.isArray(detailPaymentEntries) ? detailPaymentEntries : []
         paymentHistoryList.innerHTML = ''
-        const entries = getPaymentHistoryEntries(record)
         if (!entries.length) {
           paymentHistoryEmpty.hidden = false
           return
         }
         paymentHistoryEmpty.hidden = true
-        entries.forEach((entry) => {
+        entries.forEach((entry, index) => {
           const item = document.createElement('li')
           item.className = 'payment-history-item'
           const membershipLabel = entry.membershipType || '-'
           const amountLabel = formatPaymentAmountLabel(entry.paymentAmount) || '-'
           const depositLabel = entry.paymentDate || '-'
           const recordedLabel = entry.recordedAt ? formatDate(entry.recordedAt) : ''
+          const orderLabel = `${index + 1}회차`
           item.innerHTML = `
             <div class="payment-history-line">
-              <span>회원권</span>
+              <span>회원권 · ${escapeHtml(orderLabel)}</span>
               <strong>${escapeHtml(membershipLabel || '-')}</strong>
             </div>
             <div class="payment-history-line">
@@ -2026,10 +2109,12 @@
         if (detailMembershipTypeSelect)
           setSelectValue(detailMembershipTypeSelect, latestPaymentEntry?.membershipType || '')
         if (detailPaymentAmountInput)
-          detailPaymentAmountInput.value = latestPaymentEntry?.paymentAmount || ''
+          detailPaymentAmountInput.value = formatPaymentAmountLabel(
+            latestPaymentEntry?.paymentAmount || '',
+          )
         if (detailPaymentDateInput)
           detailPaymentDateInput.value = latestPaymentEntry?.paymentDate || ''
-        renderPaymentHistory(record)
+        renderPaymentHistory(getPaymentHistoryEntries(record))
 
         const { date: scheduledDate, time: scheduledTime } = splitLocalDateTime(
           record.meetingSchedule,
@@ -2129,7 +2214,8 @@
         if (detailMembershipTypeSelect) setSelectValue(detailMembershipTypeSelect, '')
         if (detailPaymentAmountInput) detailPaymentAmountInput.value = ''
         if (detailPaymentDateInput) detailPaymentDateInput.value = ''
-        renderPaymentHistory(null)
+        detailPaymentEntries = []
+        renderPaymentHistory([])
         clearMatchFeedbackEntries()
         if (detailAttachmentsSection) detailAttachmentsSection.hidden = true
         if (detailIdCardItem) detailIdCardItem.hidden = true
@@ -3883,6 +3969,7 @@
           membershipType: membershipTypeValue,
           paymentAmount: paymentAmountValue,
           paymentDate: paymentDateValue,
+          paymentHistory: detailPaymentEntries.slice(),
           phoneConsultStatus: phoneStatus,
           meetingSchedule,
           notes: detailNotesInput.value?.trim() || '',
@@ -3932,6 +4019,8 @@
               employmentProof: updatedDocuments.employmentProof || null,
             }
             detailDocumentDirty.clear()
+            detailPaymentEntries = getPaymentHistoryEntries(updated)
+            renderPaymentHistory(detailPaymentEntries)
             refreshDetailAttachments()
           }
           syncFilterOptions()
@@ -5239,6 +5328,8 @@
         const displayList = merged.list
         const priorityDisplayed = merged.displayedPriorityCount
         const hasPriority = priorityDisplayed > 0
+        const hasResultLimit = HAS_MATCH_RESULT_LIMIT
+        const limitValue = MATCH_RESULT_LIMIT_VALUE
         if (!displayList.length) {
           matchStatusEl.textContent = '조건에 맞는 추천 후보가 없습니다.'
           renderMatchResults([])
@@ -5254,19 +5345,28 @@
             fragments.push(`선매칭 ${priorityDisplayed}명 우선 표시`)
           }
           const additionalCount = displayList.length - priorityDisplayed
-          const remainingSlots = Math.max(MATCH_RESULT_LIMIT - priorityDisplayed, 0)
-          if (additionalCount > 0 && total > remainingSlots) {
-            fragments.push(`조건 일치 ${total}명 중 ${remainingSlots}명 추가 노출`)
-          } else if (additionalCount > 0) {
-            fragments.push(`조건 일치 ${additionalCount}명 추가 노출`)
-          } else if (total > 0) {
-            fragments.push('조건 일치 후보는 자리 확보 후 노출됩니다.')
+          if (hasResultLimit) {
+            const remainingSlots = Math.max(limitValue - priorityDisplayed, 0)
+            if (additionalCount > 0 && total > remainingSlots) {
+              fragments.push(`조건 일치 ${total}명 중 ${remainingSlots}명 추가 노출`)
+            } else if (additionalCount > 0) {
+              fragments.push(`조건 일치 ${additionalCount}명 추가 노출`)
+            } else if (total > displayList.length) {
+              fragments.push('조건 일치 후보는 자리 확보 후 노출됩니다.')
+            }
+          } else {
+            if (additionalCount > 0) {
+              fragments.push(`조건 일치 ${additionalCount}명 추가 노출`)
+            }
+            fragments.push(`조건 일치 ${total}명 모두 표시 중`)
           }
           matchStatusEl.textContent = fragments.join(' · ')
-        } else if (total > MATCH_RESULT_LIMIT) {
-          matchStatusEl.textContent = `${total}명 중 상위 ${MATCH_RESULT_LIMIT}명만 표시합니다.`
-        } else {
+        } else if (hasResultLimit && total > limitValue) {
+          matchStatusEl.textContent = `${total}명 중 상위 ${limitValue}명만 표시합니다.`
+        } else if (hasResultLimit) {
           matchStatusEl.textContent = `${total}명 추천되었습니다.`
+        } else {
+          matchStatusEl.textContent = `${total}명 모두 표시합니다.`
         }
         renderMatchResults(displayList)
       }
@@ -5282,7 +5382,7 @@
           .map((entry) => {
             const metaParts = [
               entry.meta.gender,
-              entry.meta.ageLabel,
+              entry.meta.birthLabel || entry.meta.ageLabel,
               entry.meta.heightLabel,
             ]
               .filter(Boolean)
@@ -5333,8 +5433,11 @@
             }
             return (b.meta.createdAt || 0) - (a.meta.createdAt || 0)
           })
+        const limitedList = HAS_MATCH_RESULT_LIMIT
+          ? evaluated.slice(0, MATCH_RESULT_LIMIT_VALUE)
+          : evaluated
         return {
-          list: evaluated.slice(0, MATCH_RESULT_LIMIT),
+          list: limitedList,
           total: evaluated.length,
         }
       }
@@ -5343,6 +5446,10 @@
         if (!target || !candidate || target.id === candidate.id) return null
         if (isCandidateMatched(candidate.id)) return null
         if (matchSelectedCandidates.some((entry) => entry.id === candidate.id)) return null
+        const candidateStatus = PHONE_STATUS_VALUES.includes(candidate.phoneConsultStatus)
+          ? candidate.phoneConsultStatus
+          : 'pending'
+        if (candidateStatus === 'pending') return null
         const targetGender = normalizeMatchGender(target.gender)
         const candidateGender = normalizeMatchGender(candidate.gender)
         if (targetGender && candidateGender && targetGender === candidateGender) return null
@@ -5357,10 +5464,11 @@
           )
         }
         const candidateAge = getAgeFromBirth(candidate.birth)
+        const candidateBirthLabel = formatBirthLabel(candidate.birth)
         const ageMatch = getAgeMatch(target.preferredAges, candidateAge)
         if (ageMatch.matched) {
           score += 1
-          const ageText = candidateAge ? `${candidateAge}세` : '나이 정보'
+          const ageText = candidateBirthLabel || (candidateAge ? `${candidateAge}세` : '나이 정보')
           reasons.push(`${ageText}가 ${ageMatch.label} 조건과 일치합니다.`)
         }
         const lifestyleOverlap = getLifestyleOverlap(
@@ -5373,15 +5481,14 @@
         }
         if (!score) return null
         const createdAt = candidate.createdAt ? new Date(candidate.createdAt).getTime() : 0
-        const statusKey = PHONE_STATUS_VALUES.includes(candidate.phoneConsultStatus)
-          ? candidate.phoneConsultStatus
-          : 'pending'
+        const statusKey = candidateStatus
         return {
           candidate,
           score,
           reasons,
           meta: {
             gender: candidate.gender || '',
+            birthLabel: candidateBirthLabel,
             ageLabel: formatAgeLabel(candidateAge),
             heightLabel: candidateHeight ? `${candidateHeight}cm` : candidate.height || '',
             lifestyleOverlapCount: lifestyleOverlap.length,
@@ -5422,12 +5529,15 @@
         const statusKey = PHONE_STATUS_VALUES.includes(record.phoneConsultStatus)
           ? record.phoneConsultStatus
           : 'pending'
+        if (statusKey === 'pending') return null
+        const candidateBirthLabel = formatBirthLabel(record.birth)
         return {
           candidate: record,
           score: 0,
           reasons: ['이번 주 선매칭에서 이미 연결된 남성 후보입니다.'],
           meta: {
             gender: record.gender || '',
+            birthLabel: candidateBirthLabel,
             ageLabel: formatAgeLabel(candidateAge),
             heightLabel: candidateHeight ? `${candidateHeight}cm` : record.height || '',
             lifestyleOverlapCount: 0,
@@ -5491,9 +5601,11 @@
         let displayedPriorityCount = 0
         const priorityList = Array.isArray(priorityEntries) ? priorityEntries : []
         const regularList = Array.isArray(regularEntries) ? regularEntries : []
+        const enforceLimit = HAS_MATCH_RESULT_LIMIT
+        const limitValue = MATCH_RESULT_LIMIT_VALUE
         priorityList.forEach((entry) => {
           if (!entry || !entry.candidate) return
-          if (merged.length >= MATCH_RESULT_LIMIT) return
+          if (enforceLimit && merged.length >= limitValue) return
           const candidateId = entry.candidate.id || ''
           const candidateKey = candidateId || normalizePhoneKey(entry.candidate.phone)
           if (candidateKey && seen.has(candidateKey)) return
@@ -5502,7 +5614,7 @@
           if (candidateKey) seen.add(candidateKey)
         })
         regularList.forEach((entry) => {
-          if (merged.length >= MATCH_RESULT_LIMIT) return
+          if (enforceLimit && merged.length >= limitValue) return
           const candidateId = entry?.candidate?.id || ''
           const candidateKey = candidateId || normalizePhoneKey(entry?.candidate?.phone)
           if (candidateKey && seen.has(candidateKey)) return
@@ -5550,8 +5662,7 @@
 
       function getBirthYear(value) {
         if (!value) return null
-        const match = String(value).match(/(19|20)\d{2}/)
-        return match ? Number(match[0]) : null
+        return parseBirthYearInput(value)
       }
 
       function getAgeFromBirth(value) {
@@ -5567,6 +5678,11 @@
         if (!Number.isFinite(age)) return ''
         const bracket = getAgeBracket(age)
         return bracket ? `${age}세 (${bracket})` : `${age}세`
+      }
+
+      function formatBirthLabel(value) {
+        const year = getBirthYear(value)
+        return Number.isFinite(year) ? formatBirthYearLabel(year) : ''
       }
 
       function getAgeBracket(age) {

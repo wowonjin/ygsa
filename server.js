@@ -635,6 +635,10 @@ app.patch('/api/consult/:id', async (req, res) => {
     updates.values = sanitizeStringArray(req.body.values).slice(0, 2)
   }
 
+  if (Object.prototype.hasOwnProperty.call(req.body || {}, 'paymentHistory')) {
+    updates.paymentHistory = sanitizePaymentHistory(req.body.paymentHistory)
+  }
+
   if (Object.prototype.hasOwnProperty.call(req.body || {}, 'height')) {
     updates.height = normalizeHeight(req.body.height)
   } else if (Object.prototype.hasOwnProperty.call(req.body || {}, 'region')) {
@@ -1115,6 +1119,9 @@ function sanitizeProfileUpdate(body) {
   assignText('valuesCustom', body?.valuesCustom, sanitizeNotes)
   assignText('aboutMe', body?.aboutMe, sanitizeNotes)
   assignText('preferredAppearance', body?.preferredAppearance)
+  assignText('membershipType', body?.membershipType)
+  assignText('paymentAmount', body?.paymentAmount, sanitizePaymentAmountValue)
+  assignText('paymentDate', body?.paymentDate)
   assignText('preferredHeightMin', body?.preferredHeightMin)
   assignText('preferredHeightMax', body?.preferredHeightMax)
   assignText('preferredHeightLabel', body?.preferredHeightLabel)
@@ -1125,6 +1132,9 @@ function sanitizeProfileUpdate(body) {
   assignArray('preferredAges', body?.preferredAges)
   assignArray('preferredLifestyle', body?.preferredLifestyle)
   assignArray('values', body?.values, 2)
+  if (hasProp('paymentHistory')) {
+    updates.paymentHistory = sanitizePaymentHistory(body?.paymentHistory)
+  }
   if (Object.prototype.hasOwnProperty.call(body || {}, 'depositStatus')) {
     const nextStatus = sanitizeDepositStatus(body?.depositStatus, '')
     if (nextStatus) {
@@ -1251,6 +1261,9 @@ function sanitizePayload(body) {
     weekendPreference: sanitizeText(body?.weekendPreference),
     depositStatus: sanitizeDepositStatus(body?.depositStatus, 'pending'),
     formType: sanitizeFormType(body?.formType || body?.applicationType, body),
+    membershipType: sanitizeText(body?.membershipType),
+    paymentAmount: sanitizePaymentAmountValue(body?.paymentAmount),
+    paymentDate: sanitizeText(body?.paymentDate),
   }
 
   payload.agreements = {
@@ -1259,6 +1272,7 @@ function sanitizePayload(body) {
     refund: Boolean(agreementsSource.refund ?? body?.refundAgree),
   }
   payload.matchReviews = sanitizeMatchReviews(body?.matchReviews)
+  payload.paymentHistory = sanitizePaymentHistory(body?.paymentHistory)
 
   return payload
 }
@@ -1357,6 +1371,10 @@ function normalizeStoredRecord(entry) {
   record.preferredLifestyle = sanitizeStringArray(record.preferredLifestyle)
   record.preferredAppearance = sanitizeText(record.preferredAppearance)
   record.values = sanitizeStringArray(record.values)
+  record.membershipType = sanitizeText(record.membershipType)
+  record.paymentAmount = sanitizePaymentAmountValue(record.paymentAmount)
+  record.paymentDate = sanitizeText(record.paymentDate)
+  record.paymentHistory = sanitizePaymentHistory(record.paymentHistory)
   const agreementsRaw =
     record.agreements && typeof record.agreements === 'object' ? record.agreements : {}
   record.agreements = {
@@ -1459,6 +1477,40 @@ function sanitizeMatchReviewEntry(entry, index = 0) {
     rating,
     recordedAt,
   }
+}
+
+function sanitizePaymentAmountValue(value) {
+  if (value == null) return ''
+  const digits = String(value).replace(/\D/g, '')
+  const trimmed = digits.replace(/^0+/, '')
+  return trimmed || ''
+}
+
+function sanitizePaymentHistoryEntry(entry, index = 0) {
+  if (!entry || typeof entry !== 'object') return null
+  const membershipType = sanitizeText(entry.membershipType)
+  const paymentAmount = sanitizePaymentAmountValue(entry.paymentAmount ?? entry.amount ?? '')
+  const paymentDate = sanitizeText(entry.paymentDate ?? entry.depositDate)
+  const memo = sanitizeNotes(entry.memo)
+  const recordedAt = safeToISOString(entry.recordedAt, '')
+  if (!membershipType && !paymentAmount && !paymentDate && !memo) {
+    return null
+  }
+  return {
+    id: sanitizeText(entry.id) || `payment_${index + 1}`,
+    membershipType,
+    paymentAmount,
+    paymentDate,
+    memo,
+    recordedAt,
+  }
+}
+
+function sanitizePaymentHistory(input) {
+  if (!Array.isArray(input)) return []
+  return input
+    .map((entry, index) => sanitizePaymentHistoryEntry(entry, index))
+    .filter(Boolean)
 }
 
 function sanitizeProfileShare(entry) {

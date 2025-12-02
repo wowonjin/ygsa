@@ -454,11 +454,11 @@ body.modal-open {
       }
       .toolbar select {
         min-width: 150px;
-        background-color: #101010;
+        background-color: #181b1f;
         color: #f0f6fc;
       }
       .toolbar select option {
-        background-color: #101010;
+        background-color: #181b1f;
         color: #f0f6fc;
       }
       .week-filter-label {
@@ -661,7 +661,7 @@ body.modal-open {
       width: min(1080px, 100%);
       height: min(90vh, 880px);
       max-height: 90vh;
-      background: var(--popup-surface);
+      background: #181b1f;
       border: 1px solid rgba(48, 54, 61, 0.9);
       border-radius: 28px;
       box-shadow: 0 40px 120px rgba(1, 4, 9, 0.8);
@@ -872,7 +872,7 @@ body.modal-open {
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      background: var(--popup-surface);
+      background: #181b1f;
       color: #d0d5dd;
       cursor: pointer;
       transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease;
@@ -912,7 +912,7 @@ body.modal-open {
     .calendar-panel {
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 18px;
-      background: var(--popup-surface);
+      background: #181b1f;
       padding: 20px;
       display: flex;
       flex-direction: column;
@@ -942,7 +942,7 @@ body.modal-open {
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 16px;
       padding: 12px 14px;
-      background: rgba(255, 255, 255, 0.03);
+      background: #181b1f;
       display: flex;
       flex-direction: column;
       gap: 6px;
@@ -993,7 +993,7 @@ body.modal-open {
       width: min(1080px, 95vw);
       min-height: calc(100vh - 72px);
       max-height: calc(100vh - 72px);
-      background: #242424;
+      background: #181b1f;
       border: 1px solid rgba(48, 54, 61, 0.9);
       border-radius: 28px;
       box-shadow: 0 32px 120px rgba(1, 4, 9, 0.78);
@@ -1192,37 +1192,30 @@ body.modal-open {
         padding-top: 12px;
         border-top: 1px solid rgba(48, 54, 61, 0.6);
       }
-      .match-feedback-head {
+      .match-feedback-actions {
         display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
+        justify-content: flex-end;
+        gap: 8px;
+        flex-wrap: wrap;
       }
-      .match-feedback-head label {
-        margin: 0;
-        font-size: 16px;
-        font-weight: 700;
-        color: #f0f6fc;
-      }
-      .match-feedback-add {
-        border: 1px solid rgba(250, 204, 21, 0.6);
-        background: rgba(251, 191, 36, 0.18);
-        color: #facc15;
-        border-radius: 999px;
-        padding: 8px 16px;
+      .match-feedback-add,
+      .match-feedback-remove {
+        border-radius: 10px;
+        padding: 10px 16px;
         font-size: 13px;
         font-weight: 600;
         cursor: pointer;
-        transition: background 0.2s ease, transform 0.2s ease;
+        height: 44px;
+        background: transparent;
+        transition: border-color 0.2s ease, transform 0.2s ease;
+      }
+      .match-feedback-add {
+        border: 1px solid #1f6feb;
+        color: #1f6feb;
       }
       .match-feedback-add:hover {
-        background: rgba(251, 191, 36, 0.3);
+        border-color: #3b82f6;
         transform: translateY(-1px);
-      }
-      .match-feedback-hint {
-        margin: 8px 0 10px;
-        font-size: 13px;
-        color: #8b949e;
       }
       .match-feedback-list {
         display: flex;
@@ -1233,7 +1226,7 @@ body.modal-open {
         border: 1px solid rgba(48, 54, 61, 0.75);
         border-radius: 14px;
         padding: 14px 16px;
-        background: rgba(13, 17, 23, 0.5);
+        background: transparent;
         display: flex;
         flex-direction: column;
         gap: 12px;
@@ -1247,21 +1240,15 @@ body.modal-open {
       .match-feedback-row label {
         margin: 0;
       }
-      .match-feedback-remove {
+      .match-feedback-actions {
         justify-self: flex-end;
-        border: 1px solid rgba(239, 68, 68, 0.35);
-        background: rgba(248, 113, 113, 0.1);
-        color: #f87171;
-        padding: 10px 14px;
-        border-radius: 10px;
-        font-size: 12px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: background 0.2s ease;
-        height: 44px;
+      }
+      .match-feedback-remove {
+        border: 1px solid rgba(201, 209, 217, 0.35);
+        color: #c9d1d9;
       }
       .match-feedback-remove:hover {
-        background: rgba(248, 113, 113, 0.2);
+        border-color: rgba(201, 209, 217, 0.65);
       }
       .match-feedback-note-label {
         display: flex;
@@ -1277,6 +1264,10 @@ body.modal-open {
         margin: 6px 0 0;
         font-size: 13px;
         color: #6e7781;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
       }
       .modal-form label {
         display: block;
@@ -1296,7 +1287,7 @@ body.modal-open {
     .modal-form .time-select {
       width: 100%;
       border: 1px solid #4d4d4d;
-      background: #242424;
+      background: #181b1f;
       color: #f0f6fc;
       border-radius: 10px;
       padding: 12px 14px;
@@ -1322,11 +1313,11 @@ body.modal-open {
       }
     .modal-form select,
     .modal-form .time-select {
-      background-color: #242424;
+      background-color: #181b1f;
     }
     .modal-form select option,
     .modal-form .time-select option {
-      background-color: #242424;
+      background-color: #181b1f;
       color: #f0f6fc;
     }
       .modal-form textarea {
@@ -1366,6 +1357,7 @@ body.modal-open {
       }
       .membership-payment-field {
         margin-top: 12px;
+        background: transparent;
       }
       .membership-payment-label {
         display: block;
@@ -1379,6 +1371,27 @@ body.modal-open {
       .membership-payment-inline > * {
         flex: 1;
         min-width: 0;
+      }
+      .payment-date-add {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .payment-add-btn {
+        border: 1px solid rgba(59, 130, 246, 0.5);
+        background: rgba(59, 130, 246, 0.15);
+        color: #dbeafe;
+        border-radius: 10px;
+        padding: 10px 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+        white-space: nowrap;
+      }
+      .payment-add-btn:hover {
+        background: rgba(59, 130, 246, 0.3);
+        border-color: rgba(59, 130, 246, 0.8);
+        transform: translateY(-1px);
       }
       .detail-attachments {
         margin-top: 12px;
@@ -1436,7 +1449,7 @@ body.modal-open {
         padding: 18px;
         display: grid;
         gap: 12px;
-        background: #0d1117;
+        background: transparent;
       }
       .payment-history-hint {
         margin: 0;
@@ -2925,7 +2938,7 @@ body.modal-open {
       max-height: 96vh;
       height: min(900px, 96vh);
       overflow-y: auto;
-      background: var(--popup-surface);
+      background: #181b1f;
       border: 1px solid #30363d;
       border-radius: 28px;
       padding: 18px 26px 26px;
@@ -3037,10 +3050,10 @@ body.modal-open {
       border-color: rgba(59, 130, 246, 0.6);
     }
     .match-target-card {
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 16px;
       padding: 18px;
-      background: var(--popup-surface);
+      background: #181b1f;
       display: flex;
       flex-direction: column;
       gap: 12px;
@@ -3077,19 +3090,19 @@ body.modal-open {
       color: #a5b4fc;
     }
     .match-conditions {
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 16px;
       padding: 18px;
-      background: var(--popup-surface);
+      background: #181b1f;
     }
     .match-conditions.inline {
       margin-top: 8px;
     }
     .match-selection-panel {
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 16px;
       padding: 14px 16px;
-      background: var(--popup-surface);
+      background: #181b1f;
       display: flex;
       flex-direction: column;
       gap: 12px;
@@ -3118,10 +3131,10 @@ body.modal-open {
       gap: 10px;
     }
     .match-selection-card {
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
       padding: 10px 12px;
-      background: rgba(255, 255, 255, 0.02);
+      background: #181b1f;
       display: flex;
       flex-direction: column;
       gap: 6px;
@@ -3191,19 +3204,19 @@ body.modal-open {
       color: #c9d1d9;
     }
     .match-results-panel {
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 16px;
       padding: 18px;
-      background: var(--popup-surface);
+      background: #181b1f;
       display: flex;
       flex-direction: column;
       gap: 18px;
     }
     .match-history-panel {
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 16px;
       padding: 14px 16px;
-      background: var(--popup-surface);
+      background: #181b1f;
       display: flex;
       flex-direction: column;
       gap: 14px;
@@ -3244,10 +3257,10 @@ body.modal-open {
       gap: 12px;
     }
     .match-result-card {
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
       padding: 16px;
-      background: rgba(255, 255, 255, 0.02);
+      background: #181b1f;
       display: flex;
       flex-direction: column;
       gap: 8px;
@@ -3256,9 +3269,9 @@ body.modal-open {
       position: relative;
       z-index: 0;
     }
-    .match-result-card:hover {
+      .match-result-card:hover {
         border-color: #1f6feb;
-        background: rgba(31, 111, 235, 0.08);
+        background: rgba(31, 111, 235, 0.15);
         transform: translateY(-2px);
         z-index: 2;
       }
@@ -3360,10 +3373,10 @@ body.modal-open {
       color: #8b949e;
     }
     .match-history-group {
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
       padding: 10px 12px;
-      background: rgba(255, 255, 255, 0.02);
+      background: #181b1f;
       display: flex;
       flex-direction: column;
       gap: 10px;
