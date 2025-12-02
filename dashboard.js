@@ -5398,11 +5398,6 @@
           (Array.isArray(target.preferredHeights) && target.preferredHeights.length) ||
           (Array.isArray(target.preferredAges) && target.preferredAges.length) ||
           (Array.isArray(target.preferredLifestyle) && target.preferredLifestyle.length)
-        if (!hasPreferences) {
-          matchStatusEl.textContent = '선호 키/나이/라이프스타일을 입력하면 추천을 받을 수 있습니다.'
-          renderMatchResults([])
-          return
-        }
         const { list, total } = computeMatchResults(target)
         const priorityEntries = buildPriorityMatchResults(target)
         const merged = mergePriorityMatchResults(priorityEntries, list)
@@ -5416,7 +5411,10 @@
           renderMatchResults([])
           return
         }
-        if (hasPriority) {
+        if (!hasPreferences) {
+          matchStatusEl.textContent =
+            '선호 조건이 없어도 상담 완료 회원을 모두 보여줍니다. 조건을 입력하면 우선순위가 더 정확해집니다.'
+        } else if (hasPriority) {
           const fragments = []
           if (priorityEntries.length > priorityDisplayed) {
             fragments.push(
