@@ -348,11 +348,20 @@ app.post('/api/match-history', async (req, res) => {
     } else {
       history.unshift(entry)
     }
+    const mutualUpdates = promoteMutualMatches(history, nextEntry)
     await writeMatchHistory(history)
-    if (sanitizeMatchHistoryCategory(nextEntry.category) === 'confirmed') {
-      broadcast({ type: 'match:confirmed', payload: nextEntry })
+    const refreshedEntry = history.find((item) => item.id === nextEntry.id) || nextEntry
+    if (sanitizeMatchHistoryCategory(refreshedEntry.category) === 'confirmed') {
+      broadcast({ type: 'match:confirmed', payload: refreshedEntry })
     }
-    res.json({ ok: true, data: nextEntry })
+    mutualUpdates
+      .filter((update) => update && update.id !== refreshedEntry.id)
+      .forEach((update) => {
+        if (sanitizeMatchHistoryCategory(update.category) === 'confirmed') {
+          broadcast({ type: 'match:confirmed', payload: update })
+        }
+      })
+    res.json({ ok: true, data: refreshedEntry })
   } catch (error) {
     console.error('[match-history:create]', error)
     res.status(500).json({ ok: false, message: '매칭 기록을 저장하지 못했습니다.' })
@@ -1051,6 +1060,44 @@ function mergeMatchHistoryEntries(existing = {}, incoming = {}) {
     merged.targetSelected = false
   }
   return merged
+}
+
+function promoteMutualMatches(history = [], updatedEntry = null) {
+  if (!Array.isArray(history) || !updatedEntry) return []
+  const targetId = sanitizeText(updatedEntry.targetId)
+  const candidateId = sanitizeText(updatedEntry.candidateId)
+  if (!targetId || !candidateId) return []
+  if (!normalizeBooleanFlag(updatedEntry.targetSelected)) return []
+  const updates = []
+  const normalizedUpdated = history.find((entry) => entry.id === updatedEntry.id) || updatedEntry
+  const candidates = history.filter(
+    (entry) =>
+      entry &&
+      entry.id !== normalizedUpdated.id &&
+      sanitizeText(entry.targetId) === candidateId &&
+      sanitizeText(entry.candidateId) === targetId &&
+      normalizeBooleanFlag(entry.targetSelected),
+  )
+  if (!candidates.length) return updates
+  const confirmEntry = (entry) => {
+    const index = history.findIndex((item) => item.id === entry.id)
+    const alreadyConfirmed = sanitizeMatchHistoryCategory(entry.category) === 'confirmed'
+    if (index === -1 && alreadyConfirmed) return entry
+    if (alreadyConfirmed) return entry
+    const confirmed = {
+      ...entry,
+      category: 'confirmed',
+      confirmedAt: entry.confirmedAt || Date.now(),
+    }
+    if (index !== -1) {
+      history[index] = confirmed
+    }
+    updates.push(confirmed)
+    return confirmed
+  }
+  confirmEntry(normalizedUpdated)
+  candidates.forEach((entry) => confirmEntry(entry))
+  return updates
 }
 
 function getWeekInfoFromDate(dateInput) {

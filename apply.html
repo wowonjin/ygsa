@@ -403,7 +403,11 @@
       .match-card-actions {
         display: flex;
         justify-content: center;
+        align-items: center;
         margin-top: 12px;
+        gap: 8px;
+        flex-wrap: wrap;
+        width: 100%;
       }
 
       .match-card-select-btn {
@@ -417,6 +421,9 @@
         cursor: pointer;
         box-shadow: none;
         transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+        flex: 1 1 auto;
+        width: auto;
+        min-width: 0;
       }
 
       .match-card-select-btn:hover {
@@ -468,6 +475,31 @@
       .match-card-select-btn.incoming-select-btn:hover {
         background: #ec4899;
         border-color: #db2777;
+      }
+
+      .match-card-cancel-btn {
+        border-radius: 999px;
+        padding: 8px 14px;
+        font-size: 12px;
+        font-weight: 600;
+        background: #f8fafc;
+        color: #64748b;
+        border: 1px solid rgba(100, 116, 139, 0.3);
+        cursor: pointer;
+        transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+        width: auto;
+        flex: 0 0 auto;
+      }
+
+      .match-card-cancel-btn:hover:not(:disabled) {
+        background: #e2e8f0;
+        color: #475569;
+        border-color: rgba(71, 85, 105, 0.4);
+      }
+
+      .match-card-cancel-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
       }
 
       .incoming-section {
@@ -1117,14 +1149,7 @@
         const contactModalCloseBtn = document.getElementById('contactModalCloseBtn')
         const MATCH_MANAGER_URL =
           (window.MATCH_MANAGER_URL && String(window.MATCH_MANAGER_URL).trim()) || ''
-        const ADMIN_OVERRIDE_PHONES = new Set([
-          '01086116390',
-          '01025157369',
-          '01091457553',
-          '01091401123',
-          '01012345678',
-          '01040906396',
-        ])
+        const ADMIN_OVERRIDE_PHONES = null
         const FIRST_UNLOCK_TIMESTAMP = new Date('2025-12-03T10:00:00+09:00').getTime()
         const WEEK_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000
         const UNLOCK_MESSAGE = '12월 3일 (수) 오전 10시부터 확인이 가능합니다.'
@@ -1141,6 +1166,11 @@
           confirmedById: new Map(),
           contactById: new Map(),
           currentDeckIds: new Set(),
+        }
+        const realtimeState = {
+          source: null,
+          retryTimer: null,
+          targetId: null,
         }
         const PENDING_SELECTIONS_STORAGE_KEY = 'match_pending_selections_v1'
         let pendingSelectionSet = new Set()
@@ -1159,7 +1189,12 @@
         const resolvedOrigin =
           (typeof window !== 'undefined' && window.BACKEND_ORIGIN) ||
           (typeof location !== 'undefined' ? `${location.origin}` : '')
+        const MATCH_HISTORY_ENDPOINT = (
+          (MATCH_MANAGER_URL && MATCH_MANAGER_URL.trim()) ||
+          `${(resolvedOrigin || '').replace(/\/$/, '') || ''}/api/match-history`
+        ).replace(/\/$/, '')
         const MATCH_LOOKUP_URL = `${(resolvedOrigin || '').replace(/\/$/, '') || ''}/api/match-history/lookup`
+        const EVENTS_URL = `${(resolvedOrigin || '').replace(/\/$/, '') || ''}/events`
 
         form?.addEventListener('submit', handleSubmit)
         checkInitialUnlockState()
@@ -1197,8 +1232,7 @@
         }
 
         function isAdminOverridePhone(phoneDigits) {
-          const key = String(phoneDigits || '').trim()
-          return key ? ADMIN_OVERRIDE_PHONES.has(key) : false
+          return Boolean(String(phoneDigits || '').trim())
         }
 
         async function handleSubmit(event) {
@@ -1307,6 +1341,7 @@
             : ''
           weekLabel.textContent = data?.week?.label || '이번 주 추천'
           currentTargetProfile = buildMatchTargetSnapshot(data?.target)
+          ensureRealtimeConnection()
 
           matchCards.innerHTML = ''
           matchState.currentDeckIds = new Set()
@@ -1482,16 +1517,20 @@
           preview.appendChild(crack)
           preview.appendChild(sparks)
           wrapper.appendChild(preview)
-          const actions = document.createElement('div')
-          actions.className = 'match-card-actions'
-          const actionButton = createMatchSelectButton(record, candidateId, matchEntryId, {
-            isIncomingOnly,
-          })
+          const { actions, selectButton: actionButton, cancelButton } = createMatchCardActions(
+            record,
+            candidateId,
+            matchEntryId,
+            {
+              isIncomingOnly,
+            },
+          )
+          hydrateMatchButtonMetadata(actionButton, record)
           if (initialContact) {
             setButtonContactData(actionButton, initialContact)
           }
           if (pendingSelection && !matchState.confirmedById.has(candidateId)) {
-            markMatchButtonCompleted(actionButton, { mutual: false })
+            markMatchButtonCompleted(actionButton, { mutual: false, cancelButton })
             revealMatchCard(wrapper)
           }
           if (
@@ -1502,17 +1541,17 @@
             markMatchButtonCompleted(actionButton, {
               mutual: true,
               contact: matchState.contactById.get(candidateId) || initialContact || getContactInfo(candidateId),
+              cancelButton,
             })
             revealMatchCard(wrapper)
           }
-          actions.appendChild(actionButton)
           preview.insertAdjacentElement('afterend', actions)
           initProfileCardSlider(preview)
-          applyMatchedCardState(wrapper, actionButton, candidateId, record.matchCategory)
+          applyMatchedCardState(wrapper, actionButton, cancelButton, candidateId, record.matchCategory)
           setupCardReveal(wrapper)
           return wrapper
         }
-        function applyMatchedCardState(wrapper, button, candidateId, category) {
+        function applyMatchedCardState(wrapper, button, cancelButton, candidateId, category) {
           if (!wrapper || !button) return
           const candidateKey = candidateId ? String(candidateId) : ''
           const normalizedCategory = String(category || '').trim().toLowerCase()
@@ -1520,7 +1559,7 @@
             normalizedCategory === 'confirmed' || (candidateKey && matchedCandidateIds.has(candidateKey))
           if (!alreadyMatched) return
           const contactInfo = getContactInfo(candidateKey)
-          markMatchButtonCompleted(button, { mutual: true, contact: contactInfo })
+          markMatchButtonCompleted(button, { mutual: true, contact: contactInfo, cancelButton })
           revealMatchCard(wrapper)
         }
 
@@ -1660,6 +1699,16 @@
           `
         }
 
+        function createMatchCardActions(record, candidateId, matchEntryId, options = {}) {
+          const actions = document.createElement('div')
+          actions.className = 'match-card-actions'
+          const selectButton = createMatchSelectButton(record, candidateId, matchEntryId, options)
+          const cancelButton = createMatchCancelButton(selectButton)
+          actions.appendChild(selectButton)
+          actions.appendChild(cancelButton)
+          return { actions, selectButton, cancelButton }
+        }
+
         function createMatchSelectButton(record, candidateId, matchEntryId, options = {}) {
           const button = document.createElement('button')
           button.type = 'button'
@@ -1672,6 +1721,12 @@
           }
           const targetReady = currentTargetProfile && currentTargetProfile.id
           const candidateKey = candidateId ? String(candidateId) : ''
+          if (candidateKey) {
+            button.dataset.candidateId = candidateKey
+          }
+          if (matchEntryId) {
+            button.dataset.matchEntryId = String(matchEntryId)
+          }
           if (!targetReady || !candidateKey) {
             button.disabled = true
             button.title = '추천 대상 정보를 찾을 수 없습니다.'
@@ -1681,6 +1736,57 @@
             handleCardMatchSelect(record, button, candidateId, matchEntryId)
           })
           return button
+        }
+
+        function createMatchCancelButton(selectButton) {
+          const button = document.createElement('button')
+          button.type = 'button'
+          button.className = 'match-card-cancel-btn'
+          button.textContent = '취소하기'
+          button.hidden = true
+          button.addEventListener('click', (event) => {
+            event.stopPropagation()
+            const candidateKey = selectButton?.dataset?.candidateId || ''
+            handlePendingMatchCancel(selectButton, candidateKey)
+          })
+          return button
+        }
+
+        function hydrateMatchButtonMetadata(button, record = {}) {
+          if (!button || !record) return
+          const displayName = record.characterName || record.name || ''
+          if (displayName) {
+            button.dataset.candidateName = displayName
+          }
+          if (record.gender) {
+            button.dataset.candidateGender = record.gender
+          }
+          const phone = record.phone || record.phoneNumber || ''
+          if (phone) {
+            button.dataset.candidatePhone = phone
+          }
+          const matchedAtCandidates = [
+            Number(record.matchRecordedAt),
+            Number(record.matchedAt),
+          ].filter((value) => Number.isFinite(value) && value > 0)
+          if (matchedAtCandidates.length) {
+            button.dataset.matchRecordedAt = String(matchedAtCandidates[0])
+          }
+        }
+
+        function buildButtonRecordSnapshot(button) {
+          if (!button) return null
+          const phone = button.dataset.candidatePhone || ''
+          const matchedAt = Number(button.dataset.matchRecordedAt)
+          return {
+            id: button.dataset.candidateId || '',
+            name: button.dataset.candidateName || '',
+            characterName: button.dataset.candidateName || '',
+            gender: button.dataset.candidateGender || '',
+            phone,
+            phoneNumber: phone,
+            matchRecordedAt: Number.isFinite(matchedAt) && matchedAt > 0 ? matchedAt : undefined,
+          }
         }
 
         async function handleCardMatchSelect(record, button, candidateIdOverride, matchEntryId) {
@@ -1699,6 +1805,7 @@
           if (currentState === 'completed' || currentState === 'requesting') {
             return
           }
+          const cancelButton = getCancelButton(button)
           const originalScrollY = window.scrollY || document.documentElement.scrollTop || 0
           const originalButtonTop = button?.getBoundingClientRect()?.top || 0
           const candidateKey = String(candidateId)
@@ -1713,13 +1820,19 @@
           }
           button.dataset.matchState = 'requesting'
           button.disabled = true
+          if (cancelButton) {
+            cancelButton.disabled = true
+          }
+          let hasIncomingRequest = false
           try {
             await sendMatchRequest(payload)
-            const hasIncomingRequest = Boolean(incomingRequest)
+            hasIncomingRequest = Boolean(incomingRequest)
             const contactInfo = hasIncomingRequest ? getContactInfo(candidateKey) : null
             markMatchButtonCompleted(button, {
               mutual: hasIncomingRequest,
               contact: hasIncomingRequest ? contactInfo : null,
+              cancelButton,
+              matchEntryId: payload.id,
             })
             if (hasIncomingRequest) {
               matchedCandidateIds.add(candidateKey)
@@ -1748,18 +1861,98 @@
               button.dataset.matchState = ''
               button.disabled = false
             }
+            if (cancelButton && !hasIncomingRequest) {
+              cancelButton.disabled = false
+            }
           }
         }
 
-        function buildMatchSelectionPayload(record, candidateIdArg, matchEntryId, options = {}) {
+        async function handlePendingMatchCancel(button, candidateId) {
+          if (!button) return
+          const cancelButton = getCancelButton(button)
+          if (!cancelButton) return
+          if (button.dataset.matchState === 'requesting' || button.dataset.matchState === 'cancelling') {
+            return
+          }
+          const candidateKey = candidateId || button.dataset.candidateId || ''
+          if (!candidateKey) {
+            showMessage('취소할 매칭 정보를 찾을 수 없습니다.', true)
+            return
+          }
+          const matchEntryId = button.dataset.matchEntryId || ''
+          const snapshot = buildButtonRecordSnapshot(button)
+          const payload = buildMatchSelectionPayload(snapshot, candidateKey, matchEntryId, {
+            categoryOverride: 'intro',
+            targetSelectedOverride: false,
+            matchedAtOverride: snapshot?.matchRecordedAt || Date.now(),
+          })
+          if (!payload) {
+            showMessage('취소할 매칭 정보를 준비하지 못했습니다.', true)
+            return
+          }
+          button.dataset.matchState = 'cancelling'
+          cancelButton.disabled = true
+          try {
+            await sendMatchRequest(payload)
+            if (candidateKey && pendingSelectionSet.delete(candidateKey)) {
+              savePendingSelections(lastLookupPhoneKey, pendingSelectionSet)
+            }
+            resetMatchButtonState(button)
+            showMessage('매칭 신청이 취소되었습니다.')
+          } catch (error) {
+            console.error('[match-cancel] 취소 실패', error)
+            showMessage(error?.message || '매칭 신청을 취소하지 못했습니다.', true)
+          } finally {
+            if (button.dataset.matchState === 'cancelling') {
+              button.dataset.matchState = ''
+            }
+            cancelButton.disabled = false
+          }
+        }
+
+        function resetMatchButtonState(button) {
+          if (!button) return
+          button.classList.remove('is-completed', 'is-mutual')
+          button.disabled = false
+          button.dataset.matchState = ''
+          button.textContent = button.classList.contains('incoming-select-btn')
+            ? '매칭 수락하기'
+            : '매칭 선택하기'
+          clearButtonContactData(button)
+          delete button.dataset.matchEntryId
+          const cancelButton = getCancelButton(button)
+          if (cancelButton) {
+            cancelButton.hidden = true
+            cancelButton.disabled = false
+          }
+        }
+
+        function getCancelButton(button) {
+          if (!button) return null
+          return (
+            button.closest('.match-card-actions')?.querySelector('.match-card-cancel-btn') || null
+          )
+        }
+
+        function buildMatchSelectionPayload(
+          record,
+          candidateIdArg,
+          matchEntryId,
+          options = {},
+        ) {
           if (!record || !currentTargetProfile || !lastLookupPhoneKey) return null
           const candidateId = candidateIdArg || getCandidateIdentifier(record)
           const targetId = currentTargetProfile.id || ''
           if (!candidateId || !targetId) return null
-          const matchedAt =
-            typeof record.matchRecordedAt === 'number' && record.matchRecordedAt > 0
-              ? record.matchRecordedAt
-              : Date.now()
+          const matchedAtOverride = Number(options?.matchedAtOverride)
+          const resolvedMatchedAt =
+            Number.isFinite(matchedAtOverride) && matchedAtOverride > 0
+              ? matchedAtOverride
+              : typeof record?.matchRecordedAt === 'number' && record.matchRecordedAt > 0
+                ? record.matchRecordedAt
+                : typeof record?.matchedAt === 'number' && record.matchedAt > 0
+                  ? record.matchedAt
+                  : Date.now()
           const candidatePhone = normalizePhoneKey(record.phone || record.phoneNumber || '')
           const candidateName = record.name || record.characterName || '추천 후보'
           const candidateGender = record.gender || ''
@@ -1770,27 +1963,27 @@
               ? 'confirmed'
               : 'intro'
           return {
-            id: matchEntryId || `${targetId}-${candidateId}-${matchedAt}`,
+            id: matchEntryId || `${targetId}-${candidateId}-${resolvedMatchedAt}`,
             candidateId,
             targetId,
             targetPhone: lastLookupPhoneKey,
-            matchedAt,
-            week: buildWeekMeta(new Date(matchedAt)),
+            matchedAt: resolvedMatchedAt,
+            week: buildWeekMeta(new Date(resolvedMatchedAt)),
             category: normalizedCategory,
             candidateName,
             candidateGender,
             candidatePhone,
             targetName,
             targetGender,
-            targetSelected: true,
+            targetSelected:
+              options?.targetSelectedOverride !== undefined
+                ? Boolean(options.targetSelectedOverride)
+                : true,
           }
         }
 
         async function sendMatchRequest(payload) {
-          const endpoint =
-            (MATCH_MANAGER_URL && MATCH_MANAGER_URL.trim()) ||
-            `${(resolvedOrigin || '').replace(/\/$/, '') || ''}/api/match-history`
-          const response = await fetch(endpoint, {
+          const response = await fetch(MATCH_HISTORY_ENDPOINT, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -1834,8 +2027,15 @@
         }
 
 
-        function markMatchButtonCompleted(button, { mutual = false, contact = null } = {}) {
+        function markMatchButtonCompleted(
+          button,
+          { mutual = false, contact = null, cancelButton = null, matchEntryId = '' } = {},
+        ) {
           if (!button) return
+          if (matchEntryId) {
+            button.dataset.matchEntryId = String(matchEntryId)
+          }
+          const inlineCancelButton = cancelButton || getCancelButton(button)
           button.classList.add('is-completed')
           button.classList.toggle('is-mutual', Boolean(mutual))
           if (mutual) {
@@ -1845,11 +2045,19 @@
             if (contact) {
               setButtonContactData(button, contact)
             }
+            if (inlineCancelButton) {
+              inlineCancelButton.hidden = true
+              inlineCancelButton.disabled = false
+            }
           } else {
             button.disabled = true
             button.dataset.matchState = 'completed'
             button.textContent = '매칭이 신청되었습니다'
             clearButtonContactData(button)
+            if (inlineCancelButton) {
+              inlineCancelButton.hidden = false
+              inlineCancelButton.disabled = false
+            }
           }
         }
 
@@ -2177,10 +2385,20 @@
             { label: 'MBTI', value: (record.mbti || '-').toUpperCase() },
           ]
           const salaryLabel = formatSalaryRange(record.salaryRange)
+          const universityLabel =
+            typeof record.university === 'string' ? record.university.trim() : ''
           if (salaryLabel) {
             stats.push({ label: 'SALARY', value: salaryLabel })
+            if (universityLabel) {
+              stats.push({ label: 'UNIV', value: universityLabel })
+            }
           } else if (record.education) {
             stats.push({ label: 'EDU', value: record.education })
+            if (universityLabel) {
+              stats.push({ label: 'UNIV', value: universityLabel })
+            }
+          } else if (universityLabel) {
+            stats.push({ label: 'UNIV', value: universityLabel })
           }
           return stats
         }
@@ -2524,6 +2742,130 @@
             return `data:${mime};base64,${fileData.base64.trim()}`
           }
           return ''
+        }
+
+        function ensureRealtimeConnection() {
+          if (typeof window === 'undefined') return
+          if (!currentTargetProfile?.id) return
+          const targetId = String(currentTargetProfile.id)
+          if (realtimeState.targetId && realtimeState.targetId !== targetId) {
+            teardownRealtimeConnection()
+          }
+          realtimeState.targetId = targetId
+          if (realtimeState.retryTimer) {
+            window.clearTimeout(realtimeState.retryTimer)
+            realtimeState.retryTimer = null
+          }
+          if (realtimeState.source || typeof window.EventSource === 'undefined') return
+          try {
+            const source = new EventSource(EVENTS_URL)
+            realtimeState.source = source
+            source.addEventListener('message', handleRealtimeEvent)
+            source.addEventListener('error', handleRealtimeError)
+          } catch (error) {
+            console.warn('[match:sse] 연결에 실패했습니다.', error)
+            scheduleRealtimeRetry()
+          }
+        }
+
+        function handleRealtimeEvent(event) {
+          if (!event?.data) return
+          let payload
+          try {
+            payload = JSON.parse(event.data)
+          } catch (error) {
+            console.warn('[match:sse] 이벤트 파싱 실패', error)
+            return
+          }
+          if (payload?.type === 'match:confirmed') {
+            handleRealtimeMatchConfirmed(payload.payload)
+          }
+        }
+
+        function handleRealtimeError() {
+          scheduleRealtimeRetry()
+        }
+
+        function scheduleRealtimeRetry() {
+          teardownRealtimeConnection()
+          if (realtimeState.retryTimer) return
+          if (typeof window === 'undefined') return
+          realtimeState.retryTimer = window.setTimeout(() => {
+            realtimeState.retryTimer = null
+            ensureRealtimeConnection()
+          }, 5000)
+        }
+
+        function teardownRealtimeConnection() {
+          if (realtimeState.source) {
+            try {
+              realtimeState.source.removeEventListener('message', handleRealtimeEvent)
+              realtimeState.source.removeEventListener('error', handleRealtimeError)
+              realtimeState.source.close()
+            } catch (_) {
+              /* noop */
+            }
+            realtimeState.source = null
+          }
+        }
+        if (typeof window !== 'undefined') {
+          window.addEventListener('beforeunload', () => {
+            if (realtimeState.retryTimer) {
+              window.clearTimeout(realtimeState.retryTimer)
+              realtimeState.retryTimer = null
+            }
+            teardownRealtimeConnection()
+          })
+        }
+
+        function handleRealtimeMatchConfirmed(entry) {
+          if (!entry || !currentTargetProfile?.id) return
+          const targetId = String(entry.targetId || '').trim()
+          const viewerId = String(currentTargetProfile.id || '').trim()
+          if (!targetId || targetId !== viewerId) return
+          const candidateKey = String(entry.candidateId || '').trim()
+          if (!candidateKey) return
+          const contact = {
+            name: entry.candidateName || '',
+            phone: entry.candidatePhone || '',
+            phoneMasked: entry.candidatePhoneMasked || maskPhoneNumber(entry.candidatePhone),
+          }
+          matchState.confirmedById.set(candidateKey, contact)
+          matchState.contactById.set(candidateKey, contact)
+          matchedCandidateIds.add(candidateKey)
+          let pendingChanged = false
+          if (pendingSelectionSet.delete(candidateKey)) {
+            pendingChanged = true
+          }
+          if (pendingChanged && lastLookupPhoneKey) {
+            savePendingSelections(lastLookupPhoneKey, pendingSelectionSet)
+          }
+          const buttons = findCandidateButtons(candidateKey)
+          if (buttons.length) {
+            buttons.forEach((button) => {
+              const cancelButton = getCancelButton(button)
+              markMatchButtonCompleted(button, {
+                mutual: true,
+                contact,
+                cancelButton,
+                matchEntryId: entry.id,
+              })
+              const wrapper = button.closest('.match-card')
+              revealMatchCard(wrapper)
+            })
+          }
+        }
+
+        function findCandidateButtons(candidateId) {
+          if (!candidateId) return []
+          const selectorValue = escapeAttributeValue(candidateId)
+          return Array.from(
+            document.querySelectorAll(`.match-card-select-btn[data-candidate-id="${selectorValue}"]`),
+          )
+        }
+
+        function escapeAttributeValue(value) {
+          return String(value || '').replace(/"/g, '\\"')
         }
 
         function escapeHtml(str) {

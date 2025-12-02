@@ -2772,10 +2772,20 @@
           { label: 'MBTI', value: (record.mbti || '-').toUpperCase() },
         ]
         const salaryLabel = formatSalaryRange(record.salaryRange)
+        const universityLabel =
+          typeof record.university === 'string' ? record.university.trim() : ''
         if (salaryLabel) {
           stats.push({ label: 'SALARY', value: salaryLabel })
+          if (universityLabel) {
+            stats.push({ label: 'UNIV', value: universityLabel })
+          }
         } else if (record.education) {
           stats.push({ label: 'EDU', value: record.education })
+          if (universityLabel) {
+            stats.push({ label: 'UNIV', value: universityLabel })
+          }
+        } else if (universityLabel) {
+          stats.push({ label: 'UNIV', value: universityLabel })
         }
         return stats
       }
