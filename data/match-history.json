@@ -1,0 +1,41 @@
+[
+  {
+    "id": "match-confirmed-1",
+    "candidateId": "candidate-jamin",
+    "targetId": "target-hunjin",
+    "targetPhone": "01031142347",
+    "matchedAt": 1762107397000,
+    "week": {
+      "label": "2025년 49주차",
+      "year": 2025,
+      "week": 49
+    },
+    "category": "confirmed",
+    "candidateName": "이자민",
+    "candidateGender": "여성",
+    "candidatePhone": "01012345678",
+    "targetName": "정훈진",
+    "targetGender": "남성",
+    "targetSelected": true
+  },
+  {
+    "id": "match-intro-1",
+    "candidateId": "candidate-another",
+    "targetId": "target-hunjin",
+    "targetPhone": "01031142347",
+    "matchedAt": 1762010000000,
+    "week": {
+      "label": "2025년 49주차",
+      "year": 2025,
+      "week": 49
+    },
+    "category": "intro",
+    "candidateName": "박지영",
+    "candidateGender": "여성",
+    "candidatePhone": "01055556666",
+    "targetName": "정훈진",
+    "targetGender": "남성",
+    "targetSelected": false
+  }
+]
+

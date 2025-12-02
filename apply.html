@@ -1401,6 +1401,7 @@
                 matchCards.appendChild(cardElement)
               }
             })
+          injectFallbackConfirmedCards(matchedContacts)
           matchState.incomingList = incomingRequests
           renderIncomingRequests()
           if (heroSection) {
@@ -1425,10 +1426,11 @@
           matchState.contactById.clear()
           matchState.incomingList = Array.isArray(incomingRequests) ? incomingRequests : []
           matchState.incomingList.forEach((req) => {
-            if (!req?.requesterId) return
-            matchState.incomingById.set(req.requesterId, req)
+            const requesterKey = normalizeCandidateKey(req?.requesterId)
+            if (!requesterKey) return
+            matchState.incomingById.set(requesterKey, req)
             if (req.contact) {
-              matchState.contactById.set(req.requesterId, {
+              matchState.contactById.set(requesterKey, {
                 name: req.contact.name || '',
                 phone: req.contact.phone || '',
                 phoneMasked: req.contact.phoneMasked || '',
@@ -1437,22 +1439,27 @@
           })
           matchState.confirmedById.clear()
           matchedCandidates.forEach((entry) => {
-            if (!entry?.candidateId) return
+            const candidateKey = normalizeCandidateKey(entry?.candidateId)
+            if (!candidateKey) return
             const contact = {
               name: entry.candidateName || '',
               phone: entry.candidatePhone || '',
               phoneMasked: maskPhoneNumber(entry.candidatePhone),
             }
-            matchState.confirmedById.set(entry.candidateId, contact)
-            matchState.contactById.set(entry.candidateId, contact)
+            matchState.confirmedById.set(candidateKey, contact)
+            matchState.contactById.set(candidateKey, contact)
           })
         }
 
         function renderIncomingRequests() {
           if (!incomingSection || !incomingCards) return
-          const visible = matchState.incomingList.filter(
-            (req) => req?.requesterId && !matchState.confirmedById.has(req.requesterId),
-          )
+          const visible = []
+          matchState.incomingList.forEach((req) => {
+            const requesterKey = normalizeCandidateKey(req?.requesterId)
+            if (!requesterKey) return
+            if (matchState.confirmedById.has(requesterKey)) return
+            visible.push({ request: req, requesterKey })
+          })
           incomingCards.innerHTML = ''
           if (!visible.length) {
             incomingSection.hidden = true
@@ -1461,21 +1468,68 @@
           }
           incomingSection.hidden = false
           if (incomingEmpty) incomingEmpty.hidden = true
-          visible.forEach((req) => {
+          visible.forEach(({ request, requesterKey }) => {
             const profileRecord = {
-              ...(req.profile || {}),
-              id: (req.profile && req.profile.id) || req.requesterId,
+              ...(request.profile || {}),
+              id:
+                (request.profile &&
+                  normalizeCandidateKey(request.profile.id || request.profile.profileId)) ||
+                requesterKey,
             }
             const card = renderMatchCard(profileRecord, null, {
               isIncomingOnly: true,
               coverTitle: '실시간 요청',
               coverSubtitle: '지금 확인하고 선택하세요',
-              incomingRequest: req,
+              incomingRequest: request,
             })
             if (card) {
               incomingCards.appendChild(card)
             }
           })
+        }
+
+        function injectFallbackConfirmedCards(matchedContacts = []) {
+          if (!Array.isArray(matchedContacts) || !matchedContacts.length) return
+          matchedContacts.forEach((entry) => {
+            const candidateId = normalizeCandidateKey(entry?.candidateId)
+            if (!candidateId || matchState.currentDeckIds.has(candidateId)) return
+            const fallbackRecord = buildFallbackConfirmedRecord(entry, candidateId)
+            if (!fallbackRecord) return
+            matchState.currentDeckIds.add(candidateId)
+            const cardElement = renderMatchCard(fallbackRecord, null, {
+              coverTitle: '확정 카드',
+              coverSubtitle: '이미 매칭되었습니다',
+              initialContact: matchState.confirmedById.get(candidateId),
+            })
+            if (cardElement) {
+              matchCards.appendChild(cardElement)
+            }
+          })
+        }
+
+        function buildFallbackConfirmedRecord(entry, candidateId) {
+          if (!candidateId) return null
+          const matchedAt = Number(entry?.matchedAt)
+          const resolvedMatchedAt =
+            Number.isFinite(matchedAt) && matchedAt > 0 ? matchedAt : Date.now()
+          const fallbackName = entry?.candidateName || '확정 매칭 카드'
+          const phone = entry?.candidatePhone || ''
+          return {
+            id: candidateId,
+            candidateId,
+            characterName: fallbackName,
+            name: fallbackName,
+            phone,
+            phoneNumber: phone,
+            matchRecordedAt: resolvedMatchedAt,
+            matchCandidateId: candidateId,
+            matchCategory: 'confirmed',
+            matchEntryId: `${candidateId}-${resolvedMatchedAt}-fallback`,
+            photos: [],
+            preferredLifestyle: [],
+            profileAppeal: entry?.profileAppeal || '',
+            profileSummary: entry?.profileSummary || '',
+          }
         }
 
         function renderMatchCard(record, order, options = {}) {
@@ -1565,7 +1619,7 @@
         }
         function applyMatchedCardState(wrapper, button, cancelButton, candidateId, category) {
           if (!wrapper || !button) return
-          const candidateKey = candidateId ? String(candidateId) : ''
+          const candidateKey = normalizeCandidateKey(candidateId)
           const normalizedCategory = String(category || '').trim().toLowerCase()
           const alreadyMatched =
             normalizedCategory === 'confirmed' || (candidateKey && matchedCandidateIds.has(candidateKey))
@@ -1732,7 +1786,7 @@
             button.textContent = '매칭 선택하기'
           }
           const targetReady = currentTargetProfile && currentTargetProfile.id
-          const candidateKey = candidateId ? String(candidateId) : ''
+          const candidateKey = normalizeCandidateKey(candidateId)
           if (candidateKey) {
             button.dataset.candidateId = candidateKey
           }
@@ -1820,7 +1874,7 @@
           const cancelButton = getCancelButton(button)
           const originalScrollY = window.scrollY || document.documentElement.scrollTop || 0
           const originalButtonTop = button?.getBoundingClientRect()?.top || 0
-          const candidateKey = String(candidateId)
+          const candidateKey = normalizeCandidateKey(candidateId)
           const incomingRequest = matchState.incomingById.get(candidateKey)
           const resolvedMatchEntryId = matchEntryId || incomingRequest?.requestId || ''
           const payload = buildMatchSelectionPayload(record, candidateId, resolvedMatchEntryId, {
@@ -1886,7 +1940,7 @@
           if (button.dataset.matchState === 'requesting' || button.dataset.matchState === 'cancelling') {
             return
           }
-          const candidateKey = candidateId || button.dataset.candidateId || ''
+          const candidateKey = normalizeCandidateKey(candidateId || button.dataset.candidateId)
           if (!candidateKey) {
             showMessage('취소할 매칭 정보를 찾을 수 없습니다.', true)
             return
@@ -2012,16 +2066,22 @@
           }
         }
 
+        function normalizeCandidateKey(value) {
+          if (value === null || value === undefined) return ''
+          return String(value).trim()
+        }
+
         function getCandidateIdentifier(record) {
-          return (
-            record.id ||
-            record.uuid ||
-            record.candidateId ||
-            record.profileId ||
-            record.phone ||
-            record.key ||
+          if (!record) return ''
+          const raw =
+            record.id ??
+            record.uuid ??
+            record.candidateId ??
+            record.profileId ??
+            record.phone ??
+            record.key ??
             ''
-          )
+          return normalizeCandidateKey(raw)
         }
 
         function buildMatchTargetSnapshot(target) {
@@ -2130,7 +2190,10 @@
             if (!raw) return new Set()
             const parsed = JSON.parse(raw)
             const list = Array.isArray(parsed?.[phoneKey]) ? parsed[phoneKey] : []
-            return new Set(list.filter(Boolean))
+            const normalized = list
+              .map((value) => normalizeCandidateKey(value))
+              .filter((value) => Boolean(value))
+            return new Set(normalized)
           } catch (error) {
             console.warn('[match:pending] 불러오기 실패', error)
             return new Set()
@@ -2142,7 +2205,10 @@
           try {
             const raw = localStorage.getItem(PENDING_SELECTIONS_STORAGE_KEY)
             const data = raw ? JSON.parse(raw) : {}
-            data[phoneKey] = Array.from(set)
+            const normalized = Array.from(set)
+              .map((value) => normalizeCandidateKey(value))
+              .filter((value) => Boolean(value))
+            data[phoneKey] = normalized
             localStorage.setItem(PENDING_SELECTIONS_STORAGE_KEY, JSON.stringify(data))
           } catch (error) {
             console.warn('[match:pending] 저장 실패', error)
@@ -2476,8 +2542,9 @@
         }
 
         function getContactInfo(candidateId) {
-          if (!candidateId) return null
-          return matchState.contactById.get(candidateId) || null
+          const key = normalizeCandidateKey(candidateId)
+          if (!key) return null
+          return matchState.contactById.get(key) || null
         }
 
         function showContactModal(contact = {}) {
@@ -2835,7 +2902,7 @@
           const targetId = String(entry.targetId || '').trim()
           const viewerId = String(currentTargetProfile.id || '').trim()
           if (!targetId || targetId !== viewerId) return
-          const candidateKey = String(entry.candidateId || '').trim()
+          const candidateKey = normalizeCandidateKey(entry.candidateId)
           if (!candidateKey) return
           const contact = {
             name: entry.candidateName || '',

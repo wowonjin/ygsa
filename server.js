@@ -424,10 +424,14 @@ app.post('/api/match-history/lookup', async (req, res) => {
       (entry) => sanitizeMatchHistoryCategory(entry.category) === 'confirmed',
     )
     const matchedCandidateIds = Array.from(
-      new Set(confirmedEntries.map((entry) => entry.candidateId).filter(Boolean)),
+      new Set(
+        confirmedEntries
+          .map((entry) => normalizeCandidateIdentifier(entry.candidateId))
+          .filter(Boolean),
+      ),
     )
     const matchedCandidates = confirmedEntries.map((entry) => ({
-      candidateId: entry.candidateId,
+      candidateId: normalizeCandidateIdentifier(entry.candidateId),
       matchedAt: entry.matchedAt,
       candidateName: entry.candidateName || '',
       candidatePhone: entry.candidatePhone || '',
@@ -494,13 +498,17 @@ app.post('/api/match-history/lookup', async (req, res) => {
     })
     const confirmedMatchCards = confirmedEntries
       .map((entry) => {
-        const candidateRecord = records.find((item) => item.id === entry.candidateId)
-        if (!candidateRecord) return null
+        const candidateKey = normalizeCandidateIdentifier(entry.candidateId)
+        const candidateRecord = findRecordByCandidateIdentifier(records, candidateKey)
+        const basePayload = candidateRecord
+          ? buildMatchCardPayload(candidateRecord)
+          : buildFallbackMatchCardPayload(entry, candidateKey)
+        if (!basePayload) return null
         return {
-          ...buildMatchCardPayload(candidateRecord),
+          ...basePayload,
           matchEntryId: entry.id,
           matchRecordedAt: entry.matchedAt,
-          matchCandidateId: entry.candidateId,
+          matchCandidateId: candidateKey,
           matchCategory: sanitizeMatchHistoryCategory(entry.category),
           targetSelected: Boolean(entry.targetSelected),
         }
@@ -1034,6 +1042,55 @@ function sanitizeWeekDescriptor(week, fallbackTime) {
 function sanitizeMatchHistoryCategory(value) {
   const normalized = sanitizeText(value).toLowerCase()
   return normalized === 'confirmed' ? 'confirmed' : 'intro'
+}
+
+function normalizeCandidateIdentifier(value) {
+  if (value === null || value === undefined) return ''
+  return String(value).trim()
+}
+
+function findRecordByCandidateIdentifier(records = [], identifier) {
+  const candidateKey = normalizeCandidateIdentifier(identifier)
+  if (!candidateKey || !Array.isArray(records)) return null
+  return (
+    records.find((record) => doesRecordMatchIdentifier(record, candidateKey)) || null
+  )
+}
+
+function doesRecordMatchIdentifier(record, identifier) {
+  if (!record || !identifier) return false
+  const candidates = [
+    normalizeCandidateIdentifier(record.id),
+    normalizeCandidateIdentifier(record.uuid),
+    normalizeCandidateIdentifier(record.profileId),
+    normalizePhoneNumber(record.phone),
+  ]
+  return candidates.some((value) => value && value === identifier)
+}
+
+function buildFallbackMatchCardPayload(entry, candidateIdOverride) {
+  const candidateId = normalizeCandidateIdentifier(candidateIdOverride || entry?.candidateId)
+  if (!candidateId) return null
+  const alias = entry?.candidateName || '확정 매칭 카드'
+  return {
+    id: candidateId,
+    candidateId,
+    characterName: alias,
+    name: alias,
+    gender: entry?.candidateGender || '',
+    profileAppeal: entry?.candidateName
+      ? `${alias}님의 상세 정보는 준비 중입니다.`
+      : '확정된 매칭 카드입니다.',
+    aboutMe: '',
+    sufficientCondition: '',
+    necessaryCondition: '',
+    preferredLifestyle: [],
+    preferredHeights: [],
+    preferredAges: [],
+    values: [],
+    valuesCustom: '',
+    photos: [],
+  }
 }
 
 function hasContent(value) {
