@@ -213,20 +213,6 @@
         gap: 24px;
       }
 
-      .matches-extra-section {
-        margin-top: 48px;
-        padding-top: 32px;
-        border-top: 1px dashed rgba(15, 23, 42, 0.1);
-      }
-
-      .matches-extra-eyebrow {
-        margin: 0 0 16px 0;
-        font-size: 14px;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: #64748b;
-      }
-
       .match-card {
         position: relative;
         display: grid;
@@ -296,6 +282,11 @@
         text-align: center;
         transition: opacity 350ms ease, transform 350ms ease;
         box-shadow: 0 20px 55px rgba(83, 119, 246, 0.4);
+      }
+
+      .match-card.match-card-incoming .match-card-cover {
+        background: radial-gradient(circle at top, rgba(16, 185, 129, 0.75), rgba(15, 23, 42, 0.95));
+        box-shadow: 0 20px 55px rgba(16, 185, 129, 0.35);
       }
 
       .match-card-cover span {
@@ -410,7 +401,6 @@
         display: flex;
         justify-content: center;
         margin-top: 12px;
-        position: relative;
       }
 
       .match-card-select-btn {
@@ -437,8 +427,7 @@
         outline-offset: 3px;
       }
 
-      .match-card-select-btn.is-completed,
-      .match-card-select-btn.is-pending {
+      .match-card-select-btn.is-completed {
         background: #e2e8f0;
         border-color: #e2e8f0;
         color: #6b7280;
@@ -447,70 +436,92 @@
         box-shadow: none;
       }
 
-      .match-card-select-btn.is-completed:hover,
-      .match-card-select-btn.is-pending:hover {
+      .match-card-select-btn.is-completed:hover {
         transform: none;
         background: #e2e8f0;
         border-color: #e2e8f0;
       }
 
       .match-card-select-btn.is-mutual {
-        background: #22c55e;
-        border-color: #16a34a;
+        background: #16a34a;
+        border-color: #15803d;
         color: #fff;
         cursor: pointer;
+        box-shadow: 0 15px 30px rgba(22, 163, 74, 0.35);
       }
 
       .match-card-select-btn.is-mutual:hover {
-        background: #16a34a;
-        border-color: #15803d;
-        transform: translateY(-1px);
+        background: #15803d;
+        border-color: #166534;
       }
 
-      .match-card-select-btn.is-loading {
-        pointer-events: none;
-        opacity: 0.6;
-      }
-
-      .match-card-info-bubble {
-        position: absolute;
-        bottom: 48px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: #0f172a;
-        color: #fff;
-        padding: 14px 18px;
+      .contact-bubble {
+        margin-top: 10px;
+        padding: 14px;
         border-radius: 16px;
-        box-shadow: 0 12px 32px rgba(15, 23, 42, 0.25);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        background: #f8fafc;
+        color: #0f172a;
         font-size: 14px;
         line-height: 1.5;
-        min-width: 240px;
-        display: none;
-        z-index: 5;
+        position: relative;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
       }
 
-      .match-card-info-bubble.is-visible {
-        display: block;
-      }
-
-      .match-card-info-bubble::after {
+      .contact-bubble::before {
         content: '';
         position: absolute;
-        bottom: -8px;
-        left: 50%;
-        transform: translateX(-50%);
-        border-width: 8px 8px 0 8px;
-        border-style: solid;
-        border-color: #0f172a transparent transparent transparent;
+        top: -8px;
+        left: 28px;
+        width: 14px;
+        height: 14px;
+        background: inherit;
+        border-left: 1px solid rgba(15, 23, 42, 0.08);
+        border-top: 1px solid rgba(15, 23, 42, 0.08);
+        transform: rotate(45deg);
       }
 
-      .match-card-info-bubble strong {
-        display: inline-block;
-        margin-right: 6px;
+      .contact-bubble strong {
+        display: block;
+        font-size: 15px;
+        margin-bottom: 4px;
+      }
+
+      .incoming-requests {
+        margin-top: 48px;
+        padding: 28px;
+        border-radius: 24px;
+        border: 1px solid rgba(83, 119, 246, 0.16);
+        background: rgba(83, 119, 246, 0.04);
+      }
+
+      .incoming-header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+
+      .incoming-eyebrow {
+        margin: 0;
         font-size: 13px;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: rgba(255, 255, 255, 0.8);
+        letter-spacing: 0.25em;
+        color: #5377f6;
+      }
+
+      .incoming-subtitle {
+        margin: 4px 0 0;
+        color: #475569;
+        font-size: 15px;
+      }
+
+      .incoming-empty {
+        margin: 0;
+        padding-top: 8px;
+        color: #94a3b8;
+        font-size: 14px;
       }
 
       .match-popup-overlay {
@@ -901,11 +912,16 @@
           </div>
         </div>
         <div class="matches-grid" id="matchCards"></div>
-        <section class="matches-extra-section" id="incomingRequestSection" hidden>
-          <p class="matches-extra-eyebrow">
-            [추가 카드] 나와 연결되고 싶은 사람 (실시간 요청 카드)
-          </p>
-          <div class="matches-grid" id="incomingRequestCards"></div>
+        <section class="incoming-requests" id="incomingRequestsSection" hidden>
+          <header class="incoming-header">
+            <p class="incoming-eyebrow">[추가 카드]</p>
+            <div>
+              <h3>나와 연결되고 싶은 사람</h3>
+              <p class="incoming-subtitle">실시간 요청 카드</p>
+            </div>
+          </header>
+          <div class="matches-grid" id="incomingCards"></div>
+          <p class="incoming-empty" id="incomingEmpty">아직 도착한 실시간 요청 카드가 없습니다.</p>
         </section>
       </section>
     </main>
@@ -1010,14 +1026,22 @@
         const resultMeta = document.getElementById('resultMeta')
         const weekLabel = document.getElementById('weekLabel')
         const matchCards = document.getElementById('matchCards')
-        const incomingRequestSection = document.getElementById('incomingRequestSection')
-        const incomingRequestCards = document.getElementById('incomingRequestCards')
+        const incomingSection = document.getElementById('incomingRequestsSection')
+        const incomingCards = document.getElementById('incomingCards')
+        const incomingEmpty = document.getElementById('incomingEmpty')
         const MATCH_MANAGER_URL =
           (window.MATCH_MANAGER_URL && String(window.MATCH_MANAGER_URL).trim()) || ''
         let currentTargetProfile = null
         let matchPopupTimer = null
         let lastLookupPhoneKey = ''
         const matchedCandidateIds = new Set()
+        const matchState = {
+          incomingById: new Map(),
+          incomingList: [],
+          confirmedById: new Map(),
+          contactById: new Map(),
+          currentDeckIds: new Set(),
+        }
 
         const resolvedOrigin =
           (typeof window !== 'undefined' && window.BACKEND_ORIGIN) ||
@@ -1093,12 +1117,14 @@
 
         function renderMatches(data) {
           const matches = Array.isArray(data?.matches) ? data.matches : []
-          const selectionRequests = Array.isArray(data?.selectionRequests) ? data.selectionRequests : []
           if (!matches.length) {
             resultsSection.hidden = true
             throw new Error('표시할 매칭 카드가 없습니다.')
           }
           syncMatchedCandidateIds(Array.isArray(data?.matchedCandidateIds) ? data.matchedCandidateIds : [])
+          const incomingRequests = Array.isArray(data?.incomingRequests) ? data.incomingRequests : []
+          const matchedContacts = Array.isArray(data?.matchedCandidates) ? data.matchedCandidates : []
+          syncMatchState({ incomingRequests, matchedCandidates: matchedContacts })
           const targetName = data?.target?.name || '회원님'
           const nameWithHonorific = targetName.endsWith('님') ? targetName : `${targetName}님`
           resultTitle.textContent = `${nameWithHonorific}을 위한 추천`
@@ -1109,37 +1135,26 @@
           currentTargetProfile = buildMatchTargetSnapshot(data?.target)
 
           matchCards.innerHTML = ''
+          matchState.currentDeckIds = new Set()
           matches.forEach((record, index) => {
-            const card = renderMatchCard(record, index + 1)
+            const candidateId = getCandidateIdentifier(record)
+            if (candidateId) {
+              matchState.currentDeckIds.add(candidateId)
+            }
+            const card = renderMatchCard(record, index + 1, {
+              initialContact: matchState.confirmedById.get(candidateId),
+              incomingRequest: matchState.incomingById.get(candidateId),
+            })
             if (card) {
               matchCards.appendChild(card)
             }
           })
-          renderIncomingRequests(selectionRequests)
+          matchState.incomingList = incomingRequests
+          renderIncomingRequests()
           if (heroSection) {
             heroSection.hidden = true
           }
           resultsSection.hidden = false
-        }
-
-        function renderIncomingRequests(requests = []) {
-          if (!incomingRequestSection || !incomingRequestCards) return
-          if (!requests.length) {
-            incomingRequestSection.hidden = true
-            incomingRequestCards.innerHTML = ''
-            return
-          }
-          incomingRequestCards.innerHTML = ''
-          requests.forEach((record, index) => {
-            const card = renderMatchCard(record, index + 1, {
-              variant: 'request',
-              orderLabel: `실시간 요청 ${index + 1}`,
-            })
-            if (card) {
-              incomingRequestCards.appendChild(card)
-            }
-          })
-          incomingRequestSection.hidden = false
         }
 
         function syncMatchedCandidateIds(ids = []) {
@@ -1150,14 +1165,71 @@
             .forEach((id) => matchedCandidateIds.add(id))
         }
 
+        function syncMatchState({ incomingRequests = [], matchedCandidates = [] } = {}) {
+          matchState.incomingById.clear()
+          matchState.contactById.clear()
+          matchState.incomingList = Array.isArray(incomingRequests) ? incomingRequests : []
+          matchState.incomingList.forEach((req) => {
+            if (!req?.requesterId) return
+            matchState.incomingById.set(req.requesterId, req)
+            if (req.contact) {
+              matchState.contactById.set(req.requesterId, {
+                name: req.contact.name || '',
+                phone: req.contact.phone || '',
+                phoneMasked: req.contact.phoneMasked || '',
+              })
+            }
+          })
+          matchState.confirmedById.clear()
+          matchedCandidates.forEach((entry) => {
+            if (!entry?.candidateId) return
+            const contact = {
+              name: entry.candidateName || '',
+              phone: entry.candidatePhone || '',
+              phoneMasked: maskPhoneNumber(entry.candidatePhone),
+            }
+            matchState.confirmedById.set(entry.candidateId, contact)
+            matchState.contactById.set(entry.candidateId, contact)
+          })
+        }
+
+        function renderIncomingRequests() {
+          if (!incomingSection || !incomingCards) return
+          const visible = matchState.incomingList.filter(
+            (req) => req?.requesterId && !matchState.currentDeckIds.has(req.requesterId),
+          )
+          incomingCards.innerHTML = ''
+          if (!visible.length) {
+            incomingSection.hidden = true
+            if (incomingEmpty) incomingEmpty.hidden = false
+            return
+          }
+          incomingSection.hidden = false
+          if (incomingEmpty) incomingEmpty.hidden = true
+          visible.forEach((req) => {
+            const profileRecord = {
+              ...(req.profile || {}),
+              id: (req.profile && req.profile.id) || req.requesterId,
+            }
+            const card = renderMatchCard(profileRecord, null, {
+              isIncomingOnly: true,
+              coverTitle: '실시간 요청',
+              coverSubtitle: '지금 확인하고 선택하세요',
+              incomingRequest: req,
+            })
+            if (card) {
+              incomingCards.appendChild(card)
+            }
+          })
+        }
+
         function renderMatchCard(record, order, options = {}) {
           if (!record) return null
-          const { variant = 'primary', orderLabel } = options
+          const { isIncomingOnly = false, coverTitle = null, coverSubtitle = null } = options
           const wrapper = document.createElement('article')
-          wrapper.className = 'match-card'
-          if (variant === 'request') {
-            wrapper.dataset.cardVariant = 'request'
-          }
+          wrapper.className = ['match-card', isIncomingOnly ? 'match-card-incoming' : '']
+            .filter(Boolean)
+            .join(' ')
           wrapper.tabIndex = 0
           const candidateId = getCandidateIdentifier(record)
           const matchEntryId = record.matchEntryId || ''
@@ -1167,10 +1239,11 @@
           preview.innerHTML = renderProfileCard(record)
           const cover = document.createElement('div')
           cover.className = 'match-card-cover'
-          const label = orderLabel || (order ? `매칭 ${order}` : '추천 카드')
+          const coverTitleText = coverTitle || (order ? `매칭 ${order || ''}` : '추천 카드')
+          const coverSubtitleText = coverSubtitle || (order ? '카드를 펼쳐 확인하세요' : '지금 확인해보세요')
           cover.innerHTML = `
-            <span>${escapeHtml(label)}</span>
-            <small>카드를 펼쳐 확인하세요</small>
+            <span>${escapeHtml(coverTitleText)}</span>
+            <small>${escapeHtml(coverSubtitleText)}</small>
           `
           const flash = document.createElement('div')
           flash.className = 'match-card-flash'
@@ -1196,37 +1269,28 @@
           wrapper.appendChild(preview)
           const actions = document.createElement('div')
           actions.className = 'match-card-actions'
-          const actionButton = createMatchSelectButton(record, candidateId, matchEntryId, options)
+          const actionButton = createMatchSelectButton(record, candidateId, matchEntryId)
           actions.appendChild(actionButton)
           preview.insertAdjacentElement('afterend', actions)
           initProfileCardSlider(preview)
-          applyMatchedCardState(wrapper, actionButton, candidateId, record)
+          applyMatchedCardState(wrapper, actionButton, candidateId, record.matchCategory)
           setupCardReveal(wrapper)
           return wrapper
         }
-        function applyMatchedCardState(wrapper, button, candidateId, record) {
+        function applyMatchedCardState(wrapper, button, candidateId, category) {
           if (!wrapper || !button) return
-          const category = record?.matchCategory
           const candidateKey = candidateId ? String(candidateId) : ''
           const normalizedCategory = String(category || '').trim().toLowerCase()
-          const selectionState = record?.selectionState || {}
-          const isMutual =
-            selectionState.isMutual ||
-            selectionState.status === 'mutual' ||
-            normalizedCategory === 'confirmed'
-          const isPending = !isMutual && candidateKey && matchedCandidateIds.has(candidateKey)
-          if (isMutual) {
-            markMatchButtonCompleted(button, { mode: 'mutual', contactInfo: extractContactInfo(record) })
-            wrapper.classList.add('is-open')
-            const cover = wrapper.querySelector('.match-card-cover')
-            if (cover) {
-              cover.style.opacity = '0'
-              cover.style.pointerEvents = 'none'
-            }
-            return
-          }
-          if (isPending) {
-            markMatchButtonCompleted(button, { mode: 'pending' })
+          const alreadyMatched =
+            normalizedCategory === 'confirmed' || (candidateKey && matchedCandidateIds.has(candidateKey))
+          if (!alreadyMatched) return
+          const contactInfo = getContactInfo(candidateKey)
+          markMatchButtonCompleted(button, { mutual: true, contact: contactInfo })
+          wrapper.classList.add('is-open')
+          const cover = wrapper.querySelector('.match-card-cover')
+          if (cover) {
+            cover.style.opacity = '0'
+            cover.style.pointerEvents = 'none'
           }
         }
 
@@ -1366,14 +1430,11 @@
           `
         }
 
-        function createMatchSelectButton(record, candidateId, matchEntryId, options = {}) {
+        function createMatchSelectButton(record, candidateId, matchEntryId) {
           const button = document.createElement('button')
           button.type = 'button'
           button.className = 'match-card-select-btn'
           button.textContent = '매칭 선택하기'
-          button.dataset.state = 'idle'
-          button.dataset.cardVariant = options.variant || 'primary'
-          button.setAttribute('aria-expanded', 'false')
           const targetReady = currentTargetProfile && currentTargetProfile.id
           const candidateKey = candidateId ? String(candidateId) : ''
           if (!targetReady || !candidateKey) {
@@ -1382,44 +1443,53 @@
           }
           button.addEventListener('click', (event) => {
             event.stopPropagation()
-            handleCardMatchSelect(record, button, candidateId, matchEntryId, options)
+            handleCardMatchSelect(record, button, candidateId, matchEntryId)
           })
           return button
         }
 
-        async function handleCardMatchSelect(record, button, candidateIdOverride, matchEntryId, options = {}) {
+        async function handleCardMatchSelect(record, button, candidateIdOverride, matchEntryId) {
           if (!button) return
-          if (button.dataset.state === 'mutual') {
+          const candidateId = candidateIdOverride || getCandidateIdentifier(record)
+          if (!candidateId) {
+            showMessage('매칭 정보를 찾을 수 없습니다.', true)
+            return
+          }
+          const currentState = button.dataset.matchState
+          if (currentState === 'mutual') {
             toggleContactBubble(button)
             return
           }
-          if (button.dataset.loading === 'true' || button.dataset.state === 'pending') {
+          if (currentState === 'completed' || currentState === 'requesting') {
             return
           }
           const originalScrollY = window.scrollY || document.documentElement.scrollTop || 0
           const originalButtonTop = button?.getBoundingClientRect()?.top || 0
-          const candidateId = candidateIdOverride || getCandidateIdentifier(record)
           const payload = buildMatchSelectionPayload(record, candidateId, matchEntryId)
           if (!payload) {
             showMessage('매칭 정보를 준비할 수 없습니다. 관리자에게 문의해주세요.', true)
             return
           }
-          button.dataset.loading = 'true'
-          button.classList.add('is-loading')
+          button.dataset.matchState = 'requesting'
           button.disabled = true
           try {
-            const response = await sendMatchRequest(payload)
-            const result = normalizeSelectionResult(response, record)
-            if (candidateId) {
-              matchedCandidateIds.add(String(candidateId))
+            await sendMatchRequest(payload)
+            const candidateKey = String(candidateId)
+            const hasIncomingRequest = matchState.incomingById.has(candidateKey)
+            const contactInfo = hasIncomingRequest ? getContactInfo(candidateKey) : null
+            markMatchButtonCompleted(button, {
+              mutual: hasIncomingRequest,
+              contact: hasIncomingRequest ? contactInfo : null,
+            })
+            if (hasIncomingRequest) {
+              matchedCandidateIds.add(candidateKey)
+              matchState.incomingById.delete(candidateKey)
+              matchState.incomingList = matchState.incomingList.filter(
+                (req) => req?.requesterId !== candidateKey,
+              )
+              renderIncomingRequests()
             }
-            if (result.state === 'mutual') {
-              markMatchButtonCompleted(button, { mode: 'mutual', contactInfo: result.contact })
-              showMatchConfirmationPopup('매칭이 완료되었습니다!')
-            } else {
-              markMatchButtonCompleted(button, { mode: 'pending' })
-              showMatchConfirmationPopup('매칭이 신청되었습니다!')
-            }
+            showMatchConfirmationPopup()
             window.requestAnimationFrame(() => {
               window.scrollTo(0, originalScrollY)
               const newButtonTop = button?.getBoundingClientRect()?.top || originalButtonTop
@@ -1431,11 +1501,9 @@
           } catch (error) {
             console.error('[match-select] 전송 실패', error)
             showMessage(error?.message || '매칭 신청을 전송하지 못했습니다.', true)
-            button.disabled = false
           } finally {
-            button.dataset.loading = 'false'
-            button.classList.remove('is-loading')
-            if (button.dataset.state === 'mutual') {
+            if (button.dataset.matchState === 'requesting') {
+              button.dataset.matchState = ''
               button.disabled = false
             }
           }
@@ -1483,16 +1551,13 @@
             body: JSON.stringify(payload),
             mode: 'cors',
           })
-          let body = {}
-          try {
-            body = await response.json()
-          } catch (_) {
-            body = {}
-          }
           if (!response.ok) {
-            throw new Error(body?.message || '매칭 기록을 저장하지 못했습니다.')
+            const message = await response
+              .json()
+              .then((body) => body?.message)
+              .catch(() => '')
+            throw new Error(message || '매칭 기록을 저장하지 못했습니다.')
           }
-          return body?.data || body || {}
         }
 
         function getCandidateIdentifier(record) {
@@ -1522,114 +1587,75 @@
         }
 
 
-        function markMatchButtonCompleted(button, options = {}) {
+        function markMatchButtonCompleted(button, { mutual = false, contact = null } = {}) {
           if (!button) return
-          const { mode = 'pending', contactInfo = {} } = options
-          const actions = button.parentElement
-          if (actions) {
-            const bubble = actions.querySelector('.match-card-info-bubble')
-            if (bubble) {
-              bubble.classList.remove('is-visible')
-            }
-          }
-          button.setAttribute('aria-expanded', 'false')
-          if (mode === 'mutual') {
-            button.dataset.state = 'mutual'
+          button.classList.add('is-completed')
+          button.classList.toggle('is-mutual', Boolean(mutual))
+          if (mutual) {
             button.disabled = false
-            button.classList.remove('is-pending', 'is-completed')
-            button.classList.add('is-mutual')
+            button.dataset.matchState = 'mutual'
             button.textContent = '매칭 되었습니다. 정보 확인'
-            button.dataset.contactName = contactInfo?.name || ''
-            button.dataset.contactPhone = contactInfo?.phone || ''
-            return
-          }
-          button.dataset.state = 'pending'
-          button.disabled = true
-          button.classList.remove('is-mutual')
-          button.classList.add('is-pending', 'is-completed')
-          button.textContent = '매칭이 신청되었습니다'
-        }
-
-        function normalizeSelectionResult(response = {}, fallbackRecord = {}) {
-          const selection = response?.selectionState || response?.match || {}
-          const explicitState = selection?.state || selection?.status || response?.state || response?.status
-          const resultCategory = (response?.category || '').toLowerCase()
-          const isMutual =
-            Boolean(selection?.isMutual || response?.isMutual) ||
-            explicitState === 'mutual' ||
-            resultCategory === 'confirmed'
-          const contact = extractContactInfo(fallbackRecord, {
-            name: selection?.contactName || response?.contactName,
-            phone: selection?.contactPhone || response?.contactPhone,
-          })
-          return {
-            state: isMutual ? 'mutual' : 'pending',
-            contact,
+            if (contact) {
+              setButtonContactData(button, contact)
+            }
+          } else {
+            button.disabled = true
+            button.dataset.matchState = 'completed'
+            button.textContent = '매칭이 신청되었습니다'
+            hideContactBubble(button)
           }
         }
 
-        function extractContactInfo(record = {}, overrides = {}) {
-          const selection = record?.selectionState || {}
-          const contact = record?.contact || {}
-          const nameCandidate =
-            overrides?.name ||
-            selection?.contactName ||
-            contact?.name ||
-            record?.contactName ||
-            record?.realName ||
-            record?.actualName
-          const phoneCandidate =
-            overrides?.phone ||
-            selection?.contactPhone ||
-            contact?.phone ||
-            record?.contactPhone ||
-            record?.realPhone ||
-            record?.actualPhone ||
-            record?.phone
-          return {
-            name: String(nameCandidate || '').trim(),
-            phone: String(phoneCandidate || '').trim(),
+        function setButtonContactData(button, contact = {}) {
+          if (!button) return
+          button.dataset.contactName = contact.name || ''
+          button.dataset.contactPhone = contact.phone || ''
+          button.dataset.contactPhoneMasked = contact.phoneMasked || ''
+          const bubble = ensureContactBubble(button)
+          bubble.innerHTML = `
+            <strong>${escapeHtml(contact.name || '상대 이름')}</strong>
+            <span>${escapeHtml(contact.phone || contact.phoneMasked || '')}</span>
+          `
+          bubble.hidden = true
+        }
+
+        function ensureContactBubble(button) {
+          let bubble = button.nextElementSibling
+          if (!bubble || !bubble.classList.contains('contact-bubble')) {
+            bubble = document.createElement('div')
+            bubble.className = 'contact-bubble'
+            bubble.hidden = true
+            button.insertAdjacentElement('afterend', bubble)
           }
+          return bubble
         }
 
         function toggleContactBubble(button) {
           if (!button) return
-          const contactName = button.dataset.contactName || ''
-          const contactPhone = button.dataset.contactPhone || ''
-          if (!contactName && !contactPhone) {
-            showMessage('상대방 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.', false)
-            return
-          }
-          const actions = button.parentElement
-          if (!actions) return
-          let bubble = actions.querySelector('.match-card-info-bubble')
-          if (!bubble) {
-            bubble = document.createElement('div')
-            bubble.className = 'match-card-info-bubble'
-            actions.appendChild(bubble)
-          }
-          bubble.innerHTML = `
-            <p><strong>이름</strong> ${escapeHtml(contactName || '확인 중')}</p>
-            <p><strong>연락처</strong> ${escapeHtml(formatPhoneDisplay(contactPhone) || '확인 중')}</p>
-          `
-          bubble.classList.toggle('is-visible')
-          const expanded = bubble.classList.contains('is-visible')
-          button.setAttribute('aria-expanded', expanded ? 'true' : 'false')
+          const bubble = button.nextElementSibling
+          if (!bubble || !bubble.classList.contains('contact-bubble')) return
+          const willOpen = Boolean(bubble.hidden)
+          closeAllContactBubbles(button)
+          bubble.hidden = !willOpen
         }
 
-        function formatPhoneDisplay(value) {
-          const digits = normalizePhoneKey(value)
-          if (!digits) return value || ''
-          if (digits.length === 11) {
-            return digits.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3')
+        function hideContactBubble(button) {
+          if (!button) return
+          const bubble = button.nextElementSibling
+          if (bubble && bubble.classList.contains('contact-bubble')) {
+            bubble.hidden = true
           }
-          if (digits.length === 10) {
-            return digits.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3')
-          }
-          return digits
         }
 
-        function showMatchConfirmationPopup(message) {
+        function closeAllContactBubbles(exceptButton) {
+          document.querySelectorAll('.contact-bubble').forEach((bubble) => {
+            if (!bubble.previousElementSibling) return
+            if (bubble.previousElementSibling === exceptButton) return
+            bubble.hidden = true
+          })
+        }
+
+        function showMatchConfirmationPopup() {
           let overlay = document.getElementById('matchSelectionPopup')
           if (!overlay) {
             overlay = document.createElement('div')
@@ -1637,13 +1663,12 @@
             overlay.className = 'match-popup-overlay'
             const popup = document.createElement('div')
             popup.className = 'match-popup'
-            popup.textContent = message || '매칭이 신청되었습니다!'
+            popup.textContent = '매칭이 신청되었습니다!'
             overlay.appendChild(popup)
             overlay.addEventListener('click', hideMatchConfirmationPopup)
             document.body.appendChild(overlay)
           } else {
-            overlay.querySelector('.match-popup').textContent =
-              message || '매칭이 신청되었습니다!'
+            overlay.querySelector('.match-popup').textContent = '매칭이 신청되었습니다!'
           }
           overlay.hidden = false
           if (matchPopupTimer) {
@@ -1897,6 +1922,21 @@
 
         function normalizePhoneKey(value) {
           return String(value || '').replace(/[^0-9]/g, '')
+        }
+
+        function maskPhoneNumber(value) {
+          const digits = String(value || '').replace(/[^0-9]/g, '')
+          if (!digits) return ''
+          if (digits.length <= 4) return digits
+          const head = digits.slice(0, 3)
+          const tail = digits.slice(-4)
+          const middle = '*'.repeat(Math.max(3, digits.length - 7))
+          return `${head}-${middle}-${tail}`
+        }
+
+        function getContactInfo(candidateId) {
+          if (!candidateId) return null
+          return matchState.contactById.get(candidateId) || null
         }
 
         function formatSalaryRange(value) {

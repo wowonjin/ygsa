@@ -445,6 +445,11 @@ app.post('/api/match-history/lookup', async (req, res) => {
     }
 
     const responseWeek = selection[0].entry?.week || introEntries[0]?.week || null
+    const incomingRequests = buildIncomingRequestsPayload({
+      viewer: targetRecord,
+      records,
+      history,
+    })
     res.json({
       ok: true,
       data: {
@@ -462,6 +467,7 @@ app.post('/api/match-history/lookup', async (req, res) => {
         }),
         matchedCandidateIds,
         matchedCandidates,
+        incomingRequests,
       },
     })
   } catch (error) {
@@ -998,6 +1004,39 @@ function buildMatchCardPayload(record) {
   delete payload.phone
   delete payload.email
   return payload
+}
+
+function buildIncomingRequestsPayload({ viewer, records, history }) {
+  if (!viewer || !Array.isArray(records) || !Array.isArray(history)) return []
+  const viewerId = viewer.id
+  if (!viewerId) return []
+  const requestMap = new Map()
+  history
+    .filter((entry) => entry?.candidateId === viewerId)
+    .forEach((entry) => {
+      const requester = records.find((item) => item.id === entry.targetId)
+      if (!requester) return
+      const existing = requestMap.get(requester.id)
+      if (!existing || (entry.matchedAt || 0) > (existing.requestRecordedAt || 0)) {
+        requestMap.set(requester.id, {
+          requestId: entry.id,
+          requesterId: requester.id,
+          requestRecordedAt: entry.matchedAt || Date.now(),
+          requestWeek: entry.week || null,
+          status: sanitizeMatchHistoryCategory(entry.category),
+          profile: buildMatchCardPayload(requester),
+          contact: {
+            name: requester.name || '',
+            phone: normalizePhoneNumber(requester.phone),
+            phoneMasked: maskPhoneNumber(requester.phone),
+            gender: requester.gender || '',
+          },
+        })
+      }
+    })
+  return Array.from(requestMap.values()).sort(
+    (a, b) => (b.requestRecordedAt || 0) - (a.requestRecordedAt || 0),
+  )
 }
 
 function buildMatchTargetPayload(record) {
