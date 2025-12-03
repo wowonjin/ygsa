@@ -1321,16 +1321,17 @@
 
         function renderMatches(data) {
           const matches = Array.isArray(data?.matches) ? data.matches : []
-          if (!matches.length) {
-            resultsSection.hidden = true
-            throw new Error('표시할 매칭 카드가 없습니다.')
-          }
           syncMatchedCandidateIds(Array.isArray(data?.matchedCandidateIds) ? data.matchedCandidateIds : [])
           const incomingRequests = Array.isArray(data?.incomingRequests) ? data.incomingRequests : []
           const matchedContacts = Array.isArray(data?.matchedCandidates) ? data.matchedCandidates : []
           const confirmedMatchCards = Array.isArray(data?.confirmedMatchCards)
             ? data.confirmedMatchCards
             : []
+          const hasAnyCards = matches.length || confirmedMatchCards.length || matchedContacts.length
+          if (!hasAnyCards) {
+            resultsSection.hidden = true
+            throw new Error('표시할 매칭 카드가 없습니다.')
+          }
           syncMatchState({ incomingRequests, matchedCandidates: matchedContacts })
           cleanupPendingSelections()
           const targetName = data?.target?.name || '회원님'
@@ -1443,6 +1444,20 @@
           })
         }
 
+        function buildContactSnapshot(source = {}, fallbackName = '') {
+          if (!source) return null
+          const normalizedPhone = normalizePhoneKey(source.phone || source.phoneNumber || '')
+          const name = source.name || fallbackName || ''
+          const phoneMasked =
+            source.phoneMasked || (normalizedPhone ? maskPhoneNumber(normalizedPhone) : '')
+          if (!name && !normalizedPhone && !phoneMasked) return null
+          return {
+            name,
+            phone: normalizedPhone,
+            phoneMasked,
+          }
+        }
+
         function renderIncomingRequests() {
           if (!incomingSection || !incomingCards) return
           const visible = []
@@ -1469,11 +1484,26 @@
                   normalizeCandidateKey(request.profile.id || request.profile.profileId)) ||
                 requesterKey,
             }
+            const candidateId = getCandidateIdentifier(profileRecord) || requesterKey
+            const existingContact = matchState.contactById.get(candidateId)
+            const contactFromRequest = buildContactSnapshot(
+              request.contact,
+              profileRecord.characterName || profileRecord.name || '',
+            )
+            if (!existingContact && contactFromRequest) {
+              matchState.contactById.set(candidateId, contactFromRequest)
+              matchState.contactById.set(requesterKey, contactFromRequest)
+            }
+            const initialContact =
+              matchState.contactById.get(candidateId) ||
+              matchState.contactById.get(requesterKey) ||
+              contactFromRequest
             const card = renderMatchCard(profileRecord, null, {
               isIncomingOnly: true,
               coverTitle: '실시간 요청',
               coverSubtitle: '지금 확인하고 선택하세요',
               incomingRequest: request,
+              initialContact,
             })
             if (card) {
               incomingCards.appendChild(card)
@@ -1481,10 +1511,22 @@
           })
         }
 
+        function deriveCandidateKey(entry = {}) {
+          return (
+            normalizeCandidateKey(
+              entry?.candidateId ||
+                entry?.matchCandidateId ||
+                entry?.id ||
+                entry?.profileId ||
+                '',
+            ) || normalizePhoneKey(entry?.candidatePhone || '')
+          )
+        }
+
         function injectFallbackConfirmedCards(matchedContacts = []) {
           if (!Array.isArray(matchedContacts) || !matchedContacts.length) return
           matchedContacts.forEach((entry) => {
-            const candidateId = normalizeCandidateKey(entry?.candidateId)
+            const candidateId = deriveCandidateKey(entry)
             if (!candidateId || matchState.currentDeckIds.has(candidateId)) return
             const fallbackRecord = buildFallbackConfirmedRecord(entry, candidateId)
             if (!fallbackRecord) return
@@ -1886,7 +1928,16 @@
           try {
             await sendMatchRequest(payload)
             hasIncomingRequest = Boolean(incomingRequest)
-            const contactInfo = hasIncomingRequest ? getContactInfo(candidateKey) : null
+            let contactInfo = hasIncomingRequest ? getContactInfo(candidateKey) : null
+            if (!contactInfo && hasIncomingRequest && incomingRequest?.contact) {
+              contactInfo = buildContactSnapshot(
+                incomingRequest.contact,
+                button.dataset.candidateName || record?.characterName || record?.name || '',
+              )
+              if (contactInfo) {
+                matchState.contactById.set(candidateKey, contactInfo)
+              }
+            }
             markMatchButtonCompleted(button, {
               mutual: hasIncomingRequest,
               contact: hasIncomingRequest ? contactInfo : null,
