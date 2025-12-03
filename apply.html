@@ -1319,6 +1319,10 @@
           return body?.data || {}
         }
 
+        function getViewerCandidateKey() {
+          return normalizeCandidateKey(currentTargetProfile?.id)
+        }
+
         function renderMatches(data) {
           const matches = Array.isArray(data?.matches) ? data.matches : []
           syncMatchedCandidateIds(Array.isArray(data?.matchedCandidateIds) ? data.matchedCandidateIds : [])
@@ -1375,25 +1379,36 @@
               matchCards.appendChild(card)
             }
           })
-          confirmedMatchCards
-            .filter((card) => {
-              const candidateId = getCandidateIdentifier(card)
-              return candidateId && !matchState.currentDeckIds.has(candidateId)
-            })
-            .forEach((card) => {
-              const candidateId = getCandidateIdentifier(card)
-              if (candidateId) {
-                matchState.currentDeckIds.add(candidateId)
-              }
-              const cardElement = renderMatchCard(card, null, {
-                coverTitle: '확정 카드',
-                coverSubtitle: '이미 매칭되었습니다',
+          confirmedMatchCards.forEach((card) => {
+            const candidateId = getCandidateIdentifier(card)
+            if (!candidateId) return
+            const alreadyRendered = matchState.currentDeckIds.has(candidateId)
+            if (!alreadyRendered) {
+              matchState.currentDeckIds.add(candidateId)
+            }
+            const cardElement = renderMatchCard(
+              card,
+              alreadyRendered ? null : matchState.currentDeckIds.size,
+              {
+                coverTitle: alreadyRendered ? '확정 카드' : null,
+                coverSubtitle: alreadyRendered ? '이미 매칭되었습니다' : null,
                 initialContact: matchState.confirmedById.get(candidateId),
-              })
-              if (cardElement) {
-                matchCards.appendChild(cardElement)
+              },
+            )
+            if (cardElement && alreadyRendered) {
+              // replace existing card with confirmed version
+              const existingCard = matchCards.querySelector(
+                `.match-card-select-btn[data-candidate-id="${escapeAttributeValue(candidateId)}"]`,
+              )?.closest('.match-card')
+              if (existingCard && existingCard.parentNode) {
+                existingCard.parentNode.replaceChild(cardElement, existingCard)
+                return
               }
-            })
+            }
+            if (cardElement) {
+              matchCards.appendChild(cardElement)
+            }
+          })
           injectFallbackConfirmedCards(matchedContacts)
           matchState.incomingList = incomingRequests
           renderIncomingRequests()
@@ -1407,14 +1422,19 @@
         }
 
         function syncMatchedCandidateIds(ids = []) {
+          const viewerKey = getViewerCandidateKey()
           matchedCandidateIds.clear()
           ids
             .map((value) => (value == null ? '' : String(value).trim()))
             .filter(Boolean)
-            .forEach((id) => matchedCandidateIds.add(id))
+            .forEach((id) => {
+              if (viewerKey && id === viewerKey) return
+              matchedCandidateIds.add(id)
+            })
         }
 
         function syncMatchState({ incomingRequests = [], matchedCandidates = [] } = {}) {
+          const viewerKey = getViewerCandidateKey()
           matchState.incomingById.clear()
           matchState.contactById.clear()
           matchState.incomingList = Array.isArray(incomingRequests) ? incomingRequests : []
@@ -1434,6 +1454,7 @@
           matchedCandidates.forEach((entry) => {
             const candidateKey = normalizeCandidateKey(entry?.candidateId)
             if (!candidateKey) return
+            if (viewerKey && candidateKey === viewerKey) return
             const contact = {
               name: entry.candidateName || '',
               phone: entry.candidatePhone || '',
@@ -1525,9 +1546,11 @@
 
         function injectFallbackConfirmedCards(matchedContacts = []) {
           if (!Array.isArray(matchedContacts) || !matchedContacts.length) return
+          const viewerKey = getViewerCandidateKey()
           matchedContacts.forEach((entry) => {
             const candidateId = deriveCandidateKey(entry)
             if (!candidateId || matchState.currentDeckIds.has(candidateId)) return
+            if (viewerKey && candidateId === viewerKey) return
             const fallbackRecord = buildFallbackConfirmedRecord(entry, candidateId)
             if (!fallbackRecord) return
             matchState.currentDeckIds.add(candidateId)
