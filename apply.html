@@ -1325,13 +1325,14 @@
 
         function renderMatches(data) {
           const matches = Array.isArray(data?.matches) ? data.matches : []
-          syncMatchedCandidateIds(Array.isArray(data?.matchedCandidateIds) ? data.matchedCandidateIds : [])
-          const incomingRequests = Array.isArray(data?.incomingRequests) ? data.incomingRequests : []
-          const matchedContacts = Array.isArray(data?.matchedCandidates) ? data.matchedCandidates : []
           const confirmedMatchCards = Array.isArray(data?.confirmedMatchCards)
             ? data.confirmedMatchCards
             : []
-          const hasAnyCards = matches.length || confirmedMatchCards.length || matchedContacts.length
+          const mergedMatches = mergeMatchesWithConfirmed(matches, confirmedMatchCards)
+          syncMatchedCandidateIds(Array.isArray(data?.matchedCandidateIds) ? data.matchedCandidateIds : [])
+          const incomingRequests = Array.isArray(data?.incomingRequests) ? data.incomingRequests : []
+          const matchedContacts = Array.isArray(data?.matchedCandidates) ? data.matchedCandidates : []
+          const hasAnyCards = mergedMatches.length || matchedContacts.length
           if (!hasAnyCards) {
             resultsSection.hidden = true
             throw new Error('표시할 매칭 카드가 없습니다.')
@@ -1351,7 +1352,7 @@
           matchCards.innerHTML = ''
           matchState.currentDeckIds = new Set()
           let pendingSelectionsDirty = false
-          matches.forEach((record, index) => {
+          mergedMatches.forEach((record, index) => {
             const candidateId = getCandidateIdentifier(record)
             const incomingRequestForCard =
               candidateId && matchState.incomingById.has(candidateId)
@@ -1379,37 +1380,29 @@
               matchCards.appendChild(card)
             }
           })
-          confirmedMatchCards.forEach((card) => {
-            const candidateId = getCandidateIdentifier(card)
-            if (!candidateId) return
-            const alreadyRendered = matchState.currentDeckIds.has(candidateId)
-            if (!alreadyRendered) {
-              matchState.currentDeckIds.add(candidateId)
-            }
-            const cardElement = renderMatchCard(
-              card,
-              alreadyRendered ? null : matchState.currentDeckIds.size,
-              {
-                coverTitle: alreadyRendered ? '확정 카드' : null,
-                coverSubtitle: alreadyRendered ? '이미 매칭되었습니다' : null,
-                initialContact: matchState.confirmedById.get(candidateId),
-              },
-            )
-            if (cardElement && alreadyRendered) {
-              // replace existing card with confirmed version
-              const existingCard = matchCards.querySelector(
-                `.match-card-select-btn[data-candidate-id="${escapeAttributeValue(candidateId)}"]`,
-              )?.closest('.match-card')
-              if (existingCard && existingCard.parentNode) {
-                existingCard.parentNode.replaceChild(cardElement, existingCard)
-                return
-              }
-            }
-            if (cardElement) {
-              matchCards.appendChild(cardElement)
+          injectFallbackConfirmedCards(matchedContacts)
+        function mergeMatchesWithConfirmed(matches = [], confirmedCards = []) {
+          const merged = Array.isArray(matches) ? [...matches] : []
+          const indexMap = new Map()
+          merged.forEach((record, idx) => {
+            const candidateId = getCandidateIdentifier(record)
+            if (candidateId) {
+              indexMap.set(candidateId, idx)
             }
           })
-          injectFallbackConfirmedCards(matchedContacts)
+          confirmedCards.forEach((card) => {
+            const candidateId = getCandidateIdentifier(card)
+            if (!candidateId) return
+            if (indexMap.has(candidateId)) {
+              merged[indexMap.get(candidateId)] = { ...merged[indexMap.get(candidateId)], ...card }
+            } else {
+              indexMap.set(candidateId, merged.length)
+              merged.push(card)
+            }
+          })
+          return merged
+        }
+
           matchState.incomingList = incomingRequests
           renderIncomingRequests()
           if (heroSection) {
@@ -1458,7 +1451,9 @@
             const contact = {
               name: entry.candidateName || '',
               phone: entry.candidatePhone || '',
-              phoneMasked: maskPhoneNumber(entry.candidatePhone),
+              phoneMasked:
+                entry.candidatePhoneMasked ||
+                maskPhoneNumber(entry.candidatePhone || entry.candidatePhoneMasked || ''),
             }
             matchState.confirmedById.set(candidateKey, contact)
             matchState.contactById.set(candidateKey, contact)
@@ -1572,6 +1567,7 @@
             Number.isFinite(matchedAt) && matchedAt > 0 ? matchedAt : Date.now()
           const fallbackName = entry?.candidateName || '확정 매칭 카드'
           const phone = entry?.candidatePhone || ''
+          const phoneMasked = entry?.candidatePhoneMasked || maskPhoneNumber(phone)
           return {
             id: candidateId,
             candidateId,
@@ -1579,6 +1575,7 @@
             name: fallbackName,
             phone,
             phoneNumber: phone,
+            phoneMasked,
             matchRecordedAt: resolvedMatchedAt,
             matchCandidateId: candidateId,
             matchCategory: 'confirmed',
