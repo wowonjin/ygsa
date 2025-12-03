@@ -423,21 +423,54 @@ app.post('/api/match-history/lookup', async (req, res) => {
     const confirmedEntries = relevant.filter(
       (entry) => sanitizeMatchHistoryCategory(entry.category) === 'confirmed',
     )
+    const viewerId = targetRecord.id || ''
+    const viewerPhoneKey = normalizePhoneNumber(targetRecord.phone || targetRecord.phoneNumber || '')
+
+    const getCounterpartMeta = (entry) => {
+      if (!entry) {
+        return {
+          partnerId: '',
+          partnerName: '',
+          partnerPhone: '',
+          partnerGender: '',
+        }
+      }
+      const entryTargetPhoneKey = normalizePhoneNumber(entry.targetPhone || '')
+      const viewerIsTarget =
+        (viewerId && entry.targetId === viewerId) ||
+        (!viewerId && viewerPhoneKey && viewerPhoneKey === entryTargetPhoneKey)
+      const partnerId = viewerIsTarget ? entry.candidateId : entry.targetId
+      const partnerName = viewerIsTarget ? entry.candidateName : entry.targetName
+      const partnerPhone = viewerIsTarget ? entry.candidatePhone : entry.targetPhone
+      const partnerGender = viewerIsTarget ? entry.candidateGender : entry.targetGender
+      return {
+        partnerId: normalizeCandidateIdentifier(partnerId),
+        partnerName: partnerName || '',
+        partnerPhone: partnerPhone || '',
+        partnerPhoneMasked: maskPhoneNumber(partnerPhone),
+        partnerGender: partnerGender || '',
+      }
+    }
+
     const matchedCandidateIds = Array.from(
       new Set(
         confirmedEntries
-          .map((entry) => normalizeCandidateIdentifier(entry.candidateId))
+          .map((entry) => getCounterpartMeta(entry).partnerId)
           .filter(Boolean),
       ),
     )
-    const matchedCandidates = confirmedEntries.map((entry) => ({
-      candidateId: normalizeCandidateIdentifier(entry.candidateId),
-      matchedAt: entry.matchedAt,
-      candidateName: entry.candidateName || '',
-      candidatePhone: entry.candidatePhone || '',
-      targetName: entry.targetName || '',
-      targetPhone: entry.targetPhone || '',
-    }))
+    const matchedCandidates = confirmedEntries.map((entry) => {
+      const counterpart = getCounterpartMeta(entry)
+      return {
+        candidateId: counterpart.partnerId,
+        matchedAt: entry.matchedAt,
+        candidateName: counterpart.partnerName,
+        candidatePhone: counterpart.partnerPhone,
+        candidatePhoneMasked: counterpart.partnerPhoneMasked,
+        targetName: targetRecord.name || entry.targetName || '',
+        targetPhone: viewerPhoneKey,
+      }
+    })
 
     if (!introEntries.length && !confirmedEntries.length) {
       return res.status(404).json({ ok: false, message: '이번주 소개가 없습니다.' })
@@ -498,19 +531,29 @@ app.post('/api/match-history/lookup', async (req, res) => {
     })
     const confirmedMatchCards = confirmedEntries
       .map((entry) => {
-        const candidateKey = normalizeCandidateIdentifier(entry.candidateId)
-        const candidateRecord = findRecordByCandidateIdentifier(records, candidateKey)
+        const counterpart = getCounterpartMeta(entry)
+        if (!counterpart.partnerId && !counterpart.partnerName) return null
+        const candidateRecord = counterpart.partnerId
+          ? findRecordByCandidateIdentifier(records, counterpart.partnerId)
+          : null
         const basePayload = candidateRecord
           ? buildMatchCardPayload(candidateRecord)
-          : buildFallbackMatchCardPayload(entry, candidateKey)
-        if (!basePayload) return null
+          : {
+              id: counterpart.partnerId || `${entry.id || 'match'}-counterpart`,
+              name: counterpart.partnerName || '확정 매칭 카드',
+              gender: counterpart.partnerGender || '',
+              profileAppeal: '확정된 매칭 카드입니다.',
+              aboutMe: '',
+              photos: [],
+              preferredLifestyle: [],
+            }
         return {
           ...basePayload,
           matchEntryId: entry.id,
           matchRecordedAt: entry.matchedAt,
-          matchCandidateId: candidateKey,
+          matchCandidateId: counterpart.partnerId || basePayload.id,
           matchCategory: sanitizeMatchHistoryCategory(entry.category),
-          targetSelected: Boolean(entry.targetSelected),
+          targetSelected: true,
         }
       })
       .filter(Boolean)
