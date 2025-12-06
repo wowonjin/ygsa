@@ -1589,44 +1589,33 @@
           renderIncomingRequests()
         }
 
+        /**
+         * 추가 매칭 여부 판단
+         * - 상대방이 내 메인 덱에 없으면 → 추가 매칭 (분홍색)
+         * - 상대방이 내 메인 덱에 있으면 → 일반 매칭 (녹색)
+         * 
+         * 핵심: 매칭을 수락하는 사람의 관점에서 판단
+         * - 이번주 서로 소개된 회원 (A↔B): 둘 다 서로의 덱에 있음 → 매칭 완료
+         * - 한쪽만 소개된 경우 (A→B만): B의 덱에 A가 없음 → 추가 매칭 완료
+         */
         function isExtraMatchCandidate(candidateId) {
           const key = normalizeCandidateKey(candidateId)
           if (!key) return false
-          // If the candidate is NOT in the main deck, any match is an additional match
-          const isInMainDeck = matchState.currentDeckIds.has(key)
-          const req = matchState.incomingById.get(key)
-          // If there's an incoming request with isWeeklyPair explicitly set, use it
-          if (req?.isWeeklyPair !== undefined) {
-            return !req.isWeeklyPair
-          }
-          // If candidate is only in incoming requests (not in main deck), it's an additional match
-          if (!isInMainDeck && req) {
-            return true
-          }
-          // If candidate is in main deck, check if this is a mutual weekly introduction
-          // For mutual weekly pairs, the server should have marked isWeeklyPair = true
-          if (isInMainDeck && req && String(req?.status || '').toLowerCase() === 'confirmed') {
-            // If the requester is also in our main deck, this is likely a weekly pair
-            // However, we can't confirm without server data about the other side's deck
-            // Default to weekly pair if in main deck
-            return false
-          }
-          return false
+          // 상대방이 내 메인 덱에 있으면 일반 매칭 (NOT extra)
+          // 상대방이 내 메인 덱에 없으면 추가 매칭 (IS extra)
+          return !matchState.currentDeckIds.has(key)
         }
 
+        /**
+         * 이번주 서로 소개된 회원 매칭 여부 판단
+         * - 상대방이 내 메인 덱에 있으면 → 이번주 서로 소개된 회원 (true)
+         * - 상대방이 내 메인 덱에 없으면 → 추가 매칭 (false)
+         */
         function isWeeklyPairMatch(candidateId) {
           const key = normalizeCandidateKey(candidateId)
           if (!key) return false
-          // A weekly pair requires the candidate to be in the current user's main deck
-          const isInMainDeck = matchState.currentDeckIds.has(key)
-          if (!isInMainDeck) return false
-          // If there's server data with isWeeklyPair, use it
-          const req = matchState.incomingById.get(key)
-          if (req?.isWeeklyPair !== undefined) {
-            return Boolean(req.isWeeklyPair)
-          }
-          // If candidate is in main deck, assume it could be a weekly pair
-          return true
+          // 상대방이 내 메인 덱에 있어야만 이번주 서로 소개된 회원
+          return matchState.currentDeckIds.has(key)
         }
 
         async function recordMutualMatchForRequester(incomingRequest, primaryPayload) {
