@@ -6523,12 +6523,31 @@
 
       function getMatchHistoryStatusLabel(entry) {
         if (isConfirmedMatchEntry(entry)) {
-          return '매칭 완료'
+          return isAdditionalConfirmedMatch(entry) ? '추가 매칭 완료' : '매칭 완료'
         }
         if (entry?.targetSelected) {
           return '회원 확인'
         }
         return ''
+      }
+
+      function isAdditionalConfirmedMatch(entry) {
+        if (!isConfirmedMatchEntry(entry)) return false
+        const pairKey = buildMatchPairKey(entry)
+        if (!pairKey) return false
+        const weekMeta = entry.week || null
+        const introExists = matchHistory.some((historyEntry) => {
+          if (!historyEntry) return false
+          if (normalizeMatchHistoryCategory(historyEntry.category) !== MATCH_HISTORY_CATEGORY.INTRO) {
+            return false
+          }
+          if (buildMatchPairKey(historyEntry) !== pairKey) return false
+          if (weekMeta && historyEntry.week && !isSameWeek(historyEntry.week, weekMeta)) {
+            return false
+          }
+          return true
+        })
+        return !introExists
       }
 
       function getCurrentWeekConfirmedMatches() {

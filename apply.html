@@ -292,6 +292,16 @@
         box-shadow: 0 20px 55px rgba(244, 114, 182, 0.4);
       }
 
+      .match-card.match-card-extra .profile-card-preview {
+        border-color: #f9a8d4;
+        background: linear-gradient(135deg, rgba(252, 231, 243, 0.95), rgba(248, 181, 218, 0.9));
+      }
+
+      .match-card.match-card-extra .match-card-cover {
+        background: radial-gradient(circle at top, rgba(244, 143, 177, 0.9), rgba(219, 39, 119, 0.9));
+        box-shadow: 0 22px 60px rgba(244, 114, 182, 0.4);
+      }
+
       .match-card-cover span {
         font-size: 18px;
         font-weight: 600;
@@ -458,6 +468,18 @@
         color: #fff;
         cursor: pointer;
         box-shadow: 0 15px 30px rgba(22, 163, 74, 0.35);
+      }
+
+      .match-card-extra .match-card-select-btn {
+        background: #f472b6;
+        border-color: #ec4899;
+        color: #fff;
+        box-shadow: 0 12px 24px rgba(244, 114, 182, 0.35);
+      }
+
+      .match-card-extra .match-card-select-btn.is-mutual {
+        background: #db2777;
+        border-color: #be185d;
       }
 
       .match-card-select-btn.is-mutual:hover {
@@ -1358,6 +1380,9 @@
               candidateId && matchState.incomingById.has(candidateId)
                 ? matchState.incomingById.get(candidateId)
                 : null
+            const incomingStatus = String(incomingRequestForCard?.status || '').toLowerCase()
+            const isIncomingConfirmed = incomingStatus === 'confirmed'
+            const isExtraMatch = Boolean(incomingRequestForCard && isIncomingConfirmed)
             if (candidateId) {
               matchState.currentDeckIds.add(candidateId)
             }
@@ -1375,6 +1400,7 @@
               initialContact: matchState.confirmedById.get(candidateId),
               incomingRequest: incomingRequestForCard,
               pendingSelection: isPendingSelection,
+              extraMatch: isExtraMatch,
             })
             if (card) {
               matchCards.appendChild(card)
@@ -1480,9 +1506,12 @@
           matchState.incomingList.forEach((req) => {
             const requesterKey = normalizeCandidateKey(req?.requesterId)
             if (!requesterKey) return
-            if (matchState.currentDeckIds.has(requesterKey)) return
-            if (matchState.confirmedById.has(requesterKey)) return
-            visible.push({ request: req, requesterKey })
+            const requestStatus = String(req?.status || '').toLowerCase()
+            const isConfirmedIncoming = requestStatus === 'confirmed'
+            if (!isConfirmedIncoming && matchState.currentDeckIds.has(requesterKey)) return
+            if (!isConfirmedIncoming && matchState.confirmedById.has(requesterKey)) return
+            if (isConfirmedIncoming && matchState.currentDeckIds.has(requesterKey)) return
+            visible.push({ request: req, requesterKey, isConfirmedIncoming })
           })
           incomingCards.innerHTML = ''
           if (!visible.length) {
@@ -1492,7 +1521,7 @@
           }
           incomingSection.hidden = false
           if (incomingEmpty) incomingEmpty.hidden = true
-          visible.forEach(({ request, requesterKey }) => {
+          visible.forEach(({ request, requesterKey, isConfirmedIncoming }) => {
             const profileRecord = {
               ...(request.profile || {}),
               id:
@@ -1516,15 +1545,100 @@
               contactFromRequest
             const card = renderMatchCard(profileRecord, null, {
               isIncomingOnly: true,
-              coverTitle: '실시간 요청',
-              coverSubtitle: '지금 확인하고 선택하세요',
+              coverTitle: isConfirmedIncoming ? '상호 매칭 완료' : '실시간 요청',
+              coverSubtitle: isConfirmedIncoming
+                ? '이미 연결된 회원입니다'
+                : '지금 확인하고 선택하세요',
               incomingRequest: request,
               initialContact,
+              extraMatch: isConfirmedIncoming,
             })
             if (card) {
               incomingCards.appendChild(card)
             }
           })
+        }
+
+        function markIncomingRequestConfirmed(candidateKey, request, contactInfo) {
+          if (!candidateKey) return
+          const normalizedKey = normalizeCandidateKey(candidateKey)
+          const existingRequest = request || matchState.incomingById.get(normalizedKey)
+          if (!existingRequest) return
+          const updated = {
+            ...existingRequest,
+            status: 'confirmed',
+            contact: contactInfo || existingRequest.contact || null,
+          }
+          matchState.incomingById.set(normalizedKey, updated)
+          const listIndex = matchState.incomingList.findIndex(
+            (entry) => normalizeCandidateKey(entry?.requesterId) === normalizedKey,
+          )
+          if (listIndex !== -1) {
+            matchState.incomingList[listIndex] = updated
+          } else {
+            matchState.incomingList.unshift(updated)
+          }
+          renderIncomingRequests()
+        }
+
+        function isExtraMatchCandidate(candidateId) {
+          const key = normalizeCandidateKey(candidateId)
+          if (!key) return false
+          const req = matchState.incomingById.get(key)
+          if (!req) return false
+          return String(req?.status || '').toLowerCase() === 'confirmed'
+        }
+
+        async function recordMutualMatchForRequester(incomingRequest, primaryPayload) {
+          if (!incomingRequest || !currentTargetProfile?.id) return
+          const requesterId = normalizeCandidateKey(incomingRequest.requesterId)
+          const viewerId = normalizeCandidateKey(currentTargetProfile.id)
+          if (!requesterId || !viewerId) return
+          const contactSource =
+            incomingRequest.contact ||
+            matchState.contactById.get(requesterId) ||
+            buildContactSnapshot(
+              {
+                phone: incomingRequest.profile?.phone,
+                phoneMasked: incomingRequest.profile?.phoneMasked,
+              },
+              incomingRequest.profile?.characterName || incomingRequest.profile?.name || '',
+            )
+          const targetPhone = normalizePhoneKey(
+            contactSource?.phone || contactSource?.phoneMasked || '',
+          )
+          if (!targetPhone) return
+          const viewerPhone = normalizePhoneKey(
+            currentTargetProfile.phone ||
+              currentTargetProfile.phoneMasked ||
+              lastLookupPhoneKey ||
+              '',
+          )
+          const matchedAt = primaryPayload?.matchedAt || Date.now()
+          const payload = {
+            id: `${requesterId}-${viewerId}-${matchedAt}-mutual`,
+            candidateId: viewerId,
+            targetId: requesterId,
+            targetPhone,
+            matchedAt,
+            week: buildWeekMeta(new Date(matchedAt)),
+            category: 'confirmed',
+            candidateName: currentTargetProfile.name || '',
+            candidateGender: currentTargetProfile.gender || '',
+            candidatePhone: viewerPhone,
+            targetName:
+              contactSource?.name ||
+              incomingRequest.profile?.characterName ||
+              incomingRequest.profile?.name ||
+              '',
+            targetGender: incomingRequest.profile?.gender || '',
+            targetSelected: true,
+          }
+          try {
+            await sendMatchRequest(payload)
+          } catch (error) {
+            console.warn('[match-select] mutual record failed', error)
+          }
         }
 
         function deriveCandidateKey(entry = {}) {
@@ -1596,11 +1710,15 @@
             incomingRequest = null,
             initialContact = null,
             pendingSelection = false,
+            extraMatch = false,
           } = options
           const wrapper = document.createElement('article')
           wrapper.className = ['match-card', isIncomingOnly ? 'match-card-incoming' : '']
             .filter(Boolean)
             .join(' ')
+          if (extraMatch) {
+            wrapper.classList.add('match-card-extra')
+          }
           wrapper.tabIndex = 0
           const candidateId = getCandidateIdentifier(record)
           const matchEntryId = record.matchEntryId || incomingRequest?.requestId || ''
@@ -1610,8 +1728,15 @@
           preview.innerHTML = renderProfileCard(record)
           const cover = document.createElement('div')
           cover.className = 'match-card-cover'
-          const coverTitleText = coverTitle || (order ? `매칭 ${order || ''}` : '추천 카드')
-          const coverSubtitleText = coverSubtitle || (order ? '카드를 펼쳐 확인하세요' : '지금 확인해보세요')
+          const coverTitleText =
+            coverTitle || (extraMatch ? '추가 매칭' : order ? `매칭 ${order || ''}` : '추천 카드')
+          const coverSubtitleText =
+            coverSubtitle ||
+            (extraMatch
+              ? '추가 매칭 완료'
+              : order
+                ? '카드를 펼쳐 확인하세요'
+                : '지금 확인해보세요')
           cover.innerHTML = `
             <span>${escapeHtml(coverTitleText)}</span>
             <small>${escapeHtml(coverSubtitleText)}</small>
@@ -1651,7 +1776,7 @@
             setButtonContactData(actionButton, initialContact)
           }
           if (pendingSelection && !matchState.confirmedById.has(candidateId)) {
-            markMatchButtonCompleted(actionButton, { mutual: false, cancelButton })
+            markMatchButtonCompleted(actionButton, { mutual: false, cancelButton, extraMatch })
             revealMatchCard(wrapper)
           }
           if (
@@ -1663,6 +1788,7 @@
               mutual: true,
               contact: matchState.contactById.get(candidateId) || initialContact || getContactInfo(candidateId),
               cancelButton,
+              extraMatch,
             })
             revealMatchCard(wrapper)
           }
@@ -1680,7 +1806,16 @@
             normalizedCategory === 'confirmed' || (candidateKey && matchedCandidateIds.has(candidateKey))
           if (!alreadyMatched) return
           const contactInfo = getContactInfo(candidateKey)
-          markMatchButtonCompleted(button, { mutual: true, contact: contactInfo, cancelButton })
+          const extraMatch = isExtraMatchCandidate(candidateKey)
+          if (extraMatch) {
+            wrapper.classList.add('match-card-extra')
+          }
+          markMatchButtonCompleted(button, {
+            mutual: true,
+            contact: contactInfo,
+            cancelButton,
+            extraMatch,
+          })
           revealMatchCard(wrapper)
         }
 
@@ -1963,9 +2098,12 @@
               contact: hasIncomingRequest ? contactInfo : null,
               cancelButton,
               matchEntryId: payload.id,
+              extraMatch: hasIncomingRequest,
             })
             if (hasIncomingRequest) {
               matchedCandidateIds.add(candidateKey)
+              markIncomingRequestConfirmed(candidateKey, incomingRequest, contactInfo)
+              await recordMutualMatchForRequester(incomingRequest, payload)
               if (pendingSelectionSet.delete(candidateKey)) {
                 savePendingSelections(lastLookupPhoneKey, pendingSelectionSet)
               }
@@ -2083,8 +2221,20 @@
                 : typeof record?.matchedAt === 'number' && record.matchedAt > 0
                   ? record.matchedAt
                   : Date.now()
-          const candidatePhone = normalizePhoneKey(record.phone || record.phoneNumber || '')
-          const candidateName = record.name || record.characterName || '추천 후보'
+          const normalizedCandidateKey = normalizeCandidateKey(candidateId)
+          const contactFallback =
+            normalizedCandidateKey && matchState.contactById.has(normalizedCandidateKey)
+              ? matchState.contactById.get(normalizedCandidateKey)
+              : null
+          const candidatePhone = normalizePhoneKey(
+            record.phone ||
+              record.phoneNumber ||
+              contactFallback?.phone ||
+              contactFallback?.phoneMasked ||
+              '',
+          )
+          const candidateName =
+            record.name || record.characterName || contactFallback?.name || '추천 후보'
           const candidateGender = record.gender || ''
           const targetName = currentTargetProfile.name || '회원님'
           const targetGender = currentTargetProfile.gender || ''
@@ -2165,7 +2315,7 @@
 
         function markMatchButtonCompleted(
           button,
-          { mutual = false, contact = null, cancelButton = null, matchEntryId = '' } = {},
+          { mutual = false, contact = null, cancelButton = null, matchEntryId = '', extraMatch = false } = {},
         ) {
           if (!button) return
           if (matchEntryId) {
@@ -2174,10 +2324,11 @@
           const inlineCancelButton = cancelButton || getCancelButton(button)
           button.classList.add('is-completed')
           button.classList.toggle('is-mutual', Boolean(mutual))
+          button.classList.toggle('is-extra', Boolean(extraMatch))
           if (mutual) {
             button.disabled = false
             button.dataset.matchState = 'mutual'
-            button.textContent = '매칭 되었습니다. 정보 확인'
+            button.textContent = extraMatch ? '추가 매칭 완료 · 정보 확인' : '매칭 되었습니다. 정보 확인'
             if (contact) {
               setButtonContactData(button, contact)
             }
@@ -2188,7 +2339,7 @@
           } else {
             button.disabled = true
             button.dataset.matchState = 'completed'
-            button.textContent = '매칭이 신청되었습니다'
+            button.textContent = extraMatch ? '추가 매칭이 신청되었습니다' : '매칭이 신청되었습니다'
             clearButtonContactData(button)
             if (inlineCancelButton) {
               inlineCancelButton.hidden = false
@@ -2998,13 +3149,18 @@
           if (buttons.length) {
             buttons.forEach((button) => {
               const cancelButton = getCancelButton(button)
+              const extraMatch = isExtraMatchCandidate(candidateKey)
               markMatchButtonCompleted(button, {
                 mutual: true,
                 contact,
                 cancelButton,
                 matchEntryId: entry.id,
+                extraMatch,
               })
               const wrapper = button.closest('.match-card')
+              if (extraMatch && wrapper) {
+                wrapper.classList.add('match-card-extra')
+              }
               revealMatchCard(wrapper)
             })
           }
