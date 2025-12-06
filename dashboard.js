@@ -6527,6 +6527,7 @@
           week: entry.week || null,
           category: MATCH_HISTORY_CATEGORY.CONFIRMED,
           targetSelected: true,
+          isWeeklyPair: entry.isWeeklyPair,
         }
       }
 
