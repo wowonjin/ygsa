@@ -2389,7 +2389,19 @@
       }
 
       function normalizePhoneKey(raw) {
-        return String(raw || '').replace(/[^0-9]/g, '')
+        let digits = String(raw || '').replace(/[^0-9]/g, '')
+        if (!digits) return ''
+        digits = digits.replace(/^00+/, '')
+        if (digits.startsWith('82')) {
+          const rest = digits.slice(2)
+          if (!rest) return ''
+          if (rest.startsWith('0')) return rest
+          return `0${rest}`
+        }
+        if (!digits.startsWith('0') && digits.length >= 9 && digits.length <= 11) {
+          return `0${digits}`
+        }
+        return digits
       }
 
       function getMultiSelectValues(selectEl) {

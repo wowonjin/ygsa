@@ -43,8 +43,10 @@
       let isAuthenticated = false
       let appInitialized = false
       const MATCH_CONFIRMED_STORAGE_KEY = 'YGSA_CONFIRMED_MATCHES'
+      const MATCH_INITIATOR_STORAGE_KEY = 'YGSA_MATCH_INITIATORS_V1'
       let pendingExternalMatchSelection = extractSelectionFromHash()
       let confirmedMatches = loadConfirmedMatches()
+      let matchInitiatorCache = loadMatchInitiators()
 
       function initializeApp() {
         if (appInitialized) return
@@ -103,6 +105,79 @@
         } catch (error) {
           console.warn('[match-confirmed] 저장 실패', error)
         }
+      }
+
+      function loadMatchInitiators() {
+        try {
+          const raw = localStorage.getItem(MATCH_INITIATOR_STORAGE_KEY)
+          if (!raw) return {}
+          const parsed = JSON.parse(raw)
+          return parsed && typeof parsed === 'object' ? parsed : {}
+        } catch (error) {
+          console.warn('[match:initiator] 불러오기 실패', error)
+          return {}
+        }
+      }
+
+      function saveMatchInitiators() {
+        try {
+          localStorage.setItem(MATCH_INITIATOR_STORAGE_KEY, JSON.stringify(matchInitiatorCache || {}))
+        } catch (error) {
+          console.warn('[match:initiator] 저장 실패', error)
+        }
+      }
+
+      function buildWeekKey(weekInfo) {
+        if (!weekInfo) return ''
+        const year = Number(weekInfo.year || weekInfo.yearNumber)
+        const weekNumber = Number(weekInfo.week || weekInfo.weekNumber)
+        if (!Number.isFinite(year) || !Number.isFinite(weekNumber)) return ''
+        return `${year}-W${String(weekNumber).padStart(2, '0')}`
+      }
+
+      function rememberMatchInitiatorByEntry(entry) {
+        if (!entry?.week) return
+        const weekKey = buildWeekKey(entry.week)
+        const pairKey = buildMatchPairKey(entry)
+        if (!weekKey || !pairKey) return
+        if (!matchInitiatorCache) {
+          matchInitiatorCache = {}
+        }
+        if (!matchInitiatorCache[weekKey]) {
+          matchInitiatorCache[weekKey] = {}
+        }
+        matchInitiatorCache[weekKey][pairKey] = {
+          source: {
+            target: entry.target || null,
+            targetId: entry.target?.id || entry.targetId || '',
+            targetPhone: entry.target?.phone || entry.targetPhone || '',
+            candidate: entry.candidate || null,
+            candidateId: entry.candidate?.id || entry.candidateId || '',
+            candidatePhone: entry.candidate?.phone || entry.candidatePhone || '',
+          },
+          savedAt: Date.now(),
+        }
+        pruneMatchInitiatorCache()
+        saveMatchInitiators()
+      }
+
+      function pruneMatchInitiatorCache(limit = 8) {
+        if (!matchInitiatorCache) return
+        const keys = Object.keys(matchInitiatorCache)
+        if (keys.length <= limit) return
+        keys
+          .sort()
+          .slice(0, Math.max(0, keys.length - limit))
+          .forEach((key) => {
+            delete matchInitiatorCache[key]
+          })
+      }
+
+      function getCachedInitiatorSource(weekInfo, pairKey) {
+        if (!matchInitiatorCache) return null
+        const weekKey = buildWeekKey(weekInfo)
+        if (!weekKey || !pairKey) return null
+        return matchInitiatorCache?.[weekKey]?.[pairKey]?.source || null
       }
 
       function recordAuthentication() {
@@ -2988,8 +3063,24 @@
         return digits.replace(/(\d{3})(\d{3,4})(\d{0,4}).*/, '$1-$2-$3')
       }
 
+      function normalizeIdentifier(value) {
+        return String(value || '').trim()
+      }
+
       function normalizePhoneKey(raw) {
-        return String(raw || '').replace(/[^0-9]/g, '')
+        let digits = String(raw || '').replace(/[^0-9]/g, '')
+        if (!digits) return ''
+        digits = digits.replace(/^00+/, '')
+        if (digits.startsWith('82')) {
+          const rest = digits.slice(2)
+          if (!rest) return ''
+          if (rest.startsWith('0')) return rest
+          return `0${rest}`
+        }
+        if (!digits.startsWith('0') && digits.length >= 9 && digits.length <= 11) {
+          return `0${digits}`
+        }
+        return digits
       }
 
       function normalizeMatchHistoryCategory(value) {
@@ -6190,6 +6281,7 @@
         const targetRecord = items.find((item) => item.id === matchSelectionTargetId)
         const historyEntry = buildMatchHistoryEntry(entry.snapshot || candidateRecord, targetRecord)
         matchHistory.unshift(historyEntry)
+        rememberMatchInitiatorByEntry(historyEntry)
         if (historyEntry.candidateId) {
           matchedCandidateIds.add(historyEntry.candidateId)
         }
@@ -6441,12 +6533,244 @@
 
       function getCurrentWeekConfirmedMatches() {
         const weekInfo = getWeekInfo(new Date())
-        return confirmedMatches.filter(
+        const currentWeekEntries = confirmedMatches.filter(
           (entry) =>
             isConfirmedMatchEntry(entry) &&
             entry.week?.year === weekInfo.year &&
             entry.week?.week === weekInfo.week,
         )
+        return dedupeConfirmedCouples(currentWeekEntries)
+      }
+
+      function dedupeConfirmedCouples(entries = []) {
+        const currentWeekInfo = getWeekInfo(new Date())
+        const pairMap = new Map()
+        entries.forEach((entry) => {
+          const pairKey = buildMatchPairKey(entry)
+          const mapKey = pairKey || `__${entry?.id || pairMap.size}`
+          const entryTime = Number(entry?.confirmedAt || entry?.matchedAt || 0)
+          if (!pairMap.has(mapKey)) {
+            pairMap.set(mapKey, {
+              pairKey: mapKey,
+              confirmed: [],
+              earliestEntry: entry,
+              earliestTime: entryTime,
+              latestEntry: entry,
+              latestTime: entryTime,
+            })
+          } else {
+            const record = pairMap.get(mapKey)
+            if (entryTime < record.earliestTime) {
+              record.earliestEntry = entry
+              record.earliestTime = entryTime
+            }
+            if (entryTime > record.latestTime) {
+              record.latestEntry = entry
+              record.latestTime = entryTime
+            }
+          }
+          pairMap.get(mapKey).confirmed.push(entry)
+        })
+        const historyIndex = buildMatchHistoryPairIndex((historyEntry) =>
+          isSameWeek(historyEntry.week, currentWeekInfo),
+        )
+        return Array.from(pairMap.values())
+          .map((record) => {
+            const cachedSource = getCachedInitiatorSource(currentWeekInfo, record.pairKey)
+            if (cachedSource) {
+              return applyParticipantOrientation(record.latestEntry, cachedSource)
+            }
+            const orientationSource =
+              findOrientationSource(record.pairKey, historyIndex) || record.earliestEntry
+            return applyParticipantOrientation(record.latestEntry, orientationSource)
+          })
+          .sort(
+            (a, b) =>
+              Number(b?.confirmedAt || b?.matchedAt || 0) -
+              Number(a?.confirmedAt || a?.matchedAt || 0),
+          )
+      }
+
+      function buildMatchHistoryPairIndex(filterFn) {
+        const map = new Map()
+        if (!Array.isArray(matchHistory) || !matchHistory.length) {
+          return map
+        }
+        matchHistory.forEach((entry) => {
+          if (!entry) return
+          if (typeof filterFn === 'function' && !filterFn(entry)) {
+            return
+          }
+          const pairKey = buildMatchPairKey(entry)
+          if (!pairKey) return
+          if (!map.has(pairKey)) {
+            map.set(pairKey, [])
+          }
+          map.get(pairKey).push(entry)
+        })
+        map.forEach((list, key) => {
+          map.set(
+            key,
+            list.sort(
+              (a, b) =>
+                Number(a?.matchedAt || a?.confirmedAt || 0) -
+                Number(b?.matchedAt || b?.confirmedAt || 0),
+            ),
+          )
+        })
+        return map
+      }
+
+      function findOrientationSource(pairKey, historyIndex) {
+        if (!pairKey || !historyIndex) return null
+        const list = historyIndex.get(pairKey)
+        if (!Array.isArray(list) || !list.length) return null
+        const introEntry = list.find(
+          (entry) => normalizeMatchHistoryCategory(entry?.category) === MATCH_HISTORY_CATEGORY.INTRO,
+        )
+        if (introEntry) return introEntry
+        const pendingEntry = list.find((entry) => entry && entry.targetSelected === false)
+        if (pendingEntry) return pendingEntry
+        return list[0]
+      }
+
+      function isSameWeek(weekMeta, referenceWeek) {
+        if (!weekMeta || !referenceWeek) return false
+        return (
+          Number(weekMeta.year) === Number(referenceWeek.year) &&
+          Number(weekMeta.week) === Number(referenceWeek.week)
+        )
+      }
+
+      function buildMatchPairKey(entry) {
+        if (!entry) return ''
+        const targetKey = getMatchParticipantKey(entry, 'target')
+        const candidateKey = getMatchParticipantKey(entry, 'candidate')
+        if (!targetKey && !candidateKey) return ''
+        const orderedKeys = [
+          targetKey || `target:${entry?.id || ''}`,
+          candidateKey || `candidate:${entry?.id || ''}`,
+        ]
+          .map((value) => String(value))
+          .sort()
+        return orderedKeys.join('__')
+      }
+
+      function getMatchParticipantKey(entry, role) {
+        if (!entry) return ''
+        const participant =
+          role === 'target' ? entry.target : role === 'candidate' ? entry.candidate : null
+        const fallbackId = role === 'target' ? entry.targetId : entry.candidateId
+        const fallbackPhone =
+          role === 'target'
+            ? entry.targetPhone || participant?.phoneMasked
+            : entry.candidatePhone || participant?.phoneMasked
+        const normalizedId =
+          (participant && normalizeIdentifier(participant.id)) || normalizeIdentifier(fallbackId)
+        if (normalizedId) {
+          return normalizedId
+        }
+        const phoneKey = normalizePhoneKey(
+          (participant && (participant.phone || participant.phoneMasked)) || fallbackPhone,
+        )
+        return phoneKey || ''
+      }
+
+      function applyParticipantOrientation(preferredEntry, orientationSource) {
+        if (!preferredEntry) return preferredEntry
+        const orientationMeta = buildParticipantOrientationMeta(orientationSource)
+        if (!orientationMeta) {
+          return {
+            ...preferredEntry,
+            displayTarget: preferredEntry.target || preferredEntry.candidate || null,
+            displayCandidate: preferredEntry.candidate || preferredEntry.target || null,
+          }
+        }
+        const resolvedTarget = resolveParticipantFromMeta(preferredEntry, orientationMeta.first)
+        const resolvedCandidate = resolveParticipantFromMeta(preferredEntry, orientationMeta.second)
+        return {
+          ...preferredEntry,
+          displayTarget: resolvedTarget || orientationMeta.first.snapshot || preferredEntry.target,
+          displayCandidate:
+            resolvedCandidate || orientationMeta.second.snapshot || preferredEntry.candidate,
+        }
+      }
+
+      function buildParticipantOrientationMeta(entry) {
+        if (!entry) return null
+        const targetMeta = buildParticipantMeta(entry, 'target')
+        const candidateMeta = buildParticipantMeta(entry, 'candidate')
+        if (!targetMeta && !candidateMeta) return null
+        return {
+          first: targetMeta,
+          second: candidateMeta,
+        }
+      }
+
+      function buildParticipantMeta(entry, role) {
+        if (!entry) return null
+        const participant = role === 'target' ? entry.target : entry.candidate
+        const idField = role === 'target' ? entry.targetId : entry.candidateId
+        const nameField = role === 'target' ? entry.targetName : entry.candidateName
+        const genderField = role === 'target' ? entry.targetGender : entry.candidateGender
+        const rawPhone =
+          role === 'target'
+            ? entry.targetPhone || entry.target?.phone || entry.target?.phoneMasked
+            : entry.candidatePhone || entry.candidate?.phone || entry.candidate?.phoneMasked
+        if (!participant && !idField && !rawPhone && !nameField) {
+          return null
+        }
+        const normalizedId = normalizeIdentifier(participant?.id || idField)
+        const phoneKey = normalizePhoneKey(participant?.phone || participant?.phoneMasked || rawPhone)
+        return {
+          role,
+          id: normalizedId,
+          phone: phoneKey,
+          name: participant?.name || nameField || '',
+          gender: participant?.gender || genderField || '',
+          snapshot:
+            participant ||
+            buildParticipantFallback({
+              id: normalizedId,
+              name: participant?.name || nameField || '',
+              gender: participant?.gender || genderField || '',
+              phone: rawPhone,
+            }),
+        }
+      }
+
+      function buildParticipantFallback({ id = '', name = '', gender = '', phone = '' } = {}) {
+        const formattedPhone = formatPhoneNumber(phone)
+        return {
+          id,
+          name,
+          gender,
+          phone: formattedPhone,
+          phoneMasked: formattedPhone,
+        }
+      }
+
+      function resolveParticipantFromMeta(entry, meta) {
+        if (!meta) return null
+        const candidates = []
+        if (entry.target) candidates.push(entry.target)
+        if (entry.candidate) candidates.push(entry.candidate)
+        const matched = candidates.find((participant) => participantMatchesMeta(participant, meta))
+        if (matched) return matched
+        return meta.snapshot || null
+      }
+
+      function participantMatchesMeta(participant, meta) {
+        if (!participant || !meta) return false
+        const participantId = normalizeIdentifier(participant.id)
+        if (participantId && meta.id && participantId === meta.id) {
+          return true
+        }
+        const participantPhone = normalizePhoneKey(participant.phone || participant.phoneMasked)
+        if (participantPhone && meta.phone && participantPhone === meta.phone) {
+          return true
+        }
+        return false
       }
 
       function updateMatchedCouplesButton() {
@@ -6470,17 +6794,22 @@
         matchedCouplesList.innerHTML = entries.length
           ? entries
               .map((entry) => {
-                const targetName = entry.target?.name || '대상자'
-                const candidateName = entry.candidate?.name || '추천 후보'
-                const candidateMeta = entry.candidate
-                  ? buildCandidateMetaLine(entry.candidate)
+                const targetParticipant = entry.displayTarget || entry.target
+                const candidateParticipant = entry.displayCandidate || entry.candidate
+                const targetName = targetParticipant?.name || '대상자'
+                const candidateName = candidateParticipant?.name || '추천 후보'
+                const candidateMeta = candidateParticipant
+                  ? buildCandidateMetaLine(candidateParticipant)
                   : '프로필 정보 준비 중'
                 const matchedLabel = formatDate(entry.confirmedAt)
                 const targetPhone = formatPhoneNumber(
-                  entry.target?.phone || entry.targetPhone || entry.target?.phoneMasked || '',
+                  targetParticipant?.phone ||
+                    entry.targetPhone ||
+                    targetParticipant?.phoneMasked ||
+                    '',
                 )
                 const candidatePhone = formatPhoneNumber(
-                  entry.candidate?.phone || entry.candidatePhone || '',
+                  candidateParticipant?.phone || entry.candidatePhone || '',
                 )
                 return `
                   <li class="matched-couples-item" data-match-id="${escapeHtml(entry.id || '')}">
@@ -6615,6 +6944,7 @@
         }
         confirmedMatches.unshift(matchEntry)
         saveConfirmedMatches()
+        upsertConfirmedHistoryEntry(matchEntry)
         updateMatchedCouplesButton()
         rebuildMatchedCandidateIds()
         if (options.persist !== false) {
@@ -7254,6 +7584,7 @@
           }
           confirmedMatches.unshift(mapped)
           saveConfirmedMatches()
+          upsertConfirmedHistoryEntry(mapped)
         }
         updateMatchedCouplesButton()
         if (matchedCouplesModal && !matchedCouplesModal.hidden) {
@@ -7265,6 +7596,21 @@
         } else {
           showToast('새로운 커플이 확정되었습니다.')
         }
+      }
+
+      function upsertConfirmedHistoryEntry(matchEntry) {
+        const historyEntry = mapConfirmedMatchToHistoryEntry(matchEntry)
+        if (!historyEntry || !historyEntry.id) return
+        const existingIndex = matchHistory.findIndex((entry) => entry.id === historyEntry.id)
+        if (existingIndex !== -1) {
+          matchHistory[existingIndex] = {
+            ...matchHistory[existingIndex],
+            ...historyEntry,
+          }
+        } else {
+          matchHistory.unshift(historyEntry)
+        }
+        saveMatchHistory()
       }
 
       function handleSseMatchDeletion(entry) {

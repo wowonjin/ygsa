@@ -1775,7 +1775,28 @@ function buildProfileDraftUploads(record = {}) {
 }
 
 function normalizePhoneNumber(value) {
-  return sanitizeText(value).replace(/\D/g, '')
+  let digits = sanitizeText(value).replace(/\D/g, '')
+  if (!digits) return ''
+
+  // Remove international call prefixes such as 00 that often precede +82
+  digits = digits.replace(/^00+/, '')
+
+  if (digits.startsWith('82')) {
+    const rest = digits.slice(2)
+    if (!rest) {
+      return ''
+    }
+    if (rest.startsWith('0')) {
+      return rest
+    }
+    return `0${rest}`
+  }
+
+  if (!digits.startsWith('0') && digits.length >= 9 && digits.length <= 11) {
+    return `0${digits}`
+  }
+
+  return digits
 }
 
 function sanitizePayload(body) {
