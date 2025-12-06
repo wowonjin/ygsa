@@ -743,7 +743,7 @@
         font-size: 18px;
         font-weight: 600;
       }
-      #alpha-profile-root .modal-dialog button {
+      #alpha-profile-root .modal-dialog button:not(.modal-text-button) {
         margin-top: 22px;
         border: none;
         border-radius: 12px;
@@ -755,17 +755,138 @@
         font-size: 16px;
         transition: transform 0.15s ease, box-shadow 0.2s ease;
       }
-      #alpha-profile-root .modal-dialog button:hover {
+      #alpha-profile-root .modal-dialog button:not(.modal-text-button):hover {
         transform: translateY(-1px);
         box-shadow: 0 16px 32px rgba(83, 119, 246, 0.28);
       }
-      #alpha-profile-root .modal-dialog button:focus-visible {
+      #alpha-profile-root .modal-dialog button:not(.modal-text-button):focus-visible {
         outline: 2px solid #2f49c8;
         outline-offset: 2px;
+      }
+      #alpha-profile-root .modal-dialog .modal-status {
+        margin-top: 12px;
+        font-size: 14px;
+        color: #6b7280;
+      }
+      #alpha-profile-root .modal-button-group {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 24px;
+      }
+      #alpha-profile-root .modal-dialog .btn-secondary {
+        background: #eef2ff;
+        color: #2f49c8;
+      }
+      #alpha-profile-root .modal-dialog button[disabled] {
+        opacity: 0.6;
+        cursor: not-allowed;
+        box-shadow: none;
+        transform: none;
+      }
+      #alpha-profile-root .modal-dialog .modal-text-button {
+        margin-top: 18px;
+        border: none;
+        background: transparent;
+        color: #9ca3af;
+        font-weight: 600;
+        font-size: 15px;
+        padding: 0;
+        cursor: pointer;
+      }
+      #alpha-profile-root .modal-dialog .modal-text-button:hover {
+        color: #4b5563;
       }
       @media (max-width: 780px) {
         #alpha-profile-root .field-grid {
           grid-template-columns: 1fr;
+        }
+      }
+      @media (max-width: 640px) {
+        #alpha-profile-root legend {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 16px;
+        }
+        #alpha-profile-root input,
+        #alpha-profile-root textarea,
+        #alpha-profile-root select,
+        #alpha-profile-root .multi-dropdown {
+          width: calc(100% - 8px);
+          margin-right: 8px;
+        }
+        #alpha-profile-root .range-inputs {
+          gap: 10px;
+          flex-wrap: nowrap;
+        }
+        #alpha-profile-root .range-inputs input {
+          width: auto;
+          margin-right: 0;
+          min-width: 0;
+          flex: 1;
+        }
+        #alpha-profile-root .legend-actions {
+          order: -1;
+          width: 100%;
+          margin-left: 0;
+          flex-direction: row;
+          flex-wrap: wrap;
+          align-items: center;
+          justify-content: flex-start;
+          gap: 10px;
+        }
+        #alpha-profile-root .legend-hint-wrap {
+          width: auto;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        #alpha-profile-root .legend-hint {
+          position: static;
+          transform: none;
+          text-align: left;
+          white-space: normal;
+          box-shadow: none;
+        }
+        #alpha-profile-root .legend-hint::after {
+          display: none;
+        }
+        #alpha-profile-root .legend-actions .btn-outline {
+          width: 100%;
+          justify-content: flex-start;
+        }
+        #alpha-profile-root fieldset[data-section='preferences'] .field {
+          border: 1px solid #e4eaf5;
+          border-radius: 14px;
+          padding: 16px 14px;
+          background: #f9fbff;
+        }
+        #alpha-profile-root fieldset[data-section='preferences'] .field + .field {
+          margin-top: 4px;
+        }
+        #alpha-profile-root fieldset[data-section='preferences'] input,
+        #alpha-profile-root fieldset[data-section='preferences'] textarea,
+        #alpha-profile-root fieldset[data-section='preferences'] select,
+        #alpha-profile-root fieldset[data-section='preferences'] .multi-dropdown {
+          width: 100%;
+          margin-right: 0;
+        }
+        #alpha-profile-root fieldset[data-section='preferences'] .field-range .range-inputs {
+          flex-direction: column;
+          align-items: stretch;
+          gap: 6px;
+        }
+        #alpha-profile-root fieldset[data-section='preferences'] .field-range .range-inputs input {
+          width: 100%;
+        }
+        #alpha-profile-root fieldset[data-section='preferences'] .range-separator {
+          display: block;
+          text-align: center;
+          font-size: 13px;
+          color: #9aa2b4;
+        }
+        #alpha-profile-root fieldset[data-section='preferences'] .multi-dropdown-panel {
+          max-height: 200px;
         }
       }
     </style>
@@ -1035,7 +1156,7 @@
           </div>
         </fieldset>
 
-        <fieldset>
+        <fieldset data-section="preferences">
           <legend>선호 조건</legend>
           <div class="field-grid">
             <div class="field field-range">
@@ -1433,6 +1554,24 @@
             <button type="button" id="submissionModalClose">확인</button>
           </div>
         </div>
+        <div
+          id="draftLoadModal"
+          class="modal-backdrop"
+          hidden
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="draftLoadModalTitle"
+        >
+          <div class="modal-dialog">
+            <p id="draftLoadModalTitle">어떤 정보를 불러올까요?</p>
+            <p id="draftLoadModalStatus" class="modal-status">입력하신 연락처 기준으로 선택해주세요.</p>
+            <div class="modal-button-group">
+              <button type="button" id="draftLoadModalDraft">임시 저장된 정보 불러오기</button>
+              <button type="button" class="btn-secondary" id="draftLoadModalProfile">제출된 프로필 불러오기</button>
+            </div>
+            <button type="button" class="modal-text-button" id="draftLoadModalClose">취소</button>
+          </div>
+        </div>
       </form>
     </div>
 
@@ -1450,6 +1589,7 @@
       const BACKEND_ORIGIN = (BACKEND_ORIGIN_RAW || DEFAULT_BACKEND_ORIGIN).replace(/\/$/, '')
       const API_BASE_URL = BACKEND_ORIGIN
       const PROFILE_API_URL = `${API_BASE_URL}/api/consult/profile`
+      const PROFILE_LOOKUP_API_URL = PROFILE_API_URL
       const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024
       const MAX_UPLOAD_SIZE_LABEL = '10MB'
       const DRAFT_STORAGE_KEY = 'alphaProfileDraft_v1'
@@ -1499,6 +1639,15 @@
       const fileDropZones = Array.from(document.querySelectorAll('.file-drop-zone'))
       const submissionModal = document.getElementById('submissionModal')
       const submissionModalCloseBtn = document.getElementById('submissionModalClose')
+      const draftLoadModal = document.getElementById('draftLoadModal')
+      const draftLoadModalCloseBtn = document.getElementById('draftLoadModalClose')
+      const draftLoadModalDraftBtn = document.getElementById('draftLoadModalDraft')
+      const draftLoadModalProfileBtn = document.getElementById('draftLoadModalProfile')
+      const draftLoadModalStatus = document.getElementById('draftLoadModalStatus')
+      const draftLoadModalDefaultStatus =
+        draftLoadModalStatus?.textContent || '입력하신 연락처 기준으로 선택해주세요.'
+      const draftLoadModalProfileDefaultText =
+        draftLoadModalProfileBtn?.textContent || '제출된 프로필 불러오기'
 
       const infoBubbleEl = document.getElementById('infoBubble')
       const INFO_BADGE_MESSAGES = {
@@ -2970,29 +3119,112 @@
         hydrateUploadsFromDraft(draft.uploads)
       }
 
-      draftSaveButton?.addEventListener('click', () => {
-        handleDraftSave({ notify: 'alert' })
-      })
+      function openDraftLoadModal() {
+        if (!draftLoadModal) return
+        setDraftLoadModalLoading(false)
+        draftLoadModal.hidden = false
+        draftLoadModalDraftBtn?.focus()
+      }
 
-      draftLoadButton?.addEventListener('click', () => {
+      function closeDraftLoadModal() {
+        if (!draftLoadModal) return
+        setDraftLoadModalLoading(false)
+        draftLoadModal.hidden = true
+      }
+
+      function setDraftLoadModalLoading(isLoading, statusMessage) {
+        if (draftLoadModal) {
+          draftLoadModal.dataset.loading = isLoading ? 'true' : 'false'
+        }
+        if (draftLoadModalStatus) {
+          draftLoadModalStatus.textContent = isLoading
+            ? statusMessage || '제출된 정보를 불러오는 중이에요…'
+            : draftLoadModalDefaultStatus
+        }
+        if (draftLoadModalDraftBtn) {
+          draftLoadModalDraftBtn.disabled = isLoading
+        }
+        if (draftLoadModalProfileBtn) {
+          draftLoadModalProfileBtn.disabled = isLoading
+          draftLoadModalProfileBtn.textContent = isLoading
+            ? '제출된 정보를 불러오는 중…'
+            : draftLoadModalProfileDefaultText
+        }
+      }
+
+      function loadDraftFromLocal() {
         try {
           const phoneKey = normalizePhoneKey(phoneInput?.value || '')
           if (!phoneKey) {
             alert('임시 저장 불러오기를 위해 연락처를 입력해주세요.')
-            return
+            return false
           }
           const storageKey = buildDraftStorageKey(phoneKey)
           const raw = localStorage.getItem(storageKey)
           if (!raw) {
             alert('저장된 임시 데이터가 없습니다.')
-            return
+            return false
           }
           const draft = JSON.parse(raw)
           applyDraftData(draft)
           showMessage('임시 저장된 데이터를 불러왔습니다. 제출 전 내용을 확인해주세요.', 'success')
+          return true
         } catch (error) {
           console.error('[draft] load failed', error)
           showMessage('임시 데이터를 불러오지 못했습니다.', 'error')
+          return false
+        }
+      }
+
+      async function loadSubmittedProfile() {
+        const phoneKey = normalizePhoneKey(phoneInput?.value || '')
+        if (!phoneKey) {
+          alert('제출된 프로필을 불러오려면 연락처를 입력해주세요.')
+          return
+        }
+        setDraftLoadModalLoading(true, '제출된 정보를 확인하는 중이에요…')
+        try {
+          const url = `${PROFILE_LOOKUP_API_URL}?phone=${encodeURIComponent(phoneKey)}`
+          const res = await fetch(url)
+          const body = await res.json().catch(() => ({}))
+          if (!res.ok || !body?.ok || !body?.data) {
+            const message =
+              body?.message ||
+              (res.status === 404
+                ? '제출된 프로필을 찾을 수 없습니다.'
+                : '제출된 프로필을 불러오지 못했습니다.')
+            throw new Error(message)
+          }
+          applyDraftData(body.data)
+          showMessage('제출된 프로필을 불러왔습니다. 내용을 확인해주세요.', 'success')
+          closeDraftLoadModal()
+        } catch (error) {
+          console.error('[profile] submitted load failed', error)
+          alert(error?.message || '제출된 프로필을 불러오지 못했습니다.')
+          setDraftLoadModalLoading(false)
+        }
+      }
+
+      draftSaveButton?.addEventListener('click', () => {
+        handleDraftSave({ notify: 'alert' })
+      })
+
+      draftLoadButton?.addEventListener('click', () => {
+        openDraftLoadModal()
+      })
+      draftLoadModalDraftBtn?.addEventListener('click', () => {
+        const loaded = loadDraftFromLocal()
+        if (loaded) {
+          closeDraftLoadModal()
+        }
+      })
+      draftLoadModalProfileBtn?.addEventListener('click', () => {
+        loadSubmittedProfile()
+      })
+      draftLoadModalCloseBtn?.addEventListener('click', () => closeDraftLoadModal())
+      draftLoadModal?.addEventListener('click', (event) => {
+        if (event.target === draftLoadModal) {
+          closeDraftLoadModal()
         }
       })
 
@@ -3033,8 +3265,13 @@
         }
       })
       document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && submissionModal && !submissionModal.hidden) {
+        if (event.key !== 'Escape') return
+        if (submissionModal && !submissionModal.hidden) {
           closeSubmissionModal()
+          return
+        }
+        if (draftLoadModal && !draftLoadModal.hidden) {
+          closeDraftLoadModal()
         }
       })
 

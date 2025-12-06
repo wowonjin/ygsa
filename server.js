@@ -56,6 +56,38 @@ const MATCH_SCORE_MAX = 3
 const MATCH_AI_MAX_CANDIDATES = 5
 const MATCH_AI_REASON_MAX_LENGTH = 200
 const MATCH_AI_SUMMARY_MAX_LENGTH = 480
+const PROFILE_UPLOAD_INPUT_MAP = {
+  idCard: {
+    inputId: 'profileIdCard',
+    group: 'documents',
+    category: 'idCard',
+    storageFolder: 'id-card',
+    label: '신분증',
+  },
+  employmentProof: {
+    inputId: 'profileEmploymentProof',
+    group: 'documents',
+    category: 'employmentProof',
+    storageFolder: 'employment-proof',
+    label: '재직 증빙',
+  },
+}
+const PROFILE_PHOTO_INPUT_MAP = {
+  face: {
+    inputId: 'profilePhotosFace',
+    group: 'photos',
+    category: 'face',
+    storageFolder: 'photos/face',
+    label: '프로필 얼굴 사진',
+  },
+  full: {
+    inputId: 'profilePhotosFull',
+    group: 'photos',
+    category: 'full',
+    storageFolder: 'photos/full',
+    label: '프로필 전신 사진',
+  },
+}
 const MATCH_AI_DEFAULT_MODEL = 'gpt-4o-mini'
 const MATCH_AI_TIMEOUT_MS = 20 * 1000
 const MATCH_AI_MODEL =
@@ -137,6 +169,29 @@ app.post('/api/consult', async (req, res) => {
   } catch (error) {
     console.error('[consult:create]', error)
     res.status(500).json({ ok: false, message: '신청 저장에 실패했습니다.' })
+  }
+})
+
+app.get('/api/consult/profile', async (req, res) => {
+  const phoneKey = normalizePhoneNumber(req.query?.phone || req.query?.phoneKey)
+  if (!phoneKey) {
+    return res.status(400).json({ ok: false, message: '연락처를 입력해주세요.' })
+  }
+
+  try {
+    const list = await readConsultations()
+    const record = list.find((item) => normalizePhoneNumber(item.phone) === phoneKey)
+    if (!record) {
+      return res.status(404).json({ ok: false, message: '제출된 프로필을 찾을 수 없습니다.' })
+    }
+    const normalized = normalizeStoredRecord(record)
+    const payload = buildProfileDraftPayload(normalized)
+    res.json({ ok: true, data: payload })
+  } catch (error) {
+    console.error('[consult:profile:lookup]', error)
+    res
+      .status(500)
+      .json({ ok: false, message: '프로필 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.' })
   }
 })
 
@@ -426,31 +481,8 @@ app.post('/api/match-history/lookup', async (req, res) => {
     const viewerId = targetRecord.id || ''
     const viewerPhoneKey = normalizePhoneNumber(targetRecord.phone || targetRecord.phoneNumber || '')
 
-    const getCounterpartMeta = (entry) => {
-      if (!entry) {
-        return {
-          partnerId: '',
-          partnerName: '',
-          partnerPhone: '',
-          partnerGender: '',
-        }
-      }
-      const entryTargetPhoneKey = normalizePhoneNumber(entry.targetPhone || '')
-      const viewerIsTarget =
-        (viewerId && entry.targetId === viewerId) ||
-        (!viewerId && viewerPhoneKey && viewerPhoneKey === entryTargetPhoneKey)
-      const partnerId = viewerIsTarget ? entry.candidateId : entry.targetId
-      const partnerName = viewerIsTarget ? entry.candidateName : entry.targetName
-      const partnerPhone = viewerIsTarget ? entry.candidatePhone : entry.targetPhone
-      const partnerGender = viewerIsTarget ? entry.candidateGender : entry.targetGender
-      return {
-        partnerId: normalizeCandidateIdentifier(partnerId),
-        partnerName: partnerName || '',
-        partnerPhone: partnerPhone || '',
-        partnerPhoneMasked: maskPhoneNumber(partnerPhone),
-        partnerGender: partnerGender || '',
-      }
-    }
+    const getCounterpartMeta = (entry) =>
+      getCounterpartMetaForViewer(entry, viewerId, viewerPhoneKey)
 
     const matchedCandidateIds = Array.from(
       new Set(
@@ -494,29 +526,37 @@ app.post('/api/match-history/lookup', async (req, res) => {
     const selection = []
     const seen = new Set()
 
-    const addEntriesToSelection = (entries) => {
-      for (const entry of entries) {
-        if (!entry?.candidateId || seen.has(entry.candidateId)) continue
-        const candidateRecord = records.find((item) => item.id === entry.candidateId)
-        if (!candidateRecord) continue
-        selection.push({ entry, record: candidateRecord })
-        seen.add(entry.candidateId)
-        if (selection.length >= limit) break
+    const tryPushEntry = (entry) => {
+      if (!entry?.candidateId) return false
+      const candidateId = entry.candidateId
+      if (seen.has(candidateId)) return false
+      const candidateRecord = records.find((item) => item.id === candidateId)
+      if (!candidateRecord) return false
+      selection.push({ entry, record: candidateRecord })
+      seen.add(candidateId)
+      return true
+    }
+
+    const confirmedPrioritySource = weekFilteredConfirmed.length
+      ? weekFilteredConfirmed
+      : confirmedEntries
+    confirmedPrioritySource.forEach((entry) => {
+      tryPushEntry(entry)
+    })
+
+    let introSlots = Math.max(limit, 0)
+    const introSource = weekFilteredIntro.length ? weekFilteredIntro : introEntries
+    for (const entry of introSource) {
+      if (introSlots <= 0) break
+      if (tryPushEntry(entry)) {
+        introSlots -= 1
       }
     }
 
-    const primarySource = weekFilteredIntro.length
-      ? weekFilteredIntro
-      : introEntries.length
-        ? introEntries
-        : weekFilteredConfirmed.length
-          ? weekFilteredConfirmed
-          : confirmedEntries
-    addEntriesToSelection(primarySource)
-
-    if (selection.length < limit && confirmedEntries.length) {
-      const confirmedSource = confirmedEntries.filter((entry) => !seen.has(entry.candidateId))
-      addEntriesToSelection(confirmedSource)
+    if (!selection.length && confirmedEntries.length) {
+      confirmedEntries.forEach((entry) => {
+        tryPushEntry(entry)
+      })
     }
 
     if (!selection.length) {
@@ -582,6 +622,67 @@ app.post('/api/match-history/lookup', async (req, res) => {
   } catch (error) {
     console.error('[match-history:lookup]', error)
     res.status(500).json({ ok: false, message: '매칭 정보를 불러오지 못했습니다.' })
+  }
+})
+
+app.post('/api/match-history/contact', async (req, res) => {
+  const phoneKey = normalizePhoneNumber(req.body?.phone)
+  const candidateKey = normalizeCandidateIdentifier(req.body?.candidateId)
+  const matchEntryId = sanitizeText(req.body?.matchEntryId)
+
+  if (!phoneKey) {
+    return res.status(400).json({ ok: false, message: '전화번호를 입력해주세요.' })
+  }
+  if (!candidateKey && !matchEntryId) {
+    return res
+      .status(400)
+      .json({ ok: false, message: '연락처를 확인할 후보 또는 매칭 ID가 필요합니다.' })
+  }
+
+  try {
+    const [records, history] = await Promise.all([readConsultations(), readMatchHistory()])
+    const targetRecord = records.find((item) => normalizePhoneNumber(item.phone) === phoneKey)
+    if (!targetRecord) {
+      return res.status(404).json({ ok: false, message: '등록된 회원을 찾지 못했습니다.' })
+    }
+
+    const viewerId = targetRecord.id || ''
+    const viewerPhoneKey = normalizePhoneNumber(targetRecord.phone || targetRecord.phoneNumber || '')
+
+    const matchingEntries = history
+      .filter((entry) => doesEntryBelongToViewer(entry, viewerId, viewerPhoneKey))
+      .filter((entry) => {
+        if (matchEntryId && entry.id === matchEntryId) return true
+        if (candidateKey && normalizeCandidateIdentifier(entry.candidateId) === candidateKey) {
+          return true
+        }
+        return false
+      })
+      .sort((a, b) => (b.matchedAt || 0) - (a.matchedAt || 0))
+
+    if (!matchingEntries.length) {
+      return res.status(404).json({ ok: false, message: '연락처를 찾지 못했습니다.' })
+    }
+
+    const entry = matchingEntries[0]
+    const counterpart = getCounterpartMetaForViewer(entry, viewerId, viewerPhoneKey)
+    if (!counterpart.partnerId) {
+      return res.status(404).json({ ok: false, message: '연락처를 찾지 못했습니다.' })
+    }
+
+    res.json({
+      ok: true,
+      data: {
+        candidateId: counterpart.partnerId,
+        candidateName: counterpart.partnerName,
+        candidatePhone: counterpart.partnerPhone,
+        candidatePhoneMasked: counterpart.partnerPhoneMasked,
+        matchEntryId: entry.id,
+      },
+    })
+  } catch (error) {
+    console.error('[match-history:contact]', error)
+    res.status(500).json({ ok: false, message: '연락처를 불러오지 못했습니다.' })
   }
 })
 
@@ -1061,6 +1162,42 @@ function normalizeMatchHistoryEntry(entry) {
   }
 }
 
+function doesEntryBelongToViewer(entry, viewerId, viewerPhoneKey) {
+  if (!entry) return false
+  if (viewerId && entry.targetId === viewerId) {
+    return true
+  }
+  if (!viewerPhoneKey) return false
+  const entryTargetPhoneKey = normalizePhoneNumber(entry.targetPhone || '')
+  return Boolean(entryTargetPhoneKey && entryTargetPhoneKey === viewerPhoneKey)
+}
+
+function getCounterpartMetaForViewer(entry, viewerId, viewerPhoneKey) {
+  if (!entry) {
+    return {
+      viewerIsTarget: false,
+      partnerId: '',
+      partnerName: '',
+      partnerPhone: '',
+      partnerPhoneMasked: '',
+      partnerGender: '',
+    }
+  }
+  const viewerIsTarget = doesEntryBelongToViewer(entry, viewerId, viewerPhoneKey)
+  const partnerId = viewerIsTarget ? entry.candidateId : entry.targetId
+  const partnerName = viewerIsTarget ? entry.candidateName : entry.targetName
+  const partnerPhone = viewerIsTarget ? entry.candidatePhone : entry.targetPhone
+  const partnerGender = viewerIsTarget ? entry.candidateGender : entry.targetGender
+  return {
+    viewerIsTarget,
+    partnerId: normalizeCandidateIdentifier(partnerId),
+    partnerName: partnerName || '',
+    partnerPhone: partnerPhone || '',
+    partnerPhoneMasked: maskPhoneNumber(partnerPhone),
+    partnerGender: partnerGender || '',
+  }
+}
+
 function sanitizeWeekDescriptor(week, fallbackTime) {
   if (week && typeof week === 'object') {
     const year = Number(week.year)
@@ -1263,12 +1400,12 @@ function buildIncomingRequestsPayload({ viewer, records, history }) {
       const requester = records.find((item) => item.id === entry.targetId)
       if (!requester) return
       const category = sanitizeMatchHistoryCategory(entry.category)
-      if (category === 'confirmed') return
       const existing = requestMap.get(requester.id)
       if (!existing || (entry.matchedAt || 0) > (existing.requestRecordedAt || 0)) {
         requestMap.set(requester.id, {
           requestId: entry.id,
           requesterId: requester.id,
+          candidateId: entry.candidateId,
           requestRecordedAt: entry.matchedAt || Date.now(),
           requestWeek: entry.week || null,
           status: category,
@@ -1522,6 +1659,119 @@ function buildProfileSeedRecord(source = {}) {
     }
   }
   return record
+}
+
+function buildProfileDraftPayload(record = {}) {
+  if (!record || typeof record !== 'object') return null
+  const payload = {
+    phone: sanitizeText(record.phone),
+    phoneKey: normalizePhoneNumber(record.phone),
+    mbti: record.mbti || '',
+    job: record.job || '',
+    jobDetail: record.jobDetail || '',
+    university: record.university || '',
+    salaryRange: record.salaryRange || '',
+    smoking: record.smoking || '',
+    religion: record.religion || '',
+    dink: record.dink || '',
+    lastRelationship: record.lastRelationship || '',
+    marriageTiming: record.marriageTiming || '',
+    relationshipCount: record.relationshipCount || '',
+    carOwnership: record.carOwnership || '',
+    tattoo: record.tattoo || '',
+    longDistance: record.longDistance || '',
+    divorceStatus: record.divorceStatus || '',
+    profileAppeal: record.profileAppeal || '',
+    likesDislikes: record.likesDislikes || '',
+    sufficientCondition: record.sufficientCondition || '',
+    necessaryCondition: record.necessaryCondition || '',
+    aboutMe: record.aboutMe || '',
+    preferredHeightMin: record.preferredHeightMin || '',
+    preferredHeightMax: record.preferredHeightMax || '',
+    preferredAgeYoungest: record.preferredAgeYoungest || '',
+    preferredAgeOldest: record.preferredAgeOldest || '',
+    preferredAppearance: record.preferredAppearance || '',
+    preferredLifestyle: sanitizeStringArray(record.preferredLifestyle),
+    values: sanitizeStringArray(record.values).slice(0, 2),
+    agreements: {
+      info: Boolean(record?.agreements?.info),
+      manners: Boolean(record?.agreements?.manners),
+    },
+    uploads: buildProfileDraftUploads(record),
+    savedAt: Date.now(),
+    source: 'submitted',
+  }
+  return payload
+}
+
+function buildProfileDraftUploads(record = {}) {
+  const uploads = {}
+  const ensureArray = (value) => {
+    if (!value) return []
+    return Array.isArray(value) ? value : [value]
+  }
+
+  const documents =
+    record?.documents && typeof record.documents === 'object' ? record.documents : {}
+  Object.entries(PROFILE_UPLOAD_INPUT_MAP).forEach(([key, meta]) => {
+    const entries = ensureArray(documents[key])
+      .map((entry) =>
+        sanitizeUploadEntry(entry, {
+          fallbackName: meta.label,
+          defaultRole: meta.category,
+        }),
+      )
+      .filter(Boolean)
+      .map((entry) => ({
+        id: entry.id || nanoid(),
+        name: entry.name || meta.label,
+        size: Number(entry.size) || 0,
+        type: entry.contentType || entry.type || '',
+        downloadURL: entry.downloadURL || entry.url || '',
+        url: entry.downloadURL || entry.url || '',
+        storagePath: entry.storagePath || '',
+        uploadedAt: Number(entry.uploadedAt) || Date.now(),
+        group: meta.group,
+        category: meta.category,
+        storageFolder: meta.storageFolder,
+        persistLevel: 'profile',
+      }))
+    if (entries.length) {
+      uploads[meta.inputId] = entries
+    }
+  })
+
+  const photos = Array.isArray(record?.photos) ? record.photos : []
+  photos.forEach((photo) => {
+    const normalized = sanitizeUploadEntry(photo, {
+      fallbackName: '사진',
+      defaultRole: sanitizeText(photo?.role || ''),
+    })
+    if (!normalized) return
+    const roleKey = sanitizeText(normalized.role).toLowerCase()
+    const meta = PROFILE_PHOTO_INPUT_MAP[roleKey]
+    if (!meta) return
+    const entry = {
+      id: normalized.id || nanoid(),
+      name: normalized.name || meta.label,
+      size: Number(normalized.size) || 0,
+      type: normalized.contentType || normalized.type || '',
+      downloadURL: normalized.downloadURL || normalized.url || '',
+      url: normalized.downloadURL || normalized.url || '',
+      storagePath: normalized.storagePath || '',
+      uploadedAt: Number(normalized.uploadedAt) || Date.now(),
+      group: meta.group,
+      category: meta.category,
+      storageFolder: meta.storageFolder,
+      persistLevel: 'profile',
+    }
+    if (!uploads[meta.inputId]) {
+      uploads[meta.inputId] = []
+    }
+    uploads[meta.inputId].push(entry)
+  })
+
+  return uploads
 }
 
 function normalizePhoneNumber(value) {
