@@ -5501,7 +5501,7 @@
           (Array.isArray(target.preferredLifestyle) && target.preferredLifestyle.length)
         const introducedCandidateKeys = buildTargetCandidateHistorySet(target)
         const { list, total } = computeMatchResults(target, introducedCandidateKeys)
-        const priorityEntries = buildPriorityMatchResults(target, introducedCandidateKeys)
+        const priorityEntries = buildPriorityMatchResults(target)
         const merged = mergePriorityMatchResults(priorityEntries, list)
         const displayList = merged.list
         const priorityDisplayed = merged.displayedPriorityCount
@@ -5759,7 +5759,7 @@
         return Boolean(entryTargetPhoneKey && entryTargetPhoneKey === targetPhoneKey)
       }
 
-      function buildPriorityMatchResults(targetRecord, introducedCandidateKeys) {
+      function buildPriorityMatchResults(targetRecord) {
         if (!targetRecord) return []
         const reverseEntries = getReverseMatchEntriesForTarget(targetRecord)
         if (!reverseEntries.length) return []
@@ -5768,16 +5768,7 @@
             if (isCandidateInSelection(record)) {
               return null
             }
-            // Check if candidate is already introduced this week
-            const candidateKey = getMatchCandidateKey(record)
-            if (
-              introducedCandidateKeys instanceof Set &&
-              candidateKey &&
-              introducedCandidateKeys.has(candidateKey)
-            ) {
-              return null
-            }
-            const evaluated = evaluateMatchCandidate(targetRecord, record, introducedCandidateKeys)
+            const evaluated = evaluateMatchCandidate(targetRecord, record)
             if (evaluated) {
               return {
                 ...evaluated,
@@ -6527,54 +6518,14 @@
           week: entry.week || null,
           category: MATCH_HISTORY_CATEGORY.CONFIRMED,
           targetSelected: true,
-          isWeeklyPair: entry.isWeeklyPair,
+          isExtraMatch: Boolean(entry.isExtraMatch),
         }
-      }
-
-      function isMutualIntroForWeek(candidateId, targetId, weekInfo) {
-        if (!candidateId || !targetId || !weekInfo) return false
-        const normalizeId = (value) => String(value || '').trim()
-        const candidateKey = normalizeId(candidateId)
-        const targetKey = normalizeId(targetId)
-        const isSameWeekEntry = (week) =>
-          week &&
-          Number(week.year) === Number(weekInfo.year) &&
-          Number(week.week) === Number(weekInfo.week)
-        let hasForward = false
-        let hasReverse = false
-        matchHistory.forEach((entry) => {
-          if (!isSameWeekEntry(entry.week)) return
-          if (normalizeMatchHistoryCategory(entry.category) !== MATCH_HISTORY_CATEGORY.INTRO) return
-          const entryCandidate = normalizeId(entry.candidateId)
-          const entryTarget = normalizeId(entry.targetId)
-          if (entryCandidate === candidateKey && entryTarget === targetKey) {
-            hasForward = true
-          }
-          if (entryCandidate === targetKey && entryTarget === candidateKey) {
-            hasReverse = true
-          }
-        })
-        return hasForward && hasReverse
-      }
-
-      function isExtraMatchHistoryEntry(entry) {
-        if (!entry || !isConfirmedMatchEntry(entry)) return false
-        // If the entry has an explicit isWeeklyPair flag, use it
-        if (entry.isWeeklyPair !== undefined) {
-          return !entry.isWeeklyPair
-        }
-        const candidateId = entry.candidateId || entry.candidate?.id
-        const targetId = entry.targetId || entry.target?.id
-        const weekInfo =
-          entry.week ||
-          buildWeekMeta(entry.matchedAt || entry.confirmedAt || Date.now())
-        if (!candidateId || !targetId || !weekInfo) return false
-        return !isMutualIntroForWeek(candidateId, targetId, weekInfo)
       }
 
       function getMatchHistoryStatusLabel(entry) {
         if (isConfirmedMatchEntry(entry)) {
-          return isExtraMatchHistoryEntry(entry) ? '추가 매칭 완료' : '매칭 완료'
+          // isExtraMatch 필드가 있으면 추가 매칭 완료, 아니면 일반 매칭 완료
+          return entry?.isExtraMatch ? '추가 매칭 완료' : '매칭 완료'
         }
         if (entry?.targetSelected) {
           return '선택 완료'
@@ -6984,17 +6935,14 @@
           (entry) => entry.candidate?.id !== candidateId || entry.target?.id !== targetId,
         )
         const confirmedAt = Date.now()
-        const weekMeta = buildWeekMeta(confirmedAt)
-        const isWeeklyPair = isMutualIntroForWeek(candidateId, targetId, weekMeta)
         const matchEntry = {
           id: `${targetId || 'target'}-${candidateId || 'candidate'}-${confirmedAt}`,
           target: targetSnapshot,
           candidate: candidateSnapshot,
           confirmedAt,
-          week: weekMeta,
+          week: buildWeekMeta(confirmedAt),
           targetPhone: targetRecord?.phone || selection.targetPhone || '',
           category: MATCH_HISTORY_CATEGORY.CONFIRMED,
-          isWeeklyPair,
         }
         confirmedMatches.unshift(matchEntry)
         saveConfirmedMatches()
@@ -7039,20 +6987,13 @@
         )
         if (!candidateId || !targetId || !targetPhone) return null
         const matchedAt = overrides.matchedAt || entry.confirmedAt || entry.matchedAt || Date.now()
-        const weekMeta = entry.week || buildWeekMeta(matchedAt)
-        const isWeeklyPair =
-          overrides.isWeeklyPair !== undefined
-            ? Boolean(overrides.isWeeklyPair)
-            : entry.isWeeklyPair !== undefined
-              ? Boolean(entry.isWeeklyPair)
-              : isMutualIntroForWeek(candidateId, targetId, weekMeta)
         return {
           id: overrides.id || entry.id || `${targetId}-${candidateId}-${matchedAt}`,
           candidateId,
           targetId,
           targetPhone,
           matchedAt,
-          week: weekMeta,
+          week: entry.week || buildWeekMeta(matchedAt),
           category: MATCH_HISTORY_CATEGORY.CONFIRMED,
           candidateName: overrides.candidateName || entry.candidate?.name || entry.candidateName || '',
           candidateGender:
@@ -7060,7 +7001,6 @@
           candidatePhone,
           targetName: overrides.targetName || entry.target?.name || entry.targetName || '',
           targetGender: overrides.targetGender || entry.target?.gender || entry.targetGender || '',
-          isWeeklyPair,
         }
       }
 
@@ -7123,7 +7063,8 @@
           targetPhone: entry.targetPhone || '',
           candidatePhone: entry.candidatePhone || '',
           category,
-          isWeeklyPair: entry.isWeeklyPair,
+          isExtraMatch: Boolean(entry.isExtraMatch),
+          targetSelected: entry.targetSelected !== false,
         }
       }
 

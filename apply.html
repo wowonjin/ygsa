@@ -477,22 +477,26 @@
         box-shadow: 0 12px 24px rgba(244, 114, 182, 0.35);
       }
 
-      .match-card-extra .match-card-select-btn.is-mutual,
+      .match-card-extra .match-card-select-btn.is-mutual {
+        background: #db2777;
+        border-color: #be185d;
+      }
+
+      .match-card-select-btn.is-mutual:hover {
+        background: #15803d;
+        border-color: #166534;
+      }
+
+      /* 추가 매칭 완료 버튼 스타일 (분홍색) */
       .match-card-select-btn.is-mutual.is-extra {
         background: #db2777;
         border-color: #be185d;
         box-shadow: 0 15px 30px rgba(219, 39, 119, 0.35);
       }
 
-      .match-card-extra .match-card-select-btn.is-mutual:hover,
       .match-card-select-btn.is-mutual.is-extra:hover {
         background: #be185d;
         border-color: #9d174d;
-      }
-
-      .match-card-select-btn.is-mutual:not(.is-extra):hover {
-        background: #15803d;
-        border-color: #166534;
       }
 
       .match-card-select-btn.incoming-select-btn {
@@ -1196,6 +1200,7 @@
           confirmedById: new Map(),
           contactById: new Map(),
           currentDeckIds: new Set(),
+          originalMatchIds: new Set(),
         }
         const realtimeState = {
           source: null,
@@ -1203,6 +1208,7 @@
           targetId: null,
         }
         const PENDING_SELECTIONS_STORAGE_KEY = 'match_pending_selections_v1'
+        const INCOMING_REQUESTS_STORAGE_KEY = 'match_incoming_requests_v1'
         let pendingSelectionSet = new Set()
         contactModalCloseBtn?.addEventListener('click', hideContactModal)
         contactModal?.addEventListener('click', (event) => {
@@ -1354,12 +1360,17 @@
         }
 
         function renderMatches(data) {
-          // Set the current target profile from server response so buttons become enabled
-          currentTargetProfile = data?.target || null
           const matches = Array.isArray(data?.matches) ? data.matches : []
           const confirmedMatchCards = Array.isArray(data?.confirmedMatchCards)
             ? data.confirmedMatchCards
             : []
+          // 원본 매치 ID 추적 (정규 매칭 vs 추가 매칭 구분용)
+          const originalMatchIds = new Set()
+          matches.forEach((record) => {
+            const id = getCandidateIdentifier(record)
+            if (id) originalMatchIds.add(id)
+          })
+          matchState.originalMatchIds = originalMatchIds
           const mergedMatches = mergeMatchesWithConfirmed(matches, confirmedMatchCards)
           syncMatchedCandidateIds(Array.isArray(data?.matchedCandidateIds) ? data.matchedCandidateIds : [])
           const incomingRequests = Array.isArray(data?.incomingRequests) ? data.incomingRequests : []
@@ -1370,6 +1381,7 @@
             throw new Error('표시할 매칭 카드가 없습니다.')
           }
           syncMatchState({ incomingRequests, matchedCandidates: matchedContacts })
+          saveIncomingRequestsToStorage(incomingRequests)
           cleanupPendingSelections()
           const targetName = data?.target?.name || '회원님'
           const nameWithHonorific = targetName.endsWith('님') ? targetName : `${targetName}님`
@@ -1378,6 +1390,7 @@
             ? `${data.target.phoneMasked} 인증 완료`
             : ''
           weekLabel.textContent = data?.week?.label || '이번 주 추천'
+          currentTargetProfile = buildMatchTargetSnapshot(data?.target)
           ensureRealtimeConnection()
 
           matchCards.innerHTML = ''
@@ -1391,7 +1404,9 @@
                 : null
             const incomingStatus = String(incomingRequestForCard?.status || '').toLowerCase()
             const isIncomingConfirmed = incomingStatus === 'confirmed'
-            const isExtraMatch = Boolean(incomingRequestForCard && isIncomingConfirmed)
+            // extraMatch는 원본 매치에 없는 후보가 confirmed된 경우에만 true
+            // 원본 매치에 있으면 정규 매칭 (extraMatch = false)
+            const isExtraMatch = isIncomingConfirmed && !originalMatchIds.has(candidateId)
             if (candidateId) {
               matchState.currentDeckIds.add(candidateId)
             }
@@ -1465,7 +1480,20 @@
           const viewerKey = getViewerCandidateKey()
           matchState.incomingById.clear()
           matchState.contactById.clear()
-          matchState.incomingList = Array.isArray(incomingRequests) ? incomingRequests : []
+          // localStorage에서 저장된 incoming requests 로드하고 서버 데이터와 병합
+          const storedRequests = loadIncomingRequestsFromStorage(lastLookupPhoneKey)
+          const serverRequests = Array.isArray(incomingRequests) ? incomingRequests : []
+          // 서버 데이터로 저장된 요청 업데이트 (서버 데이터가 우선)
+          const mergedMap = new Map()
+          storedRequests.forEach((req) => {
+            const key = normalizeCandidateKey(req?.requesterId)
+            if (key) mergedMap.set(key, req)
+          })
+          serverRequests.forEach((req) => {
+            const key = normalizeCandidateKey(req?.requesterId)
+            if (key) mergedMap.set(key, req)
+          })
+          matchState.incomingList = Array.from(mergedMap.values())
           matchState.incomingList.forEach((req) => {
             const requesterKey = normalizeCandidateKey(req?.requesterId)
             if (!requesterKey) return
@@ -1589,33 +1617,12 @@
           renderIncomingRequests()
         }
 
-        /**
-         * 추가 매칭 여부 판단
-         * - 상대방이 내 메인 덱에 없으면 → 추가 매칭 (분홍색)
-         * - 상대방이 내 메인 덱에 있으면 → 일반 매칭 (녹색)
-         * 
-         * 핵심: 매칭을 수락하는 사람의 관점에서 판단
-         * - 이번주 서로 소개된 회원 (A↔B): 둘 다 서로의 덱에 있음 → 매칭 완료
-         * - 한쪽만 소개된 경우 (A→B만): B의 덱에 A가 없음 → 추가 매칭 완료
-         */
         function isExtraMatchCandidate(candidateId) {
           const key = normalizeCandidateKey(candidateId)
           if (!key) return false
-          // 상대방이 내 메인 덱에 있으면 일반 매칭 (NOT extra)
-          // 상대방이 내 메인 덱에 없으면 추가 매칭 (IS extra)
-          return !matchState.currentDeckIds.has(key)
-        }
-
-        /**
-         * 이번주 서로 소개된 회원 매칭 여부 판단
-         * - 상대방이 내 메인 덱에 있으면 → 이번주 서로 소개된 회원 (true)
-         * - 상대방이 내 메인 덱에 없으면 → 추가 매칭 (false)
-         */
-        function isWeeklyPairMatch(candidateId) {
-          const key = normalizeCandidateKey(candidateId)
-          if (!key) return false
-          // 상대방이 내 메인 덱에 있어야만 이번주 서로 소개된 회원
-          return matchState.currentDeckIds.has(key)
+          const req = matchState.incomingById.get(key)
+          if (!req) return false
+          return String(req?.status || '').toLowerCase() === 'confirmed'
         }
 
         async function recordMutualMatchForRequester(incomingRequest, primaryPayload) {
@@ -1644,10 +1651,6 @@
               '',
           )
           const matchedAt = primaryPayload?.matchedAt || Date.now()
-          // Use the same isWeeklyPair flag from the primary payload
-          const isWeeklyPair = primaryPayload?.isWeeklyPair !== undefined
-            ? primaryPayload.isWeeklyPair
-            : isWeeklyPairMatch(requesterId)
           const payload = {
             id: `${requesterId}-${viewerId}-${matchedAt}-mutual`,
             candidateId: viewerId,
@@ -1666,7 +1669,6 @@
               '',
             targetGender: incomingRequest.profile?.gender || '',
             targetSelected: true,
-            isWeeklyPair,
           }
           try {
             await sendMatchRequest(payload)
@@ -2113,7 +2115,6 @@
           if (cancelButton) {
             cancelButton.disabled = true
           }
-          const extraMatch = isExtraMatchCandidate(candidateKey)
           let hasIncomingRequest = false
           try {
             await sendMatchRequest(payload)
@@ -2128,12 +2129,14 @@
                 matchState.contactById.set(candidateKey, contactInfo)
               }
             }
+            // extraMatch 판단: 원본 매치에 없는 후보인 경우에만 true
+            const isExtraMatch = hasIncomingRequest && !matchState.originalMatchIds.has(candidateKey)
             markMatchButtonCompleted(button, {
               mutual: hasIncomingRequest,
               contact: hasIncomingRequest ? contactInfo : null,
               cancelButton,
               matchEntryId: payload.id,
-              extraMatch: hasIncomingRequest ? extraMatch : false,
+              extraMatch: isExtraMatch,
             })
             if (hasIncomingRequest) {
               matchedCandidateIds.add(candidateKey)
@@ -2215,7 +2218,7 @@
 
         function resetMatchButtonState(button) {
           if (!button) return
-          button.classList.remove('is-completed', 'is-mutual')
+          button.classList.remove('is-completed', 'is-mutual', 'is-extra')
           button.disabled = false
           button.dataset.matchState = ''
           button.textContent = button.classList.contains('incoming-select-btn')
@@ -2277,11 +2280,10 @@
             String(options?.categoryOverride || 'confirmed').trim().toLowerCase() === 'confirmed'
               ? 'confirmed'
               : 'intro'
-          // Determine if this is a weekly pair match or an additional match
-          const isWeeklyPair =
-            options?.isWeeklyPair !== undefined
-              ? Boolean(options.isWeeklyPair)
-              : isWeeklyPairMatch(candidateId)
+          // isExtraMatch: 원본 매치에 없는 후보인 경우
+          const isExtraMatch = options?.isExtraMatch !== undefined 
+            ? Boolean(options.isExtraMatch)
+            : (normalizedCategory === 'confirmed' && !matchState.originalMatchIds.has(normalizedCandidateKey))
           return {
             id: matchEntryId || `${targetId}-${candidateId}-${resolvedMatchedAt}`,
             candidateId,
@@ -2295,11 +2297,11 @@
             candidatePhone,
             targetName,
             targetGender,
+            isExtraMatch,
             targetSelected:
               options?.targetSelectedOverride !== undefined
                 ? Boolean(options.targetSelectedOverride)
                 : true,
-            isWeeklyPair,
           }
         }
 
@@ -2356,27 +2358,22 @@
 
         function markMatchButtonCompleted(
           button,
-          { mutual = false, contact = null, cancelButton = null, matchEntryId = '', extraMatch = null } = {},
+          { mutual = false, contact = null, cancelButton = null, matchEntryId = '', extraMatch = false } = {},
         ) {
           if (!button) return
           if (matchEntryId) {
             button.dataset.matchEntryId = String(matchEntryId)
           }
           const inlineCancelButton = cancelButton || getCancelButton(button)
-          const candidateKey = normalizeCandidateKey(button?.dataset?.candidateId || '')
-          const resolvedExtra =
-            extraMatch === null ? isExtraMatchCandidate(candidateKey) : Boolean(extraMatch)
-          const wrapper = button.closest('.match-card')
-          if (wrapper) {
-            wrapper.classList.toggle('match-card-extra', resolvedExtra)
-          }
           button.classList.add('is-completed')
           button.classList.toggle('is-mutual', Boolean(mutual))
-          button.classList.toggle('is-extra', resolvedExtra)
+          button.classList.toggle('is-extra', Boolean(extraMatch))
           if (mutual) {
             button.disabled = false
             button.dataset.matchState = 'mutual'
-            button.textContent = resolvedExtra ? '추가 매칭 완료. 정보 확인' : '매칭 완료. 정보 확인'
+            // 정규 매칭: 녹색 "매칭 완료. 정보 확인"
+            // 추가 매칭: 분홍색 "추가 매칭 완료. 정보 확인"
+            button.textContent = extraMatch ? '추가 매칭 완료. 정보 확인' : '매칭 완료. 정보 확인'
             if (contact) {
               setButtonContactData(button, contact)
             }
@@ -2387,7 +2384,7 @@
           } else {
             button.disabled = true
             button.dataset.matchState = 'completed'
-            button.textContent = resolvedExtra ? '추가 매칭이 신청되었습니다' : '매칭이 신청되었습니다'
+            button.textContent = extraMatch ? '추가 매칭이 신청되었습니다' : '매칭이 신청되었습니다'
             clearButtonContactData(button)
             if (inlineCancelButton) {
               inlineCancelButton.hidden = false
@@ -2488,6 +2485,43 @@
           })
           if (changed) {
             savePendingSelections(lastLookupPhoneKey, pendingSelectionSet)
+          }
+        }
+
+        // incoming requests localStorage 저장/로드 함수
+        function saveIncomingRequestsToStorage(requests = []) {
+          if (!lastLookupPhoneKey) return
+          try {
+            const raw = localStorage.getItem(INCOMING_REQUESTS_STORAGE_KEY)
+            const data = raw ? JSON.parse(raw) : {}
+            // 기존 저장된 요청과 새 요청을 병합 (중복 제거)
+            const existingRequests = Array.isArray(data[lastLookupPhoneKey]) ? data[lastLookupPhoneKey] : []
+            const mergedMap = new Map()
+            existingRequests.forEach((req) => {
+              const key = normalizeCandidateKey(req?.requesterId)
+              if (key) mergedMap.set(key, req)
+            })
+            requests.forEach((req) => {
+              const key = normalizeCandidateKey(req?.requesterId)
+              if (key) mergedMap.set(key, req)
+            })
+            data[lastLookupPhoneKey] = Array.from(mergedMap.values())
+            localStorage.setItem(INCOMING_REQUESTS_STORAGE_KEY, JSON.stringify(data))
+          } catch (error) {
+            console.warn('[match:incoming] 저장 실패', error)
+          }
+        }
+
+        function loadIncomingRequestsFromStorage(phoneKey) {
+          if (!phoneKey) return []
+          try {
+            const raw = localStorage.getItem(INCOMING_REQUESTS_STORAGE_KEY)
+            if (!raw) return []
+            const parsed = JSON.parse(raw)
+            return Array.isArray(parsed?.[phoneKey]) ? parsed[phoneKey] : []
+          } catch (error) {
+            console.warn('[match:incoming] 불러오기 실패', error)
+            return []
           }
         }
 
