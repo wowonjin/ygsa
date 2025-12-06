@@ -1805,7 +1805,7 @@ function sanitizePayload(body) {
   const payload = {
     name: sanitizeText(body?.name),
     gender: sanitizeText(body?.gender),
-    phone: sanitizeText(body?.phone),
+    phone: normalizePhoneNumber(body?.phone),
     birth: sanitizeText(body?.birth),
     job: sanitizeText(body?.job),
     height: normalizeHeight(body?.height ?? body?.region),
@@ -1867,7 +1867,7 @@ function normalizeStoredRecord(entry) {
   record.id = sanitizeText(record.id) || nanoid()
   record.name = sanitizeText(record.name)
   record.gender = sanitizeText(record.gender)
-  record.phone = sanitizeText(record.phone)
+  record.phone = normalizePhoneNumber(record.phone)
   record.birth = sanitizeText(record.birth)
   record.education = sanitizeText(record.education)
   record.height = normalizeHeight(
