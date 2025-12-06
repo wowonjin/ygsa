@@ -1066,10 +1066,10 @@ async function readConsultations() {
     const raw = await fs.readFile(DATA_FILE, 'utf-8')
     const parsed = JSON.parse(raw)
     if (Array.isArray(parsed)) {
-      return parsed.map(normalizeStoredRecord)
+      return dedupeConsultations(parsed.map(normalizeStoredRecord))
     }
     if (parsed && typeof parsed === 'object') {
-      return [normalizeStoredRecord(parsed)]
+      return dedupeConsultations([normalizeStoredRecord(parsed)])
     }
     await fs.writeFile(DATA_FILE, '[]', 'utf-8')
     return []
@@ -1088,7 +1088,74 @@ async function writeConsultations(data) {
     : data && typeof data === 'object'
     ? [normalizeStoredRecord(data)]
     : []
-  await fs.writeFile(DATA_FILE, JSON.stringify(normalized, null, 2), 'utf-8')
+  const deduped = dedupeConsultations(normalized)
+  await fs.writeFile(DATA_FILE, JSON.stringify(deduped, null, 2), 'utf-8')
+}
+
+function dedupeConsultations(list = []) {
+  const result = []
+  const indexByPhone = new Map()
+  list.forEach((record) => {
+    if (!record || typeof record !== 'object') return
+    const phoneKey = normalizePhoneNumber(record.phone)
+    if (!phoneKey) {
+      result.push(record)
+      return
+    }
+    const existingIndex = indexByPhone.get(phoneKey)
+    if (existingIndex == null) {
+      indexByPhone.set(phoneKey, result.length)
+      result.push(record)
+      return
+    }
+    const existing = result[existingIndex]
+    const merged = mergeConsultRecords(existing, record)
+    result[existingIndex] = merged
+  })
+  return result
+}
+
+function mergeConsultRecords(existing = {}, incoming = {}) {
+  const existingUpdated = Date.parse(existing.updatedAt || existing.updated_at || '') || 0
+  const incomingUpdated = Date.parse(incoming.updatedAt || incoming.updated_at || '') || 0
+  const primary = incomingUpdated > existingUpdated ? incoming : existing
+  const secondary = primary === existing ? incoming : existing
+  return fillMissingConsultFields(primary, secondary)
+}
+
+function fillMissingConsultFields(primary = {}, secondary = {}) {
+  const merged = { ...primary }
+  Object.keys(secondary).forEach((key) => {
+    if (key === 'id') return
+    const currentValue = merged[key]
+    const nextValue = secondary[key]
+    if (hasMeaningfulValue(currentValue)) return
+    if (!hasMeaningfulValue(nextValue)) return
+    if (Array.isArray(nextValue)) {
+      merged[key] = nextValue.slice()
+    } else if (nextValue && typeof nextValue === 'object') {
+      merged[key] = { ...nextValue }
+    } else {
+      merged[key] = nextValue
+    }
+  })
+  if (!merged.updatedAt && secondary.updatedAt) {
+    merged.updatedAt = secondary.updatedAt
+  }
+  if (!merged.createdAt && secondary.createdAt) {
+    merged.createdAt = secondary.createdAt
+  }
+  return merged
+}
+
+function hasMeaningfulValue(value) {
+  if (value == null) return false
+  if (typeof value === 'string') return value.trim().length > 0
+  if (typeof value === 'boolean') return true
+  if (typeof value === 'number') return !Number.isNaN(value)
+  if (Array.isArray(value)) return value.length > 0
+  if (typeof value === 'object') return Object.keys(value).length > 0
+  return true
 }
 
 async function readMatchHistory() {
