@@ -477,12 +477,20 @@
         box-shadow: 0 12px 24px rgba(244, 114, 182, 0.35);
       }
 
-      .match-card-extra .match-card-select-btn.is-mutual {
+      .match-card-extra .match-card-select-btn.is-mutual,
+      .match-card-select-btn.is-mutual.is-extra {
         background: #db2777;
         border-color: #be185d;
+        box-shadow: 0 15px 30px rgba(219, 39, 119, 0.35);
       }
 
-      .match-card-select-btn.is-mutual:hover {
+      .match-card-extra .match-card-select-btn.is-mutual:hover,
+      .match-card-select-btn.is-mutual.is-extra:hover {
+        background: #be185d;
+        border-color: #9d174d;
+      }
+
+      .match-card-select-btn.is-mutual:not(.is-extra):hover {
         background: #15803d;
         border-color: #166534;
       }
@@ -1346,6 +1354,8 @@
         }
 
         function renderMatches(data) {
+          // Set the current target profile from server response so buttons become enabled
+          currentTargetProfile = data?.target || null
           const matches = Array.isArray(data?.matches) ? data.matches : []
           const confirmedMatchCards = Array.isArray(data?.confirmedMatchCards)
             ? data.confirmedMatchCards
@@ -1368,7 +1378,6 @@
             ? `${data.target.phoneMasked} 인증 완료`
             : ''
           weekLabel.textContent = data?.week?.label || '이번 주 추천'
-          currentTargetProfile = buildMatchTargetSnapshot(data?.target)
           ensureRealtimeConnection()
 
           matchCards.innerHTML = ''
@@ -1510,7 +1519,6 @@
             const isConfirmedIncoming = requestStatus === 'confirmed'
             if (!isConfirmedIncoming && matchState.currentDeckIds.has(requesterKey)) return
             if (!isConfirmedIncoming && matchState.confirmedById.has(requesterKey)) return
-            if (isConfirmedIncoming && matchState.currentDeckIds.has(requesterKey)) return
             visible.push({ request: req, requesterKey, isConfirmedIncoming })
           })
           incomingCards.innerHTML = ''
@@ -1584,9 +1592,41 @@
         function isExtraMatchCandidate(candidateId) {
           const key = normalizeCandidateKey(candidateId)
           if (!key) return false
+          // If the candidate is NOT in the main deck, any match is an additional match
+          const isInMainDeck = matchState.currentDeckIds.has(key)
           const req = matchState.incomingById.get(key)
-          if (!req) return false
-          return String(req?.status || '').toLowerCase() === 'confirmed'
+          // If there's an incoming request with isWeeklyPair explicitly set, use it
+          if (req?.isWeeklyPair !== undefined) {
+            return !req.isWeeklyPair
+          }
+          // If candidate is only in incoming requests (not in main deck), it's an additional match
+          if (!isInMainDeck && req) {
+            return true
+          }
+          // If candidate is in main deck, check if this is a mutual weekly introduction
+          // For mutual weekly pairs, the server should have marked isWeeklyPair = true
+          if (isInMainDeck && req && String(req?.status || '').toLowerCase() === 'confirmed') {
+            // If the requester is also in our main deck, this is likely a weekly pair
+            // However, we can't confirm without server data about the other side's deck
+            // Default to weekly pair if in main deck
+            return false
+          }
+          return false
+        }
+
+        function isWeeklyPairMatch(candidateId) {
+          const key = normalizeCandidateKey(candidateId)
+          if (!key) return false
+          // A weekly pair requires the candidate to be in the current user's main deck
+          const isInMainDeck = matchState.currentDeckIds.has(key)
+          if (!isInMainDeck) return false
+          // If there's server data with isWeeklyPair, use it
+          const req = matchState.incomingById.get(key)
+          if (req?.isWeeklyPair !== undefined) {
+            return Boolean(req.isWeeklyPair)
+          }
+          // If candidate is in main deck, assume it could be a weekly pair
+          return true
         }
 
         async function recordMutualMatchForRequester(incomingRequest, primaryPayload) {
@@ -1615,6 +1655,10 @@
               '',
           )
           const matchedAt = primaryPayload?.matchedAt || Date.now()
+          // Use the same isWeeklyPair flag from the primary payload
+          const isWeeklyPair = primaryPayload?.isWeeklyPair !== undefined
+            ? primaryPayload.isWeeklyPair
+            : isWeeklyPairMatch(requesterId)
           const payload = {
             id: `${requesterId}-${viewerId}-${matchedAt}-mutual`,
             candidateId: viewerId,
@@ -1633,6 +1677,7 @@
               '',
             targetGender: incomingRequest.profile?.gender || '',
             targetSelected: true,
+            isWeeklyPair,
           }
           try {
             await sendMatchRequest(payload)
@@ -2079,6 +2124,7 @@
           if (cancelButton) {
             cancelButton.disabled = true
           }
+          const extraMatch = isExtraMatchCandidate(candidateKey)
           let hasIncomingRequest = false
           try {
             await sendMatchRequest(payload)
@@ -2098,7 +2144,7 @@
               contact: hasIncomingRequest ? contactInfo : null,
               cancelButton,
               matchEntryId: payload.id,
-              extraMatch: hasIncomingRequest,
+              extraMatch: hasIncomingRequest ? extraMatch : false,
             })
             if (hasIncomingRequest) {
               matchedCandidateIds.add(candidateKey)
@@ -2242,6 +2288,11 @@
             String(options?.categoryOverride || 'confirmed').trim().toLowerCase() === 'confirmed'
               ? 'confirmed'
               : 'intro'
+          // Determine if this is a weekly pair match or an additional match
+          const isWeeklyPair =
+            options?.isWeeklyPair !== undefined
+              ? Boolean(options.isWeeklyPair)
+              : isWeeklyPairMatch(candidateId)
           return {
             id: matchEntryId || `${targetId}-${candidateId}-${resolvedMatchedAt}`,
             candidateId,
@@ -2259,6 +2310,7 @@
               options?.targetSelectedOverride !== undefined
                 ? Boolean(options.targetSelectedOverride)
                 : true,
+            isWeeklyPair,
           }
         }
 
@@ -2315,20 +2367,27 @@
 
         function markMatchButtonCompleted(
           button,
-          { mutual = false, contact = null, cancelButton = null, matchEntryId = '', extraMatch = false } = {},
+          { mutual = false, contact = null, cancelButton = null, matchEntryId = '', extraMatch = null } = {},
         ) {
           if (!button) return
           if (matchEntryId) {
             button.dataset.matchEntryId = String(matchEntryId)
           }
           const inlineCancelButton = cancelButton || getCancelButton(button)
+          const candidateKey = normalizeCandidateKey(button?.dataset?.candidateId || '')
+          const resolvedExtra =
+            extraMatch === null ? isExtraMatchCandidate(candidateKey) : Boolean(extraMatch)
+          const wrapper = button.closest('.match-card')
+          if (wrapper) {
+            wrapper.classList.toggle('match-card-extra', resolvedExtra)
+          }
           button.classList.add('is-completed')
           button.classList.toggle('is-mutual', Boolean(mutual))
-          button.classList.toggle('is-extra', Boolean(extraMatch))
+          button.classList.toggle('is-extra', resolvedExtra)
           if (mutual) {
             button.disabled = false
             button.dataset.matchState = 'mutual'
-            button.textContent = extraMatch ? '추가 매칭 완료 · 정보 확인' : '매칭 되었습니다. 정보 확인'
+            button.textContent = resolvedExtra ? '추가 매칭 완료. 정보 확인' : '매칭 완료. 정보 확인'
             if (contact) {
               setButtonContactData(button, contact)
             }
@@ -2339,7 +2398,7 @@
           } else {
             button.disabled = true
             button.dataset.matchState = 'completed'
-            button.textContent = extraMatch ? '추가 매칭이 신청되었습니다' : '매칭이 신청되었습니다'
+            button.textContent = resolvedExtra ? '추가 매칭이 신청되었습니다' : '매칭이 신청되었습니다'
             clearButtonContactData(button)
             if (inlineCancelButton) {
               inlineCancelButton.hidden = false

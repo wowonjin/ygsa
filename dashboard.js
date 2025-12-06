@@ -5501,7 +5501,7 @@
           (Array.isArray(target.preferredLifestyle) && target.preferredLifestyle.length)
         const introducedCandidateKeys = buildTargetCandidateHistorySet(target)
         const { list, total } = computeMatchResults(target, introducedCandidateKeys)
-        const priorityEntries = buildPriorityMatchResults(target)
+        const priorityEntries = buildPriorityMatchResults(target, introducedCandidateKeys)
         const merged = mergePriorityMatchResults(priorityEntries, list)
         const displayList = merged.list
         const priorityDisplayed = merged.displayedPriorityCount
@@ -5759,7 +5759,7 @@
         return Boolean(entryTargetPhoneKey && entryTargetPhoneKey === targetPhoneKey)
       }
 
-      function buildPriorityMatchResults(targetRecord) {
+      function buildPriorityMatchResults(targetRecord, introducedCandidateKeys) {
         if (!targetRecord) return []
         const reverseEntries = getReverseMatchEntriesForTarget(targetRecord)
         if (!reverseEntries.length) return []
@@ -5768,7 +5768,16 @@
             if (isCandidateInSelection(record)) {
               return null
             }
-            const evaluated = evaluateMatchCandidate(targetRecord, record)
+            // Check if candidate is already introduced this week
+            const candidateKey = getMatchCandidateKey(record)
+            if (
+              introducedCandidateKeys instanceof Set &&
+              candidateKey &&
+              introducedCandidateKeys.has(candidateKey)
+            ) {
+              return null
+            }
+            const evaluated = evaluateMatchCandidate(targetRecord, record, introducedCandidateKeys)
             if (evaluated) {
               return {
                 ...evaluated,
@@ -6521,33 +6530,55 @@
         }
       }
 
-      function getMatchHistoryStatusLabel(entry) {
-        if (isConfirmedMatchEntry(entry)) {
-          return isAdditionalConfirmedMatch(entry) ? '추가 매칭 완료' : '매칭 완료'
-        }
-        if (entry?.targetSelected) {
-          return '회원 확인'
-        }
-        return ''
+      function isMutualIntroForWeek(candidateId, targetId, weekInfo) {
+        if (!candidateId || !targetId || !weekInfo) return false
+        const normalizeId = (value) => String(value || '').trim()
+        const candidateKey = normalizeId(candidateId)
+        const targetKey = normalizeId(targetId)
+        const isSameWeekEntry = (week) =>
+          week &&
+          Number(week.year) === Number(weekInfo.year) &&
+          Number(week.week) === Number(weekInfo.week)
+        let hasForward = false
+        let hasReverse = false
+        matchHistory.forEach((entry) => {
+          if (!isSameWeekEntry(entry.week)) return
+          if (normalizeMatchHistoryCategory(entry.category) !== MATCH_HISTORY_CATEGORY.INTRO) return
+          const entryCandidate = normalizeId(entry.candidateId)
+          const entryTarget = normalizeId(entry.targetId)
+          if (entryCandidate === candidateKey && entryTarget === targetKey) {
+            hasForward = true
+          }
+          if (entryCandidate === targetKey && entryTarget === candidateKey) {
+            hasReverse = true
+          }
+        })
+        return hasForward && hasReverse
       }
 
-      function isAdditionalConfirmedMatch(entry) {
-        if (!isConfirmedMatchEntry(entry)) return false
-        const pairKey = buildMatchPairKey(entry)
-        if (!pairKey) return false
-        const weekMeta = entry.week || null
-        const introExists = matchHistory.some((historyEntry) => {
-          if (!historyEntry) return false
-          if (normalizeMatchHistoryCategory(historyEntry.category) !== MATCH_HISTORY_CATEGORY.INTRO) {
-            return false
-          }
-          if (buildMatchPairKey(historyEntry) !== pairKey) return false
-          if (weekMeta && historyEntry.week && !isSameWeek(historyEntry.week, weekMeta)) {
-            return false
-          }
-          return true
-        })
-        return !introExists
+      function isExtraMatchHistoryEntry(entry) {
+        if (!entry || !isConfirmedMatchEntry(entry)) return false
+        // If the entry has an explicit isWeeklyPair flag, use it
+        if (entry.isWeeklyPair !== undefined) {
+          return !entry.isWeeklyPair
+        }
+        const candidateId = entry.candidateId || entry.candidate?.id
+        const targetId = entry.targetId || entry.target?.id
+        const weekInfo =
+          entry.week ||
+          buildWeekMeta(entry.matchedAt || entry.confirmedAt || Date.now())
+        if (!candidateId || !targetId || !weekInfo) return false
+        return !isMutualIntroForWeek(candidateId, targetId, weekInfo)
+      }
+
+      function getMatchHistoryStatusLabel(entry) {
+        if (isConfirmedMatchEntry(entry)) {
+          return isExtraMatchHistoryEntry(entry) ? '추가 매칭 완료' : '매칭 완료'
+        }
+        if (entry?.targetSelected) {
+          return '선택 완료'
+        }
+        return ''
       }
 
       function getCurrentWeekConfirmedMatches() {
@@ -6952,14 +6983,17 @@
           (entry) => entry.candidate?.id !== candidateId || entry.target?.id !== targetId,
         )
         const confirmedAt = Date.now()
+        const weekMeta = buildWeekMeta(confirmedAt)
+        const isWeeklyPair = isMutualIntroForWeek(candidateId, targetId, weekMeta)
         const matchEntry = {
           id: `${targetId || 'target'}-${candidateId || 'candidate'}-${confirmedAt}`,
           target: targetSnapshot,
           candidate: candidateSnapshot,
           confirmedAt,
-          week: buildWeekMeta(confirmedAt),
+          week: weekMeta,
           targetPhone: targetRecord?.phone || selection.targetPhone || '',
           category: MATCH_HISTORY_CATEGORY.CONFIRMED,
+          isWeeklyPair,
         }
         confirmedMatches.unshift(matchEntry)
         saveConfirmedMatches()
@@ -7004,13 +7038,20 @@
         )
         if (!candidateId || !targetId || !targetPhone) return null
         const matchedAt = overrides.matchedAt || entry.confirmedAt || entry.matchedAt || Date.now()
+        const weekMeta = entry.week || buildWeekMeta(matchedAt)
+        const isWeeklyPair =
+          overrides.isWeeklyPair !== undefined
+            ? Boolean(overrides.isWeeklyPair)
+            : entry.isWeeklyPair !== undefined
+              ? Boolean(entry.isWeeklyPair)
+              : isMutualIntroForWeek(candidateId, targetId, weekMeta)
         return {
           id: overrides.id || entry.id || `${targetId}-${candidateId}-${matchedAt}`,
           candidateId,
           targetId,
           targetPhone,
           matchedAt,
-          week: entry.week || buildWeekMeta(matchedAt),
+          week: weekMeta,
           category: MATCH_HISTORY_CATEGORY.CONFIRMED,
           candidateName: overrides.candidateName || entry.candidate?.name || entry.candidateName || '',
           candidateGender:
@@ -7018,6 +7059,7 @@
           candidatePhone,
           targetName: overrides.targetName || entry.target?.name || entry.targetName || '',
           targetGender: overrides.targetGender || entry.target?.gender || entry.targetGender || '',
+          isWeeklyPair,
         }
       }
 
@@ -7080,6 +7122,7 @@
           targetPhone: entry.targetPhone || '',
           candidatePhone: entry.candidatePhone || '',
           category,
+          isWeeklyPair: entry.isWeeklyPair,
         }
       }
 
