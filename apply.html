@@ -1381,40 +1381,58 @@
           matchCards.innerHTML = ''
           matchState.currentDeckIds = new Set()
           let pendingSelectionsDirty = false
-          mergedMatches.forEach((record, index) => {
-            const candidateId = getCandidateIdentifier(record)
-            const incomingRequestForCard =
-              candidateId && matchState.incomingById.has(candidateId)
-                ? matchState.incomingById.get(candidateId)
-                : null
-            const incomingStatus = String(incomingRequestForCard?.status || '').toLowerCase()
-            const isIncomingConfirmed = incomingStatus === 'confirmed'
-            // 이번주 서로 소개된 회원인지 확인하여 extraMatch 결정
-            const isExtraMatch = isIncomingConfirmed && candidateId ? !checkIfThisWeekIntro(candidateId) : false
-            if (candidateId) {
-              matchState.currentDeckIds.add(candidateId)
-            }
-            const isServerRecordedSelection =
-              candidateId &&
-              Boolean(record?.targetSelected) &&
-              !matchState.confirmedById.has(candidateId)
-            if (isServerRecordedSelection && candidateId && pendingSelectionSet.delete(candidateId)) {
-              pendingSelectionsDirty = true
-            }
-            const isPendingSelection =
-              !matchState.confirmedById.has(candidateId) &&
-              ((candidateId && pendingSelectionSet.has(candidateId)) || isServerRecordedSelection)
-            const card = renderMatchCard(record, index + 1, {
-              initialContact: matchState.confirmedById.get(candidateId),
-              incomingRequest: incomingRequestForCard,
-              pendingSelection: isPendingSelection,
-              extraMatch: isExtraMatch,
+          
+          // 이번주 소개받은 회원이 있을 때만 "님을 위한 추천" 섹션 표시
+          if (mergedMatches.length > 0) {
+            mergedMatches.forEach((record, index) => {
+              const candidateId = getCandidateIdentifier(record)
+              const incomingRequestForCard =
+                candidateId && matchState.incomingById.has(candidateId)
+                  ? matchState.incomingById.get(candidateId)
+                  : null
+              const incomingStatus = String(incomingRequestForCard?.status || '').toLowerCase()
+              const isIncomingConfirmed = incomingStatus === 'confirmed'
+              // 이번주 서로 소개된 회원인지 확인하여 extraMatch 결정
+              const isExtraMatch = isIncomingConfirmed && candidateId ? !checkIfThisWeekIntro(candidateId) : false
+              if (candidateId) {
+                matchState.currentDeckIds.add(candidateId)
+              }
+              const isServerRecordedSelection =
+                candidateId &&
+                Boolean(record?.targetSelected) &&
+                !matchState.confirmedById.has(candidateId)
+              if (isServerRecordedSelection && candidateId && pendingSelectionSet.delete(candidateId)) {
+                pendingSelectionsDirty = true
+              }
+              const isPendingSelection =
+                !matchState.confirmedById.has(candidateId) &&
+                ((candidateId && pendingSelectionSet.has(candidateId)) || isServerRecordedSelection)
+              const card = renderMatchCard(record, index + 1, {
+                initialContact: matchState.confirmedById.get(candidateId),
+                incomingRequest: incomingRequestForCard,
+                pendingSelection: isPendingSelection,
+                extraMatch: isExtraMatch,
+              })
+              if (card) {
+                matchCards.appendChild(card)
+              }
             })
-            if (card) {
-              matchCards.appendChild(card)
-            }
-          })
+          }
           injectFallbackConfirmedCards(matchedContacts)
+          
+          // 이번주 소개받은 회원이 없으면 "님을 위한 추천" 섹션 숨김
+          if (mergedMatches.length === 0) {
+            const resultsHead = document.querySelector('.results-head')
+            const matchCardsContainer = matchCards
+            if (resultsHead) resultsHead.style.display = 'none'
+            if (matchCardsContainer) matchCardsContainer.style.display = 'none'
+          } else {
+            const resultsHead = document.querySelector('.results-head')
+            const matchCardsContainer = matchCards
+            if (resultsHead) resultsHead.style.display = ''
+            if (matchCardsContainer) matchCardsContainer.style.display = ''
+          }
+        }
         function mergeMatchesWithConfirmed(matches = [], confirmedCards = []) {
           const merged = Array.isArray(matches) ? [...matches] : []
           const indexMap = new Map()
@@ -1446,8 +1464,7 @@
           if (pendingSelectionsDirty && lastLookupPhoneKey) {
             savePendingSelections(lastLookupPhoneKey, pendingSelectionSet)
           }
-        }
-
+        
         function syncMatchedCandidateIds(ids = []) {
           const viewerKey = getViewerCandidateKey()
           matchedCandidateIds.clear()
@@ -1504,7 +1521,8 @@
           return {
             name,
             phone: normalizedPhone,
-            phoneMasked,
+            // 매칭 완료 후에는 전체 연락처 공개
+            phoneMasked: normalizedPhone || phoneMasked,
           }
         }
 
@@ -1516,6 +1534,8 @@
             if (!requesterKey) return
             const requestStatus = String(req?.status || '').toLowerCase()
             const isConfirmedIncoming = requestStatus === 'confirmed'
+            // 매칭 완료된 요청은 "나와 연결되고 싶은 사람"에 표시하지 않음
+            if (isConfirmedIncoming) return
             if (!isConfirmedIncoming && matchState.currentDeckIds.has(requesterKey)) return
             if (!isConfirmedIncoming && matchState.confirmedById.has(requesterKey)) return
             visible.push({ request: req, requesterKey, isConfirmedIncoming })
@@ -1571,11 +1591,15 @@
           const normalizedKey = normalizeCandidateKey(candidateKey)
           const existingRequest = request || matchState.incomingById.get(normalizedKey)
           if (!existingRequest) return
+          // 서버에서 전달받은 extraMatch 값을 유지
+          const extraMatch = existingRequest.extraMatch !== undefined 
+            ? Boolean(existingRequest.extraMatch) 
+            : !checkIfThisWeekIntro(normalizedKey)
           const updated = {
             ...existingRequest,
             status: 'confirmed',
             contact: contactInfo || existingRequest.contact || null,
-            extraMatch: true,
+            extraMatch,
           }
           matchState.incomingById.set(normalizedKey, updated)
           const listIndex = matchState.incomingList.findIndex(
@@ -1637,8 +1661,11 @@
               '',
           )
           const matchedAt = primaryPayload?.matchedAt || Date.now()
-          // 이번주 서로 소개된 회원인지 확인
-          const isExtraMatch = !checkIfThisWeekIntro(requesterId)
+          // requester(상대방) 입장에서 extraMatch를 판단
+          // incomingRequest의 extraMatch 값을 우선 사용 (서버에서 계산된 값)
+          const isExtraMatch = incomingRequest.extraMatch !== undefined 
+            ? Boolean(incomingRequest.extraMatch)
+            : !checkIfThisWeekIntro(requesterId)
           const payload = {
             id: `${requesterId}-${viewerId}-${matchedAt}-mutual`,
             candidateId: viewerId,

@@ -6467,6 +6467,7 @@
           return list
         }
         const seenIds = new Set(list.map((entry) => entry.id).filter(Boolean))
+        const seenCandidateIds = new Set(list.map((entry) => entry.candidateId).filter(Boolean))
         const currentWeek = getWeekInfo(new Date())
         const isCurrentWeekEntry = (week = null) =>
           week &&
@@ -6480,12 +6481,22 @@
           .filter((entry) => !seenIds.has(entry.id))
           .map(mapConfirmedMatchToHistoryEntry)
           .filter(Boolean)
+          // candidateId로도 중복 체크하여 같은 후보가 여러 번 추가되지 않도록 함
+          .filter((entry) => {
+            if (entry.candidateId && seenCandidateIds.has(entry.candidateId)) {
+              return false
+            }
+            return true
+          })
         if (!confirmedForTarget.length) {
           return list
         }
         confirmedForTarget.forEach((entry) => {
           if (entry?.id) {
             seenIds.add(entry.id)
+          }
+          if (entry?.candidateId) {
+            seenCandidateIds.add(entry.candidateId)
           }
           list.push(entry)
         })
