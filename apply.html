@@ -2307,9 +2307,12 @@
             record.candidateId ??
             record.profileId ??
             record.phone ??
+            record.phoneNumber ??
+            record.phoneMasked ??
+            record.phoneNumberMasked ??
             record.key ??
             ''
-          return normalizeCandidateKey(raw)
+          return normalizeCandidateKey(raw) || normalizePhoneKey(raw)
         }
 
         function buildMatchTargetSnapshot(target) {
