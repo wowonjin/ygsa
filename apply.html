@@ -2315,8 +2315,18 @@
         function buildMatchTargetSnapshot(target) {
           if (!target) return null
           const phone = target.phone || target.phoneNumber || ''
+          const fallbackId =
+            target.id ||
+            target.uuid ||
+            target.profileId ||
+            target.phone ||
+            target.phoneNumber ||
+            target.phoneMasked ||
+            target.key ||
+            ''
+          const normalizedId = normalizeCandidateKey(fallbackId) || normalizePhoneKey(phone || target.phoneMasked || '')
           return {
-            id: target.id || target.uuid || '',
+            id: normalizedId,
             name: target.name || '회원님',
             gender: target.gender || '',
             phone,
