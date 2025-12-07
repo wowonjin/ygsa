@@ -91,6 +91,7 @@
               confirmedAt: entry.confirmedAt || Date.now(),
               week: entry.week || buildWeekMeta(entry.confirmedAt || Date.now()),
               category: MATCH_HISTORY_CATEGORY.CONFIRMED,
+              extraMatch: Boolean(entry.extraMatch),
             }))
             .sort((a, b) => (b.confirmedAt || 0) - (a.confirmedAt || 0))
         } catch (error) {
@@ -6518,14 +6519,13 @@
           week: entry.week || null,
           category: MATCH_HISTORY_CATEGORY.CONFIRMED,
           targetSelected: true,
-          isExtraMatch: Boolean(entry.isExtraMatch),
+          extraMatch: Boolean(entry.extraMatch),
         }
       }
 
       function getMatchHistoryStatusLabel(entry) {
         if (isConfirmedMatchEntry(entry)) {
-          // isExtraMatch 필드가 있으면 추가 매칭 완료, 아니면 일반 매칭 완료
-          return entry?.isExtraMatch ? '추가 매칭 완료' : '매칭 완료'
+          return entry?.extraMatch ? '추가 매칭 완료' : '매칭 완료'
         }
         if (entry?.targetSelected) {
           return '선택 완료'
@@ -7063,8 +7063,6 @@
           targetPhone: entry.targetPhone || '',
           candidatePhone: entry.candidatePhone || '',
           category,
-          isExtraMatch: Boolean(entry.isExtraMatch),
-          targetSelected: entry.targetSelected !== false,
         }
       }
 
@@ -7094,6 +7092,7 @@
               matchedAt,
               week: weekData,
               category: normalizeMatchHistoryCategory(entry.category),
+              extraMatch: Boolean(entry.extraMatch),
             }
           })
             .sort((a, b) => (b.matchedAt || 0) - (a.matchedAt || 0))
@@ -7192,6 +7191,7 @@
           candidate: candidateRecord ? buildCandidateSnapshot(candidateRecord) : entry.candidate || null,
           target: targetRecord ? buildCandidateSnapshot(targetRecord) : entry.target || null,
           category,
+          extraMatch: Boolean(entry.extraMatch),
         }
       }
 
@@ -7277,6 +7277,7 @@
           matchedAt: entry.matchedAt,
           week: entry.week,
           category: MATCH_HISTORY_CATEGORY.INTRO,
+          extraMatch: Boolean(entry.extraMatch),
           candidateName: entry.candidate?.name || entry.candidateName || '',
           candidateGender: entry.candidate?.gender || entry.candidateGender || '',
           candidatePhone,

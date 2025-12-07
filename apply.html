@@ -487,18 +487,6 @@
         border-color: #166534;
       }
 
-      /* 추가 매칭 완료 버튼 스타일 (분홍색) */
-      .match-card-select-btn.is-mutual.is-extra {
-        background: #db2777;
-        border-color: #be185d;
-        box-shadow: 0 15px 30px rgba(219, 39, 119, 0.35);
-      }
-
-      .match-card-select-btn.is-mutual.is-extra:hover {
-        background: #be185d;
-        border-color: #9d174d;
-      }
-
       .match-card-select-btn.incoming-select-btn {
         background: #f472b6;
         border-color: #ec4899;
@@ -1200,7 +1188,6 @@
           confirmedById: new Map(),
           contactById: new Map(),
           currentDeckIds: new Set(),
-          originalMatchIds: new Set(),
         }
         const realtimeState = {
           source: null,
@@ -1209,6 +1196,7 @@
         }
         const PENDING_SELECTIONS_STORAGE_KEY = 'match_pending_selections_v1'
         const INCOMING_REQUESTS_STORAGE_KEY = 'match_incoming_requests_v1'
+        let currentWeekKey = ''
         let pendingSelectionSet = new Set()
         contactModalCloseBtn?.addEventListener('click', hideContactModal)
         contactModal?.addEventListener('click', (event) => {
@@ -1364,16 +1352,14 @@
           const confirmedMatchCards = Array.isArray(data?.confirmedMatchCards)
             ? data.confirmedMatchCards
             : []
-          // 원본 매치 ID 추적 (정규 매칭 vs 추가 매칭 구분용)
-          const originalMatchIds = new Set()
-          matches.forEach((record) => {
-            const id = getCandidateIdentifier(record)
-            if (id) originalMatchIds.add(id)
-          })
-          matchState.originalMatchIds = originalMatchIds
           const mergedMatches = mergeMatchesWithConfirmed(matches, confirmedMatchCards)
           syncMatchedCandidateIds(Array.isArray(data?.matchedCandidateIds) ? data.matchedCandidateIds : [])
-          const incomingRequests = Array.isArray(data?.incomingRequests) ? data.incomingRequests : []
+          const weekInfo = data?.week || buildWeekMeta(new Date())
+          currentWeekKey = buildWeekKey(weekInfo)
+          const incomingRequestsRaw = Array.isArray(data?.incomingRequests) ? data.incomingRequests : []
+          const persistedIncoming = loadStoredIncomingRequests(lastLookupPhoneKey, currentWeekKey)
+          const incomingRequests = mergeIncomingRequests(incomingRequestsRaw, persistedIncoming)
+          saveStoredIncomingRequests(lastLookupPhoneKey, currentWeekKey, incomingRequests)
           const matchedContacts = Array.isArray(data?.matchedCandidates) ? data.matchedCandidates : []
           const hasAnyCards = mergedMatches.length || matchedContacts.length
           if (!hasAnyCards) {
@@ -1381,7 +1367,6 @@
             throw new Error('표시할 매칭 카드가 없습니다.')
           }
           syncMatchState({ incomingRequests, matchedCandidates: matchedContacts })
-          saveIncomingRequestsToStorage(incomingRequests)
           cleanupPendingSelections()
           const targetName = data?.target?.name || '회원님'
           const nameWithHonorific = targetName.endsWith('님') ? targetName : `${targetName}님`
@@ -1389,7 +1374,7 @@
           resultMeta.textContent = data?.target?.phoneMasked
             ? `${data.target.phoneMasked} 인증 완료`
             : ''
-          weekLabel.textContent = data?.week?.label || '이번 주 추천'
+          weekLabel.textContent = weekInfo?.label || '이번 주 추천'
           currentTargetProfile = buildMatchTargetSnapshot(data?.target)
           ensureRealtimeConnection()
 
@@ -1404,9 +1389,7 @@
                 : null
             const incomingStatus = String(incomingRequestForCard?.status || '').toLowerCase()
             const isIncomingConfirmed = incomingStatus === 'confirmed'
-            // extraMatch는 원본 매치에 없는 후보가 confirmed된 경우에만 true
-            // 원본 매치에 있으면 정규 매칭 (extraMatch = false)
-            const isExtraMatch = isIncomingConfirmed && !originalMatchIds.has(candidateId)
+            const isExtraMatch = Boolean(incomingRequestForCard && isIncomingConfirmed)
             if (candidateId) {
               matchState.currentDeckIds.add(candidateId)
             }
@@ -1480,20 +1463,7 @@
           const viewerKey = getViewerCandidateKey()
           matchState.incomingById.clear()
           matchState.contactById.clear()
-          // localStorage에서 저장된 incoming requests 로드하고 서버 데이터와 병합
-          const storedRequests = loadIncomingRequestsFromStorage(lastLookupPhoneKey)
-          const serverRequests = Array.isArray(incomingRequests) ? incomingRequests : []
-          // 서버 데이터로 저장된 요청 업데이트 (서버 데이터가 우선)
-          const mergedMap = new Map()
-          storedRequests.forEach((req) => {
-            const key = normalizeCandidateKey(req?.requesterId)
-            if (key) mergedMap.set(key, req)
-          })
-          serverRequests.forEach((req) => {
-            const key = normalizeCandidateKey(req?.requesterId)
-            if (key) mergedMap.set(key, req)
-          })
-          matchState.incomingList = Array.from(mergedMap.values())
+          matchState.incomingList = Array.isArray(incomingRequests) ? incomingRequests : []
           matchState.incomingList.forEach((req) => {
             const requesterKey = normalizeCandidateKey(req?.requesterId)
             if (!requesterKey) return
@@ -1604,6 +1574,7 @@
             ...existingRequest,
             status: 'confirmed',
             contact: contactInfo || existingRequest.contact || null,
+            extraMatch: true,
           }
           matchState.incomingById.set(normalizedKey, updated)
           const listIndex = matchState.incomingList.findIndex(
@@ -1614,6 +1585,7 @@
           } else {
             matchState.incomingList.unshift(updated)
           }
+          persistIncomingRequestUpdate(normalizedKey, updated)
           renderIncomingRequests()
         }
 
@@ -1622,6 +1594,9 @@
           if (!key) return false
           const req = matchState.incomingById.get(key)
           if (!req) return false
+          if (req.extraMatch !== undefined) {
+            return Boolean(req.extraMatch)
+          }
           return String(req?.status || '').toLowerCase() === 'confirmed'
         }
 
@@ -2105,6 +2080,7 @@
           const resolvedMatchEntryId = matchEntryId || incomingRequest?.requestId || ''
           const payload = buildMatchSelectionPayload(record, candidateId, resolvedMatchEntryId, {
             categoryOverride: incomingRequest ? 'confirmed' : 'intro',
+            extraMatch: hasIncomingRequest,
           })
           if (!payload) {
             showMessage('매칭 정보를 준비할 수 없습니다. 관리자에게 문의해주세요.', true)
@@ -2129,14 +2105,12 @@
                 matchState.contactById.set(candidateKey, contactInfo)
               }
             }
-            // extraMatch 판단: 원본 매치에 없는 후보인 경우에만 true
-            const isExtraMatch = hasIncomingRequest && !matchState.originalMatchIds.has(candidateKey)
             markMatchButtonCompleted(button, {
               mutual: hasIncomingRequest,
               contact: hasIncomingRequest ? contactInfo : null,
               cancelButton,
               matchEntryId: payload.id,
-              extraMatch: isExtraMatch,
+              extraMatch: hasIncomingRequest,
             })
             if (hasIncomingRequest) {
               matchedCandidateIds.add(candidateKey)
@@ -2218,7 +2192,7 @@
 
         function resetMatchButtonState(button) {
           if (!button) return
-          button.classList.remove('is-completed', 'is-mutual', 'is-extra')
+          button.classList.remove('is-completed', 'is-mutual')
           button.disabled = false
           button.dataset.matchState = ''
           button.textContent = button.classList.contains('incoming-select-btn')
@@ -2280,10 +2254,7 @@
             String(options?.categoryOverride || 'confirmed').trim().toLowerCase() === 'confirmed'
               ? 'confirmed'
               : 'intro'
-          // isExtraMatch: 원본 매치에 없는 후보인 경우
-          const isExtraMatch = options?.isExtraMatch !== undefined 
-            ? Boolean(options.isExtraMatch)
-            : (normalizedCategory === 'confirmed' && !matchState.originalMatchIds.has(normalizedCandidateKey))
+          const extraMatch = Boolean(options?.extraMatch)
           return {
             id: matchEntryId || `${targetId}-${candidateId}-${resolvedMatchedAt}`,
             candidateId,
@@ -2297,11 +2268,11 @@
             candidatePhone,
             targetName,
             targetGender,
-            isExtraMatch,
             targetSelected:
               options?.targetSelectedOverride !== undefined
                 ? Boolean(options.targetSelectedOverride)
                 : true,
+            extraMatch,
           }
         }
 
@@ -2371,8 +2342,6 @@
           if (mutual) {
             button.disabled = false
             button.dataset.matchState = 'mutual'
-            // 정규 매칭: 녹색 "매칭 완료. 정보 확인"
-            // 추가 매칭: 분홍색 "추가 매칭 완료. 정보 확인"
             button.textContent = extraMatch ? '추가 매칭 완료. 정보 확인' : '매칭 완료. 정보 확인'
             if (contact) {
               setButtonContactData(button, contact)
@@ -2475,6 +2444,74 @@
           }
         }
 
+        function loadStoredIncomingRequests(phoneKey, weekKey) {
+          if (!phoneKey || !weekKey) return []
+          try {
+            const raw = localStorage.getItem(INCOMING_REQUESTS_STORAGE_KEY)
+            if (!raw) return []
+            const parsed = JSON.parse(raw)
+            const bucket = parsed?.[phoneKey]
+            if (!bucket || bucket.weekKey !== weekKey || !Array.isArray(bucket.requests)) return []
+            return bucket.requests
+          } catch (error) {
+            console.warn('[match:incoming] 불러오기 실패', error)
+            return []
+          }
+        }
+
+        function saveStoredIncomingRequests(phoneKey, weekKey, requests = []) {
+          if (!phoneKey || !weekKey) return
+          try {
+            const raw = localStorage.getItem(INCOMING_REQUESTS_STORAGE_KEY)
+            const parsed = raw ? JSON.parse(raw) : {}
+            parsed[phoneKey] = {
+              weekKey,
+              savedAt: Date.now(),
+              requests: Array.isArray(requests) ? requests : [],
+            }
+            localStorage.setItem(INCOMING_REQUESTS_STORAGE_KEY, JSON.stringify(parsed))
+          } catch (error) {
+            console.warn('[match:incoming] 저장 실패', error)
+          }
+        }
+
+        function mergeIncomingRequests(primary = [], fallback = []) {
+          if (!primary.length && !fallback.length) return []
+          const map = new Map()
+          const push = (request) => {
+            if (!request) return
+            const key =
+              normalizeCandidateKey(request.requesterId) ||
+              normalizeCandidateKey(request.candidateId) ||
+              normalizeCandidateKey(request.profile?.id) ||
+              request.requestId ||
+              `${map.size}`
+            const existing = map.get(key)
+            if (!existing || (request.requestRecordedAt || 0) > (existing.requestRecordedAt || 0)) {
+              map.set(key, request)
+            }
+          }
+          primary.forEach(push)
+          fallback.forEach(push)
+          return Array.from(map.values())
+        }
+
+        function persistIncomingRequestUpdate(requesterKey, updated) {
+          if (!lastLookupPhoneKey || !currentWeekKey || !requesterKey) return
+          const stored = loadStoredIncomingRequests(lastLookupPhoneKey, currentWeekKey)
+          if (!stored.length) return
+          const normalizedKey = normalizeCandidateKey(requesterKey)
+          const next = stored.map((entry) => {
+            const key =
+              normalizeCandidateKey(entry?.requesterId) ||
+              normalizeCandidateKey(entry?.candidateId) ||
+              ''
+            if (key !== normalizedKey) return entry
+            return { ...entry, ...updated }
+          })
+          saveStoredIncomingRequests(lastLookupPhoneKey, currentWeekKey, next)
+        }
+
         function cleanupPendingSelections() {
           if (!lastLookupPhoneKey || !pendingSelectionSet.size) return
           let changed = false
@@ -2485,43 +2522,6 @@
           })
           if (changed) {
             savePendingSelections(lastLookupPhoneKey, pendingSelectionSet)
-          }
-        }
-
-        // incoming requests localStorage 저장/로드 함수
-        function saveIncomingRequestsToStorage(requests = []) {
-          if (!lastLookupPhoneKey) return
-          try {
-            const raw = localStorage.getItem(INCOMING_REQUESTS_STORAGE_KEY)
-            const data = raw ? JSON.parse(raw) : {}
-            // 기존 저장된 요청과 새 요청을 병합 (중복 제거)
-            const existingRequests = Array.isArray(data[lastLookupPhoneKey]) ? data[lastLookupPhoneKey] : []
-            const mergedMap = new Map()
-            existingRequests.forEach((req) => {
-              const key = normalizeCandidateKey(req?.requesterId)
-              if (key) mergedMap.set(key, req)
-            })
-            requests.forEach((req) => {
-              const key = normalizeCandidateKey(req?.requesterId)
-              if (key) mergedMap.set(key, req)
-            })
-            data[lastLookupPhoneKey] = Array.from(mergedMap.values())
-            localStorage.setItem(INCOMING_REQUESTS_STORAGE_KEY, JSON.stringify(data))
-          } catch (error) {
-            console.warn('[match:incoming] 저장 실패', error)
-          }
-        }
-
-        function loadIncomingRequestsFromStorage(phoneKey) {
-          if (!phoneKey) return []
-          try {
-            const raw = localStorage.getItem(INCOMING_REQUESTS_STORAGE_KEY)
-            if (!raw) return []
-            const parsed = JSON.parse(raw)
-            return Array.isArray(parsed?.[phoneKey]) ? parsed[phoneKey] : []
-          } catch (error) {
-            console.warn('[match:incoming] 불러오기 실패', error)
-            return []
           }
         }
 
@@ -2586,6 +2586,14 @@
             year: info.year,
             week: info.week,
           }
+        }
+
+        function buildWeekKey(week) {
+          if (!week || typeof week !== 'object') return ''
+          const year = Number(week.year)
+          const weekNo = Number(week.week)
+          if (!Number.isFinite(year) || !Number.isFinite(weekNo)) return ''
+          return `${year}-W${String(weekNo).padStart(2, '0')}`
         }
 
         function getWeekInfo(date) {
@@ -3212,6 +3220,10 @@
           if (!targetId || targetId !== viewerId) return
           const candidateKey = normalizeCandidateKey(entry.candidateId)
           if (!candidateKey) return
+          const extraMatch =
+            entry.extraMatch !== undefined
+              ? Boolean(entry.extraMatch) || isExtraMatchCandidate(candidateKey)
+              : isExtraMatchCandidate(candidateKey)
           const contact = {
             name: entry.candidateName || '',
             phone: entry.candidatePhone || '',
@@ -3231,7 +3243,6 @@
           if (buttons.length) {
             buttons.forEach((button) => {
               const cancelButton = getCancelButton(button)
-              const extraMatch = isExtraMatchCandidate(candidateKey)
               markMatchButtonCompleted(button, {
                 mutual: true,
                 contact,
@@ -3245,6 +3256,9 @@
               }
               revealMatchCard(wrapper)
             })
+          }
+          if (extraMatch) {
+            persistIncomingRequestUpdate(candidateKey, { status: 'confirmed' })
           }
         }
 

@@ -1212,6 +1212,7 @@ function normalizeMatchHistoryEntry(entry) {
   const targetName = sanitizeText(entry.targetName || entry.target?.name)
   const targetGender = sanitizeText(entry.targetGender || entry.target?.gender)
   const targetSelected = normalizeBooleanFlag(entry.targetSelected)
+  const extraMatch = normalizeBooleanFlag(entry.extraMatch)
   return {
     id: sanitizeText(entry.id) || `match_${nanoid()}`,
     candidateId,
@@ -1226,6 +1227,7 @@ function normalizeMatchHistoryEntry(entry) {
     targetName,
     targetGender,
     targetSelected,
+    extraMatch,
   }
 }
 
@@ -1374,6 +1376,13 @@ function mergeMatchHistoryEntries(existing = {}, incoming = {}) {
     merged.targetSelected = normalizeBooleanFlag(existing.targetSelected)
   } else {
     merged.targetSelected = false
+  }
+  if (incoming.extraMatch !== undefined) {
+    merged.extraMatch = normalizeBooleanFlag(incoming.extraMatch)
+  } else if (existing.extraMatch !== undefined) {
+    merged.extraMatch = normalizeBooleanFlag(existing.extraMatch)
+  } else {
+    merged.extraMatch = false
   }
   return merged
 }
