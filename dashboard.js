@@ -6533,7 +6533,9 @@
 
       function getMatchHistoryStatusLabel(entry) {
         if (isConfirmedMatchEntry(entry)) {
-          return entry?.extraMatch ? '추가 매칭 완료' : '매칭 완료'
+          // extraMatch가 명시적으로 true인 경우에만 "추가 매칭 완료"
+          // extraMatch가 false이거나 undefined인 경우 "매칭 완료"
+          return entry?.extraMatch === true ? '추가 매칭 완료' : '매칭 완료'
         }
         if (entry?.targetSelected) {
           return '선택 완료'

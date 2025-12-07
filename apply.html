@@ -1389,7 +1389,8 @@
                 : null
             const incomingStatus = String(incomingRequestForCard?.status || '').toLowerCase()
             const isIncomingConfirmed = incomingStatus === 'confirmed'
-            const isExtraMatch = Boolean(incomingRequestForCard && isIncomingConfirmed)
+            // 이번주 서로 소개된 회원인지 확인하여 extraMatch 결정
+            const isExtraMatch = isIncomingConfirmed && candidateId ? !checkIfThisWeekIntro(candidateId) : false
             if (candidateId) {
               matchState.currentDeckIds.add(candidateId)
             }
@@ -1592,12 +1593,22 @@
         function isExtraMatchCandidate(candidateId) {
           const key = normalizeCandidateKey(candidateId)
           if (!key) return false
+          // 이번주 서로 소개된 회원인지 확인
+          const isThisWeekIntro = checkIfThisWeekIntro(key)
+          if (isThisWeekIntro) return false // 이번주 서로 소개된 경우 extraMatch 아님
           const req = matchState.incomingById.get(key)
           if (!req) return false
           if (req.extraMatch !== undefined) {
             return Boolean(req.extraMatch)
           }
           return String(req?.status || '').toLowerCase() === 'confirmed'
+        }
+
+        function checkIfThisWeekIntro(candidateId) {
+          // 이번주 소개 목록(matches)에 있는지 확인
+          const candidateKey = normalizeCandidateKey(candidateId)
+          if (!candidateKey || !matchState.currentDeckIds) return false
+          return matchState.currentDeckIds.has(candidateKey)
         }
 
         async function recordMutualMatchForRequester(incomingRequest, primaryPayload) {
@@ -1626,6 +1637,8 @@
               '',
           )
           const matchedAt = primaryPayload?.matchedAt || Date.now()
+          // 이번주 서로 소개된 회원인지 확인
+          const isExtraMatch = !checkIfThisWeekIntro(requesterId)
           const payload = {
             id: `${requesterId}-${viewerId}-${matchedAt}-mutual`,
             candidateId: viewerId,
@@ -1644,6 +1657,7 @@
               '',
             targetGender: incomingRequest.profile?.gender || '',
             targetSelected: true,
+            extraMatch: isExtraMatch,
           }
           try {
             await sendMatchRequest(payload)
@@ -2086,9 +2100,11 @@
           const candidateKey = normalizeCandidateKey(candidateId)
           const incomingRequest = matchState.incomingById.get(candidateKey)
           const resolvedMatchEntryId = matchEntryId || incomingRequest?.requestId || ''
+          const hasIncomingRequest = Boolean(incomingRequest)
+          const isExtraMatch = hasIncomingRequest ? !checkIfThisWeekIntro(candidateKey) : false
           const payload = buildMatchSelectionPayload(record, candidateId, resolvedMatchEntryId, {
             categoryOverride: incomingRequest ? 'confirmed' : 'intro',
-            extraMatch: hasIncomingRequest,
+            extraMatch: isExtraMatch,
           })
           if (!payload) {
             showMessage('매칭 정보를 준비할 수 없습니다. 관리자에게 문의해주세요.', true)
@@ -2099,10 +2115,9 @@
           if (cancelButton) {
             cancelButton.disabled = true
           }
-          let hasIncomingRequest = false
           try {
             await sendMatchRequest(payload)
-            hasIncomingRequest = Boolean(incomingRequest)
+            const isExtraMatch = hasIncomingRequest ? !checkIfThisWeekIntro(candidateKey) : false
             let contactInfo = hasIncomingRequest ? getContactInfo(candidateKey) : null
             if (!contactInfo && hasIncomingRequest && incomingRequest?.contact) {
               contactInfo = buildContactSnapshot(
@@ -2118,7 +2133,7 @@
               contact: hasIncomingRequest ? contactInfo : null,
               cancelButton,
               matchEntryId: payload.id,
-              extraMatch: hasIncomingRequest,
+              extraMatch: isExtraMatch,
             })
             if (hasIncomingRequest) {
               matchedCandidateIds.add(candidateKey)
@@ -3243,9 +3258,10 @@
           if (!targetId || targetId !== viewerId) return
           const candidateKey = normalizeCandidateKey(entry.candidateId)
           if (!candidateKey) return
+          // 서버에서 전달된 extraMatch 값이 있으면 우선 사용, 없으면 이번주 소개 여부로 판단
           const extraMatch =
             entry.extraMatch !== undefined
-              ? Boolean(entry.extraMatch) || isExtraMatchCandidate(candidateKey)
+              ? Boolean(entry.extraMatch)
               : isExtraMatchCandidate(candidateKey)
           const contact = {
             name: entry.candidateName || '',
