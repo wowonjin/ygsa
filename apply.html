@@ -2058,7 +2058,15 @@
 
         async function handleCardMatchSelect(record, button, candidateIdOverride, matchEntryId) {
           if (!button) return
-          const candidateId = candidateIdOverride || getCandidateIdentifier(record)
+          const fallbackRecord =
+            record ||
+            matchState.incomingById.get(getCandidateIdentifier(record)) ||
+            matchState.confirmedById.get(getCandidateIdentifier(record)) ||
+            {}
+          const candidateId =
+            candidateIdOverride ||
+            getCandidateIdentifier(record) ||
+            getCandidateIdentifier(fallbackRecord)
           if (!candidateId) {
             showMessage('매칭 정보를 찾을 수 없습니다.', true)
             return
@@ -2305,7 +2313,9 @@
             record.id ??
             record.uuid ??
             record.candidateId ??
+            record.matchCandidateId ??
             record.profileId ??
+            record.requesterId ??
             record.phone ??
             record.phoneNumber ??
             record.phoneMasked ??
