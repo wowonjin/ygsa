@@ -1986,7 +1986,7 @@
           } else {
             button.textContent = '매칭 선택하기'
           }
-          const targetReady = currentTargetProfile && currentTargetProfile.id
+          const targetReady = Boolean(currentTargetProfile)
           const candidateKey = normalizeCandidateKey(candidateId)
           if (candidateKey) {
             button.dataset.candidateId = candidateKey
