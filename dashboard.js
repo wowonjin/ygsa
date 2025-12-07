@@ -5502,7 +5502,7 @@
           (Array.isArray(target.preferredLifestyle) && target.preferredLifestyle.length)
         const introducedCandidateKeys = buildTargetCandidateHistorySet(target)
         const { list, total } = computeMatchResults(target, introducedCandidateKeys)
-        const priorityEntries = buildPriorityMatchResults(target)
+        const priorityEntries = buildPriorityMatchResults(target, introducedCandidateKeys)
         const merged = mergePriorityMatchResults(priorityEntries, list)
         const displayList = merged.list
         const priorityDisplayed = merged.displayedPriorityCount
@@ -5760,7 +5760,7 @@
         return Boolean(entryTargetPhoneKey && entryTargetPhoneKey === targetPhoneKey)
       }
 
-      function buildPriorityMatchResults(targetRecord) {
+      function buildPriorityMatchResults(targetRecord, introducedCandidateKeys = new Set()) {
         if (!targetRecord) return []
         const reverseEntries = getReverseMatchEntriesForTarget(targetRecord)
         if (!reverseEntries.length) return []
@@ -5769,7 +5769,15 @@
             if (isCandidateInSelection(record)) {
               return null
             }
-            const evaluated = evaluateMatchCandidate(targetRecord, record)
+            const candidateKey = getMatchCandidateKey(record)
+            if (
+              introducedCandidateKeys instanceof Set &&
+              candidateKey &&
+              introducedCandidateKeys.has(candidateKey)
+            ) {
+              return null
+            }
+            const evaluated = evaluateMatchCandidate(targetRecord, record, introducedCandidateKeys)
             if (evaluated) {
               return {
                 ...evaluated,
