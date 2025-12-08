@@ -26,7 +26,10 @@ app.post('/api/consult', async (req, res) => {
       try {
         const resp = await fetch(SHEETS_WEBHOOK_URL, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            Accept: 'application/json',
+          },
           body: JSON.stringify({
             ...body,
             receivedAt: new Date().toISOString(),
