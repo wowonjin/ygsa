@@ -1,4 +1,5 @@
 import express from 'express'
+import fetch from 'node-fetch'
 
 const app = express()
 const PORT = process.env.PORT || 5000
@@ -23,7 +24,7 @@ app.post('/api/consult', async (req, res) => {
     // 구글 스프레드시트(Apps Script 웹앱)로 전달
     if (SHEETS_WEBHOOK_URL) {
       try {
-        await fetch(SHEETS_WEBHOOK_URL, {
+        const resp = await fetch(SHEETS_WEBHOOK_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -31,6 +32,9 @@ app.post('/api/consult', async (req, res) => {
             receivedAt: new Date().toISOString(),
           }),
         })
+        if (!resp.ok) {
+          console.error('[sheets] forward non-200', resp.status)
+        }
       } catch (err) {
         console.error('[sheets] forward failed', err)
       }
