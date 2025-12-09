@@ -453,6 +453,8 @@
       const matchedCouplesCloseBtn = document.getElementById('matchedCouplesCloseBtn')
       const matchedCouplesList = document.getElementById('matchedCouplesList')
       const matchedCouplesSubtitle = document.getElementById('matchedCouplesSubtitle')
+      const matchedCouplesWeekSelect = document.getElementById('matchedCouplesWeekSelect')
+      const matchedCouplesWeekChips = document.getElementById('matchedCouplesWeekChips')
       const matchModal = document.getElementById('matchModal')
       const matchCloseBtn = document.getElementById('matchCloseBtn')
       const matchTargetInput = document.getElementById('matchTargetInput')
@@ -605,6 +607,7 @@
       let matchLatestAiRequestId = 0
       const matchAiInsightCache = new Map()
       let matchAiFeatureDisabled = false
+      let matchedCouplesSelectedWeekKey = buildWeekKey(getWeekInfo(new Date()))
       const viewState = {
         search: '',
         status: 'all',
@@ -892,6 +895,16 @@
       matchHistoryList?.addEventListener('click', handleMatchHistoryClick)
       matchResetBtn?.addEventListener('click', () => clearMatchTarget())
       matchedCouplesList?.addEventListener('click', handleMatchedCouplesListClick)
+      matchedCouplesWeekSelect?.addEventListener('change', (event) => {
+        matchedCouplesSelectedWeekKey = event.target?.value || matchedCouplesSelectedWeekKey
+        renderMatchedCouplesModal()
+      })
+      matchedCouplesWeekChips?.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-week-key]')
+        if (!button) return
+        matchedCouplesSelectedWeekKey = button.dataset.weekKey || matchedCouplesSelectedWeekKey
+        renderMatchedCouplesModal()
+      })
       detailDraftLoadBtn?.addEventListener('click', () => {
         if (!currentDraftData) {
           showToast('불러올 임시 데이터가 없습니다.')
@@ -3314,6 +3327,13 @@
         return root.replace(/\/+$/, '') + '/'
       }
 
+      function getProfilesBasePath() {
+        const prefix = getStorageRootPrefix()
+        if (!prefix) return 'profiles/'
+        if (/profiles\/?$/i.test(prefix)) return prefix.replace(/\/+$/, '') + '/'
+        return `${prefix}profiles/`
+      }
+
       function buildStoragePath({ phoneKey, subfolder, fileName }) {
         const normalizedPhone = phoneKey || 'unknown'
         const prefix = getStorageRootPrefix()
@@ -3366,6 +3386,26 @@
           })
 
         return firebaseInitPromise
+      }
+
+      async function saveProfileJsonToStorage(record) {
+        const phoneKey = normalizePhoneKey(record?.phone || '')
+        if (!phoneKey || !record) return
+        try {
+          const storage = await ensureFirebaseStorage()
+          const path = `${getProfilesBasePath()}${phoneKey}/profile.json`
+          const ref = storage.ref().child(path)
+          await ref.putString(
+            JSON.stringify({ ...record, updatedAt: new Date().toISOString() }),
+            'raw',
+            {
+              contentType: 'application/json',
+            },
+          )
+          console.info('[firebase] profile saved to', path)
+        } catch (error) {
+          console.warn('[firebase] 프로필 JSON 저장 실패', error)
+        }
       }
 
       function setAttachmentUploadStatus(message, variant = 'info') {
@@ -4214,6 +4254,7 @@
             renderPaymentHistory(detailPaymentEntries)
             refreshDetailAttachments()
           }
+          await saveProfileJsonToStorage(updated)
           syncFilterOptions()
           syncMatchMemberOptions()
           syncSelectionWithItems()
@@ -6781,8 +6822,8 @@
         return dedupeConfirmedCouples(currentWeekEntries)
       }
 
-      function dedupeConfirmedCouples(entries = []) {
-        const currentWeekInfo = getWeekInfo(new Date())
+      function dedupeConfirmedCouples(entries = [], weekInfo = getWeekInfo(new Date())) {
+        const currentWeekInfo = weekInfo || getWeekInfo(new Date())
         const pairMap = new Map()
         entries.forEach((entry) => {
           const pairKey = buildMatchPairKey(entry)
@@ -7020,18 +7061,156 @@
         matchedCouplesBtn.dataset.count = String(count)
       }
 
+      function buildWeekInfoFromMeta(meta) {
+        if (!meta) return null
+        const year = Number(meta.year || meta.yearNumber)
+        const week = Number(meta.week || meta.weekNumber)
+        if (!Number.isFinite(year) || !Number.isFinite(week)) return null
+        const start =
+          meta.start instanceof Date
+            ? new Date(meta.start)
+            : meta.startTime
+              ? new Date(meta.startTime)
+              : meta.start
+                ? new Date(meta.start)
+                : null
+        const end =
+          meta.end instanceof Date
+            ? new Date(meta.end)
+            : meta.endTime
+              ? new Date(meta.endTime)
+              : meta.end
+                ? new Date(meta.end)
+                : null
+        const fallback = getWeekInfoFromYearWeek(year, week)
+        return {
+          year,
+          week,
+          start: start || fallback?.start,
+          end: end || fallback?.end,
+          label: meta.label || `${year}년 ${String(week).padStart(2, '0')}주차`,
+        }
+      }
+
+      function getWeekInfoFromYearWeek(year, week) {
+        if (!Number.isFinite(year) || !Number.isFinite(week)) return null
+        const simple = new Date(Date.UTC(year, 0, 1 + (week - 1) * 7))
+        const dow = simple.getUTCDay() || 7
+        const start = new Date(simple)
+        start.setUTCDate(simple.getUTCDate() - (dow - 1))
+        start.setUTCHours(0, 0, 0, 0)
+        const end = new Date(start)
+        end.setUTCDate(start.getUTCDate() + 6)
+        return {
+          start: new Date(start),
+          end: new Date(end),
+        }
+      }
+
+      function getMatchedCouplesByWeek(limit = 12) {
+        const map = new Map()
+        confirmedMatches
+          .filter((entry) => entry && isConfirmedMatchEntry(entry))
+          .forEach((entry) => {
+            const weekMeta =
+              entry.week || buildWeekMeta(entry.confirmedAt || entry.matchedAt || Date.now())
+            const weekKey = buildWeekKey(weekMeta)
+            if (!weekKey) return
+            if (!map.has(weekKey)) {
+              map.set(weekKey, { weekInfo: buildWeekInfoFromMeta(weekMeta), entries: [] })
+            }
+            map.get(weekKey).entries.push(entry)
+          })
+
+        // 현재 주차가 없으면 빈 그룹으로라도 추가해 항상 선택 가능하게 유지
+        const currentWeekInfo = getWeekInfo(new Date())
+        const currentWeekKey = buildWeekKey(currentWeekInfo)
+        if (currentWeekKey && !map.has(currentWeekKey)) {
+          map.set(currentWeekKey, { weekInfo: currentWeekInfo, entries: [] })
+        }
+
+        const list = Array.from(map.entries())
+          .map(([key, value]) => {
+            const weekInfo = value.weekInfo || getWeekInfo(new Date())
+            const deduped = dedupeConfirmedCouples(value.entries, weekInfo)
+            return {
+              key,
+              weekInfo,
+              label: weekInfo.label,
+              rangeLabel: formatWeekRange(weekInfo.start, weekInfo.end),
+              entries: deduped,
+              count: deduped.length,
+            }
+          })
+          .sort((a, b) => {
+            if (a.weekInfo.year === b.weekInfo.year) return b.weekInfo.week - a.weekInfo.week
+            return b.weekInfo.year - a.weekInfo.year
+          })
+        return Number.isFinite(limit) ? list.slice(0, limit) : list
+      }
+
+      function ensureMatchedCouplesSelectedWeek(weeks) {
+        if (!Array.isArray(weeks) || weeks.length === 0) {
+          matchedCouplesSelectedWeekKey = ''
+          return null
+        }
+        const currentWeekKey = buildWeekKey(getWeekInfo(new Date()))
+        if (!matchedCouplesSelectedWeekKey) {
+          matchedCouplesSelectedWeekKey =
+            weeks.find((week) => week.key === currentWeekKey)?.key || weeks[0].key
+        }
+        const matched = weeks.find((week) => week.key === matchedCouplesSelectedWeekKey)
+        if (matched) return matched
+        matchedCouplesSelectedWeekKey =
+          weeks.find((week) => week.key === currentWeekKey)?.key || weeks[0].key
+        return weeks.find((week) => week.key === matchedCouplesSelectedWeekKey) || weeks[0]
+      }
+
+      function renderMatchedCouplesWeekControls(weeks) {
+        const selectedKey = matchedCouplesSelectedWeekKey
+        if (matchedCouplesWeekSelect) {
+          matchedCouplesWeekSelect.innerHTML = weeks
+            .map(
+              (week) => `
+              <option value="${week.key}" ${week.key === selectedKey ? 'selected' : ''}>
+                ${escapeHtml(week.label)} · ${escapeHtml(week.rangeLabel)} (${week.count}쌍)
+              </option>
+            `,
+            )
+            .join('')
+        }
+        if (matchedCouplesWeekChips) {
+          matchedCouplesWeekChips.innerHTML = weeks
+            .map(
+              (week) => `
+              <button
+                type="button"
+                class="matched-week-chip ${week.key === selectedKey ? 'active' : ''}"
+                data-week-key="${week.key}"
+                role="option"
+                aria-selected="${week.key === selectedKey}"
+              >
+                <span class="matched-week-chip-label">${escapeHtml(week.label)}</span>
+                <span class="matched-week-chip-count">${week.count}쌍</span>
+              </button>
+            `,
+            )
+            .join('')
+        }
+      }
+
       function renderMatchedCouplesModal() {
         if (!matchedCouplesList) return
-        const weekInfo = getWeekInfo(new Date())
+        const weeklyGroups = getMatchedCouplesByWeek()
+        const selectedWeek = ensureMatchedCouplesSelectedWeek(weeklyGroups)
+        renderMatchedCouplesWeekControls(weeklyGroups)
         if (matchedCouplesSubtitle) {
-          matchedCouplesSubtitle.textContent = `${weekInfo.label} · ${formatWeekRange(
-            weekInfo.start,
-            weekInfo.end,
-          )}`
+          matchedCouplesSubtitle.textContent = ''
         }
-        const entries = getCurrentWeekConfirmedMatches()
-        matchedCouplesList.innerHTML = entries.length
-          ? entries
+        const entries = selectedWeek?.entries || []
+        matchedCouplesList.innerHTML =
+          entries.length && selectedWeek
+            ? entries
               .map((entry) => {
                 const targetParticipant = entry.displayTarget || entry.target
                 const candidateParticipant = entry.displayCandidate || entry.candidate

@@ -1096,6 +1096,18 @@
           <button type="button" id="matchedCouplesCloseBtn" aria-label="매칭된 커플 모달 닫기">×</button>
         </header>
         <p id="matchedCouplesSubtitle" class="matched-couples-subtitle"></p>
+        <div class="matched-couples-controls">
+          <div class="matched-week-select">
+            <label for="matchedCouplesWeekSelect">주차 선택</label>
+            <select id="matchedCouplesWeekSelect" aria-label="주차별 매칭 내역"></select>
+          </div>
+          <div
+            class="matched-week-chips"
+            id="matchedCouplesWeekChips"
+            role="listbox"
+            aria-label="최근 주차별 매칭 내역"
+          ></div>
+        </div>
         <div class="matched-couples-body">
           <ul id="matchedCouplesList" class="matched-couples-list"></ul>
         </div>

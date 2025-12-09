@@ -1943,10 +1943,69 @@ body.modal-open {
         width: min(600px, 92vw);
       }
       .matched-couples-subtitle {
-        margin: 0 0 12px 0;
+        display: none;
+      }
+      .matched-couples-controls {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 8px;
+        background: transparent;
+      }
+      .matched-week-select {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: transparent;
+      }
+      .matched-week-select label {
+        display: none;
+      }
+      .matched-week-select select {
+        flex: 1;
+        background: #0b1220;
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        color: #e2e8f0;
+        border-radius: 10px;
+        padding: 8px 10px;
         font-size: 14px;
+      }
+      .matched-week-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        max-height: 96px;
+        overflow-y: auto;
+        padding: 2px 0;
+      }
+      .matched-week-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        background: rgba(148, 163, 184, 0.08);
+        color: #e2e8f0;
+        border-radius: 12px;
+        padding: 8px 10px;
+        font-size: 13px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .matched-week-chip:hover {
+        border-color: #a5b4fc;
+        background: rgba(165, 180, 252, 0.12);
+      }
+      .matched-week-chip.active {
+        border-color: #60a5fa;
+        background: rgba(96, 165, 250, 0.16);
+        box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.25);
+      }
+      .matched-week-chip-count {
+        font-size: 12px;
         color: #94a3b8;
-        text-align: center;
+        padding: 2px 6px;
+        border-radius: 8px;
+        background: rgba(148, 163, 184, 0.2);
       }
       .matched-couples-body {
         max-height: 420px;

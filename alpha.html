@@ -1727,6 +1727,13 @@
         return root.replace(/\/+$/, '') + '/'
       }
 
+      function getProfilesBasePath() {
+        const prefix = getStorageRootPrefix()
+        if (!prefix) return 'profiles/'
+        if (/profiles\/?$/i.test(prefix)) return prefix.replace(/\/+$/, '') + '/'
+        return `${prefix}profiles/`
+      }
+
       async function ensureStorageRulesWritable(storage) {
         if (!storage || typeof storage.ref !== 'function') return
         const markerPath = `${getStorageRootPrefix()}${STORAGE_RULES_MARKER}`
@@ -1854,6 +1861,25 @@
           return await firebaseInitPromise
         } finally {
           firebaseInitPromise = null
+        }
+      }
+
+      async function saveProfileJsonToStorage(phoneKey, data) {
+        if (!phoneKey || !data) return
+        try {
+          const storage = await ensureFirebaseStorage()
+          const path = `${getProfilesBasePath()}${phoneKey}/profile.json`
+          const ref = storage.ref().child(path)
+          await ref.putString(
+            JSON.stringify({ ...data, updatedAt: new Date().toISOString() }),
+            'raw',
+            {
+              contentType: 'application/json',
+            },
+          )
+          console.info('[firebase] profile saved to', path)
+        } catch (error) {
+          console.warn('[firebase] 프로필 JSON 저장 실패', error)
         }
       }
 
@@ -3420,6 +3446,11 @@
               (res.status === 404 ? '예약한 번호가 없습니다.' : '프로필 저장에 실패했습니다.')
             throw new Error(message)
           }
+          const phoneKeyForStorage = normalizePhoneKey(payload.phone)
+          await saveProfileJsonToStorage(phoneKeyForStorage, {
+            ...payload,
+            id: body?.data?.id || payload.id || undefined,
+          })
           openSubmissionModal()
           showMessage('', '')
           formEl.reset()
