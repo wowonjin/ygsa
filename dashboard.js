@@ -471,6 +471,7 @@
       const matchHistorySummaryEl = document.getElementById('matchHistorySummary')
       const matchHistoryTitleEl = document.getElementById('matchHistoryTitle')
       const genderFilter = document.getElementById('genderFilter')
+      const districtFilter = document.getElementById('districtFilter')
       const heightFilter = document.getElementById('heightFilter')
       const sortSelect = document.getElementById('sortSelect')
       const detailModal = document.getElementById('detailModal')
@@ -608,6 +609,7 @@
         search: '',
         status: 'all',
         gender: 'all',
+        district: 'all',
         height: 'all',
         sort: 'latest',
         weekRange: IS_MOIM_VIEW ? getCurrentWeekRange() : null,
@@ -1024,6 +1026,12 @@
         viewState.gender = event.target.value
         render()
       })
+      if (districtFilter) {
+        districtFilter.addEventListener('change', (event) => {
+          viewState.district = event.target.value
+          render()
+        })
+      }
       if (heightFilter) {
         heightFilter.addEventListener('change', (event) => {
           viewState.height = event.target.value
@@ -4942,6 +4950,11 @@
         if (viewState.gender !== 'all') {
           result = result.filter((item) => (item.gender || '') === viewState.gender)
         }
+        if (viewState.district !== 'all') {
+          result = result.filter(
+            (item) => getRegionGroup(item.district) === viewState.district
+          )
+        }
         if (viewState.height !== 'all') {
           result = result.filter((item) => (item.height || '') === viewState.height)
         }
@@ -4988,6 +5001,13 @@
           uniqueSorted(items.map((item) => item.gender)),
           '성별 전체'
         )
+        if (districtFilter) {
+          populateSelect(
+            districtFilter,
+            uniqueSorted(items.map((item) => getRegionGroup(item.district))),
+            '지역 전체'
+          )
+        }
         if (heightFilter) {
           populateSelect(
             heightFilter,
@@ -5023,6 +5043,9 @@
         if (selectEl === genderFilter) {
           viewState.gender = selectEl.value
         }
+        if (selectEl === districtFilter) {
+          viewState.district = selectEl.value
+        }
         if (selectEl === heightFilter) {
           viewState.height = selectEl.value
         }
@@ -5033,11 +5056,121 @@
       if (statusFilter) {
         statusFilter.value = viewState.status || 'all'
       }
+      if (districtFilter) {
+        districtFilter.value = viewState.district || 'all'
+      }
 
       function uniqueSorted(values) {
         return Array.from(
           new Set(values.filter((value) => value && value.trim()))
         ).sort((a, b) => a.localeCompare(b, 'ko-KR'))
+      }
+
+      function getRegionGroup(district) {
+        if (!district) return ''
+        const compact = String(district).replace(/\s+/g, '').trim()
+        if (!compact) return ''
+        const REGION_MAP = {
+          서울특별시: '서울',
+          서울: '서울',
+          부산광역시: '부산',
+          부산: '부산',
+          대구광역시: '대구',
+          대구: '대구',
+          인천광역시: '인천',
+          인천: '인천',
+          광주광역시: '광주',
+          광주: '광주',
+          대전광역시: '대전',
+          대전: '대전',
+          울산광역시: '울산',
+          울산: '울산',
+          세종특별자치시: '세종',
+          세종: '세종',
+          경기도: '경기',
+          경기: '경기',
+          강원도: '강원',
+          강원: '강원',
+          충청북도: '충북',
+          충북: '충북',
+          충청남도: '충남',
+          충남: '충남',
+          전라북도: '전북',
+          전북: '전북',
+          전라남도: '전남',
+          전남: '전남',
+          경상북도: '경북',
+          경북: '경북',
+          경상남도: '경남',
+          경남: '경남',
+          제주특별자치도: '제주',
+          제주도: '제주',
+          제주: '제주',
+          성남시: '경기',
+          '성남시분당구': '경기',
+          수원시장안구: '경기',
+        }
+        const matchedKey = Object.keys(REGION_MAP).find((key) =>
+          compact.startsWith(key)
+        )
+        if (matchedKey) return REGION_MAP[matchedKey]
+        // 시·도명 또는 대표 구 이름만 입력해도 광역/도 단위로 매핑
+        if (compact.includes('서울')) return '서울'
+        const SEOUL_GU_PREFIXES = [
+          '강남구',
+          '강동구',
+          '강북구',
+          '강서구',
+          '관악구',
+          '광진구',
+          '구로구',
+          '금천구',
+          '노원구',
+          '도봉구',
+          '동대문구',
+          '동작구',
+          '마포구',
+          '서대문구',
+          '서초구',
+          '성동구',
+          '성북구',
+          '송파구',
+          '양천구',
+          '영등포구',
+          '용산구',
+          '은평구',
+          '종로구',
+          '중구',
+          '중랑구',
+        ]
+        if (SEOUL_GU_PREFIXES.some((name) => compact.startsWith(name))) {
+          return '서울'
+        }
+        const REGION_KEYWORDS = {
+          부산: ['부산', '해운대구', '수영구', '연제구', '동래구', '부산진구', '남구', '북구', '사하구', '사상구', '금정구', '강서구', '기장군'],
+          대구: ['대구', '수성구', '달서구', '달성군'],
+          인천: ['인천', '연수구', '남동구', '부평구', '계양구', '미추홀구', '강화군', '옹진군'],
+          광주: ['광주', '광산구'],
+          대전: ['대전', '유성구', '대덕구'],
+          울산: ['울산', '울주군'],
+          세종: ['세종'],
+          경기: ['경기', '경기도', '수원', '용인', '고양', '성남', '부천', '화성', '남양주', '평택', '의정부', '김포', '광주', '군포', '의왕', '하남', '오산', '파주', '이천', '안성', '구리', '포천', '양주', '여주', '동두천', '과천', '가평', '양평', '연천'],
+          강원: ['강원', '강원도', '춘천', '원주', '강릉', '동해', '속초', '삼척', '태백', '홍천', '횡성', '영월', '평창', '정선', '철원', '화천', '양구', '인제', '고성', '양양'],
+          충북: ['충북', '충청북도', '청주', '충주', '제천', '보은', '옥천', '영동', '진천', '괴산', '음성', '단양', '증평'],
+          충남: ['충남', '충청남도', '천안', '아산', '서산', '당진', '공주', '보령', '논산', '계룡', '금산', '부여', '서천', '청양', '홍성', '예산', '태안'],
+          전북: ['전북', '전라북도', '전주', '군산', '익산', '정읍', '남원', '김제', '완주', '진안', '무주', '장수', '임실', '순창', '고창', '부안'],
+          전남: ['전남', '전라남도', '목포', '여수', '순천', '나주', '광양', '담양', '곡성', '구례', '고흥', '보성', '화순', '장흥', '강진', '해남', '영암', '무안', '함평', '영광', '장성', '완도', '진도', '신안'],
+          경북: ['경북', '경상북도', '포항', '경주', '김천', '안동', '구미', '영주', '영천', '상주', '문경', '경산', '군위', '의성', '청송', '영양', '영덕', '청도', '고령', '성주', '칠곡', '예천', '봉화', '울진', '울릉'],
+          경남: ['경남', '경상남도', '창원', '진주', '통영', '사천', '김해', '밀양', '거제', '양산', '의령', '함안', '창녕', '고성', '남해', '하동', '산청', '함양', '거창', '합천'],
+          제주: ['제주', '제주도', '제주특별자치도', '서귀포'],
+        }
+        for (const [region, keywords] of Object.entries(REGION_KEYWORDS)) {
+          if (keywords.some((keyword) => compact.includes(keyword))) {
+            return region
+          }
+        }
+        const firstChunk = compact.split(/[,]/)[0] || ''
+        return firstChunk || compact
       }
 
       function syncMatchMemberOptions() {
@@ -5729,6 +5862,12 @@
         if (!targetRecord || !Array.isArray(matchHistory) || !matchHistory.length) {
           return introducedSet
         }
+        const incomingSelections = buildIncomingMatchHistoryEntries(targetRecord)
+        incomingSelections.forEach((entry) => {
+          if (entry?.candidateId) {
+            introducedSet.add(entry.candidateId)
+          }
+        })
         const targetId = targetRecord.id || ''
         const targetPhoneKey = normalizePhoneKey(targetRecord.phone)
         matchHistory.forEach((entry) => {
@@ -5742,6 +5881,47 @@
           }
         })
         return introducedSet
+      }
+
+      function buildIncomingMatchHistoryEntries(targetRecord) {
+        if (!targetRecord || !Array.isArray(matchHistory) || !matchHistory.length) return []
+        const currentWeek = getWeekInfo(new Date())
+        const targetId = targetRecord.id || ''
+        const targetPhoneKey = normalizePhoneKey(targetRecord.phone)
+        const targetSnapshot = buildCandidateSnapshot(targetRecord)
+        return matchHistory
+          .filter((entry) => {
+            if (!entry || isConfirmedMatchEntry(entry)) return false
+            const candidateMatch = targetId && entry.candidateId === targetId
+            const entryCandidatePhoneKey = normalizePhoneKey(
+              entry.candidatePhone || entry.candidate?.phone || '',
+            )
+            const phoneMatch = targetPhoneKey && entryCandidatePhoneKey === targetPhoneKey
+            if (!candidateMatch && !phoneMatch) return false
+            if (!entry.week) return true
+            return entry.week.year === currentWeek.year && entry.week.week === currentWeek.week
+          })
+          .map((entry) => {
+            const initiator =
+              entry.target ||
+              findMemberByIdOrPhone(entry.targetId, entry.targetPhone) ||
+              entry.target ||
+              null
+            const initiatorSnapshot = initiator ? buildCandidateSnapshot(initiator) : null
+            return {
+              ...entry,
+              id: entry.id,
+              direction: 'incoming',
+              candidateId: initiatorSnapshot?.id || entry.targetId || entry.candidateId || '',
+              candidate: initiatorSnapshot || entry.target || null,
+              targetId: targetSnapshot.id || entry.candidateId || '',
+              target: targetSnapshot || entry.candidate || null,
+              targetPhone: targetSnapshot.phone || entry.candidatePhone || '',
+              targetSelected: true,
+            }
+          })
+          .filter((entry) => entry.candidateId)
+          .sort((a, b) => (b.matchedAt || 0) - (a.matchedAt || 0))
       }
 
       function doesHistoryEntryMatchTarget(entry, targetId, targetPhoneKey) {
@@ -6399,7 +6579,18 @@
         updateMatchedCouplesButton()
         if (!matchHistoryList || !matchHistorySummaryEl) return
         const activeEntries = getActiveMatchHistoryEntries()
-        const enrichedEntries = mergeConfirmedEntriesForActiveTarget(activeEntries)
+        const activeTargetRecord =
+          items.find((item) => item.id === matchSelectionTargetId) ||
+          (matchSelectionTargetPhoneKey
+            ? items.find(
+                (item) => normalizePhoneKey(item.phone) === normalizePhoneKey(matchSelectionTargetPhoneKey),
+              )
+            : null)
+        const incomingEntries = buildIncomingMatchHistoryEntries(activeTargetRecord)
+        const enrichedEntries = mergeConfirmedEntriesForActiveTarget([
+          ...activeEntries,
+          ...incomingEntries,
+        ])
         matchHistorySummaryEl.textContent = `${enrichedEntries.length}명`
         if (!matchSelectionTargetId && !matchSelectionTargetPhoneKey) {
         matchHistoryList.innerHTML =
@@ -6532,6 +6723,9 @@
       }
 
       function getMatchHistoryStatusLabel(entry) {
+        if (entry?.direction === 'incoming') {
+          return '선택 당함'
+        }
         if (isConfirmedMatchEntry(entry)) {
           return entry?.extraMatch ? '추가 매칭 완료' : '매칭 완료'
         }
@@ -6859,23 +7053,58 @@
       }
 
       async function deleteMatchedCouple(matchId) {
-        const removedEntry = confirmedMatches.find((entry) => entry.id === matchId)
+        const targetEntry = confirmedMatches.find((entry) => entry.id === matchId)
+        if (!targetEntry) return
+
+        // 같은 커플에 대한 중복 기록을 한 번에 정리하기 위해 pairKey 로 모두 수집
+        const pairKey = buildMatchPairKey(targetEntry)
+        const duplicateEntries = pairKey
+          ? confirmedMatches.filter((entry) => buildMatchPairKey(entry) === pairKey)
+          : [targetEntry]
+        const idsToDelete = Array.from(
+          new Set(duplicateEntries.map((entry) => entry.id).filter(Boolean)),
+        )
+        if (!idsToDelete.length) return
+
+        const failures = []
         try {
-          const response = await fetch(`${MATCH_HISTORY_API_URL}/${encodeURIComponent(matchId)}`, {
-            method: 'DELETE',
-          })
-          if (!response.ok) {
-            const message = await response
-              .json()
-              .then((body) => body?.message)
-              .catch(() => '')
-            throw new Error(message || `HTTP ${response.status}`)
+          const results = await Promise.allSettled(
+            idsToDelete.map((id) =>
+              fetch(`${MATCH_HISTORY_API_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+            ),
+          )
+          for (let i = 0; i < results.length; i += 1) {
+            const result = results[i]
+            if (result.status === 'rejected') {
+              failures.push({ id: idsToDelete[i], reason: result.reason })
+              continue
+            }
+            const response = result.value
+            if (!response.ok) {
+              const message = await response
+                .json()
+                .then((body) => body?.message)
+                .catch(() => '')
+              failures.push({ id: idsToDelete[i], reason: new Error(message || `HTTP ${response.status}`) })
+            }
           }
-          confirmedMatches = confirmedMatches.filter((entry) => entry.id !== matchId)
-          saveConfirmedMatches()
-          updateMatchedCouplesButton()
-          renderMatchedCouplesModal()
-          rebuildMatchedCandidateIds()
+
+          const succeededIds = idsToDelete.filter(
+            (id) => !failures.find((failure) => failure.id === id),
+          )
+          if (succeededIds.length) {
+            confirmedMatches = confirmedMatches.filter((entry) => !succeededIds.includes(entry.id))
+            saveConfirmedMatches()
+            updateMatchedCouplesButton()
+            renderMatchedCouplesModal()
+            rebuildMatchedCandidateIds()
+          }
+
+          if (failures.length) {
+            const firstError = failures[0]?.reason
+            throw firstError instanceof Error ? firstError : new Error('매칭 삭제에 실패했습니다.')
+          }
+
           showToast('이번주 소개를 삭제했습니다.')
         } catch (error) {
           console.error('[match-confirmed] 삭제 실패', error)
