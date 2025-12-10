@@ -704,6 +704,12 @@
       }
       function getRecordFormType(record) {
         if (!record || typeof record !== 'object') return FORM_TYPE_DEFAULT
+        const appTypeRaw =
+          typeof record.applicationType === 'string'
+            ? record.applicationType.trim().toLowerCase()
+            : ''
+        if (appTypeRaw === FORM_TYPE_MOIM) return FORM_TYPE_MOIM
+        if (appTypeRaw === FORM_TYPE_DEFAULT) return FORM_TYPE_DEFAULT
         const raw = typeof record.formType === 'string' ? record.formType.trim().toLowerCase() : ''
         if (raw === FORM_TYPE_MOIM) return FORM_TYPE_MOIM
         if (raw === FORM_TYPE_DEFAULT) return FORM_TYPE_DEFAULT
