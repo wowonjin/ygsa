@@ -165,6 +165,8 @@
 <div class="consult-form">
   <!-- action 속성을 배포된 백엔드 주소로 맞춰주세요. 아래 기본값은 Render 예시입니다. -->
   <form id="contactForm" action="https://ygsa-backend.onrender.com/api/consult" method="POST" novalidate>
+    <input type="hidden" name="formType" value="consult" />
+    <input type="hidden" name="applicationType" value="consult" />
     <div class="grid">
       <!-- 성명 -->
       <div class="field">
@@ -603,6 +605,8 @@
     }
 
     const data = {
+      formType: 'consult',
+      applicationType: 'consult',
       name:  (form.querySelector('#name')   ?.value || '').trim(),
       gender:(form.querySelector('#gender') ?.value || ''),
       phone: (form.querySelector('#phone')  ?.value || ''),
