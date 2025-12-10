@@ -314,7 +314,7 @@
 <div class="consult-form">
   <!-- action 속성을 배포된 백엔드 주소로 맞춰주세요. 아래 기본값은 Render 예시입니다. -->
   <form id="contactForm" action="https://ygsa-backend.onrender.com/api/consult" method="POST" novalidate>
-    <input type="hidden" name="formType" value="moim" />
+    <input type="hidden" name="formType" value="consult" />
     <div class="grid">
       <div class="section-heading">기본 프로필</div>
 
@@ -831,8 +831,8 @@
     }
 
     const data = {
-      formType: 'moim',
-      applicationType: 'moim',
+      formType: 'consult',
+      applicationType: 'consult',
       name:  (form.querySelector('#name')   ?.value || '').trim(),
       gender:(form.querySelector('#gender') ?.value || ''),
       phone: (form.querySelector('#phone')  ?.value || ''),
@@ -846,6 +846,7 @@
       participationGoal:(form.querySelector('#purpose') ?.value || ''),
       socialEnergy:(form.querySelector('#socialEnergy') ?.value || ''),
       weekendPreference:(form.querySelector('#weekendStyle') ?.value || ''),
+      referralSource: '모임',
       agree: (form.querySelector('#agree')  ?.checked || false),
       rulesAgree:(form.querySelector('#rulesAgree')  ?.checked || false),
       refundAgree:(form.querySelector('#refundAgree')  ?.checked || false)
