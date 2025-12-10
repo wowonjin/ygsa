@@ -719,7 +719,11 @@
 
       function matchesVariant(record) {
         const type = getRecordFormType(record)
-        return IS_MOIM_VIEW ? type === FORM_TYPE_MOIM : type !== FORM_TYPE_MOIM
+        if (IS_MOIM_VIEW) {
+          return type === FORM_TYPE_MOIM
+        }
+        // 상담(기본) 뷰에서는 모든 데이터를 표시해 모임 태깅 오류로 인한 누락을 방지
+        return true
       }
 
       function filterByVariant(list) {
