@@ -702,19 +702,12 @@
         '7': '2억-3억원',
         '8': '3억원 이상',
       }
-      function hasMoimIndicatorsLocal(record) {
-        if (!record || typeof record !== 'object') return false
-        return MOIM_INDICATOR_KEYS.some((key) => {
-          const value = record[key]
-          return typeof value === 'string' && value.trim()
-        })
-      }
-
       function getRecordFormType(record) {
         if (!record || typeof record !== 'object') return FORM_TYPE_DEFAULT
         const raw = typeof record.formType === 'string' ? record.formType.trim().toLowerCase() : ''
         if (raw === FORM_TYPE_MOIM) return FORM_TYPE_MOIM
-        if (hasMoimIndicatorsLocal(record)) return FORM_TYPE_MOIM
+        if (raw === FORM_TYPE_DEFAULT) return FORM_TYPE_DEFAULT
+        // 기본값은 상담(consult)
         return FORM_TYPE_DEFAULT
       }
 
