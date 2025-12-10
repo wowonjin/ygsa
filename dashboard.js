@@ -4150,6 +4150,7 @@
         }
 
         const payload = {
+          formType: IS_MOIM_VIEW ? FORM_TYPE_MOIM : FORM_TYPE_DEFAULT,
           name: nameValue,
           gender: genderValue,
           phone: phoneValue,
