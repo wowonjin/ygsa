@@ -162,9 +162,19 @@
           <h3>최근 7일 그래프</h3>
           <button type="button" id="schedulerChartCloseBtn" aria-label="그래프 모달 닫기">×</button>
         </header>
-        <div class="referral-chart-body">
-          <p class="referral-chart-summary">일자별 증가량과 누적 합계를 확인하세요.</p>
-          <ul id="schedulerChartBars" class="referral-chart-list"></ul>
+        <div class="referral-chart-body scheduler-chart-body">
+          <p class="referral-chart-summary" id="schedulerChartSummary">월요일부터 일요일까지 신청 인원 추이를 확인하세요.</p>
+          <div
+            id="schedulerChartGraph"
+            class="scheduler-chart-graph"
+            role="img"
+            aria-label="이번 주 신청 인원 선 그래프"
+          ></div>
+          <div class="scheduler-chart-legend">
+            <span class="legend-dot is-count" aria-hidden="true"></span>
+            <span>일별 신청 인원</span>
+            <span class="scheduler-chart-today" id="schedulerChartTodayLabel"></span>
+          </div>
         </div>
       </div>
     </div>

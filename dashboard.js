@@ -321,7 +321,9 @@
       const schedulerChartBtn = document.getElementById('schedulerChartBtn')
       const schedulerChartModal = document.getElementById('schedulerChartModal')
       const schedulerChartCloseBtn = document.getElementById('schedulerChartCloseBtn')
-      const schedulerChartBars = document.getElementById('schedulerChartBars')
+      const schedulerChartGraph = document.getElementById('schedulerChartGraph')
+      const schedulerChartTodayLabel = document.getElementById('schedulerChartTodayLabel')
+      const schedulerChartSummaryEl = document.getElementById('schedulerChartSummary')
       const pageHeadingEl = document.getElementById('pageHeading')
       const noteToggleBtn = document.getElementById('noteToggleBtn')
       const stickyNoteEl = document.getElementById('stickyNote')
@@ -1148,34 +1150,108 @@
       }
 
       function renderSchedulerChart() {
-        if (!schedulerChartBars) return
+        if (!schedulerChartGraph) return
         const buckets = buildCurrentWeekBuckets(items)
-        let cumulative = 0
-        const data = buckets.map((bucket) => {
-          cumulative += bucket.count
-          return {
-            label: `${bucket.label} (${bucket.weekday})`,
-            count: bucket.count,
-            cumulative,
-            isToday: bucket.isToday,
-          }
+        const startLabel = buckets[0]?.label
+        const endLabel = buckets[buckets.length - 1]?.label
+        if (schedulerChartSummaryEl && startLabel && endLabel) {
+          schedulerChartSummaryEl.textContent = `${startLabel} ~ ${endLabel} 신청 인원 (월~일)`
+        }
+        const todayBucket = buckets.find((bucket) => bucket.isToday)
+        if (schedulerChartTodayLabel) {
+          schedulerChartTodayLabel.textContent = todayBucket
+            ? `오늘(${todayBucket.weekday}) ${todayBucket.count.toLocaleString('ko-KR')}명`
+            : ''
+        }
+        if (!buckets.length) {
+          schedulerChartGraph.innerHTML =
+            '<p class="scheduler-chart-empty">표시할 데이터가 없습니다.</p>'
+          return
+        }
+        const maxCount = Math.max(...buckets.map((bucket) => bucket.count), 1)
+        const tickCount = 4
+        const tickStep = Math.max(1, Math.ceil(maxCount / tickCount))
+        const chartMax = tickStep * tickCount
+        const width = 1100
+        const height = 520
+        const padding = 64
+        const usableW = width - padding * 2
+        const usableH = height - padding * 2
+        const points = buckets.map((bucket, index) => {
+          const ratio = buckets.length > 1 ? index / (buckets.length - 1) : 0
+          const x = padding + ratio * usableW
+          const y = padding + (1 - bucket.count / chartMax) * usableH
+          return { x, y, bucket }
         })
-        const maxCumulative = Math.max(...data.map((d) => d.cumulative), 0) || 1
-        schedulerChartBars.innerHTML = data
-          .map((entry) => {
-            const width = Math.round((entry.cumulative / maxCumulative) * 100)
-            const todayClass = entry.isToday ? 'referral-list-active' : ''
-            return `
-              <li class="referral-chart-item ${todayClass}">
-                <div class="referral-chart-label">${escapeHtml(entry.label)}</div>
-                <div class="referral-chart-bar" style="--bar-width:${width}%;">
-                  <span class="referral-chart-value">${entry.cumulative.toLocaleString('ko-KR')}명</span>
-                </div>
-                <p class="referral-chart-note">일별 +${entry.count.toLocaleString('ko-KR')}명</p>
-              </li>
-            `
-          })
-          .join('')
+        const pathD = points
+          .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`)
+          .join(' ')
+        const areaD = [
+          `M ${points[0].x} ${height - padding}`,
+          ...points.map((point) => `L ${point.x} ${point.y}`),
+          `L ${points[points.length - 1].x} ${height - padding}`,
+          'Z',
+        ].join(' ')
+        const yTicks = Array.from({ length: tickCount + 1 }, (_, i) => i * tickStep)
+        schedulerChartGraph.innerHTML = `
+          <div class="scheduler-chart-wrapper">
+            <svg viewBox="0 0 ${width} ${height}" role="presentation" aria-hidden="true">
+              <defs>
+                <linearGradient id="schedulerLineGradient" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stop-color="#60a5fa" stop-opacity="0.45" />
+                  <stop offset="100%" stop-color="#1d4ed8" stop-opacity="0.05" />
+                </linearGradient>
+              </defs>
+              ${yTicks
+                .map((tick) => {
+                  const y = padding + (1 - tick / chartMax) * usableH
+                  return `
+                    <line class="scheduler-chart-grid" x1="${padding}" x2="${width - padding}" y1="${y}" y2="${y}" />
+                    <text class="scheduler-chart-label" x="${padding - 10}" y="${y + 4}">${tick.toLocaleString(
+                      'ko-KR'
+                    )}</text>
+                  `
+                })
+                .join('')}
+              ${points
+                .map(
+                  (point) => `
+                    <line
+                      class="scheduler-chart-grid is-vertical"
+                      x1="${point.x}"
+                      x2="${point.x}"
+                      y1="${padding}"
+                      y2="${height - padding}"
+                    />
+                  `
+                )
+                .join('')}
+              <path class="scheduler-chart-area" d="${areaD}" />
+              <path class="scheduler-chart-line" d="${pathD}" />
+              ${points
+                .map(
+                  (point) => `
+                    <circle
+                      class="scheduler-chart-point ${point.bucket.isToday ? 'is-today' : ''}"
+                      cx="${point.x}"
+                      cy="${point.y}"
+                      r="5"
+                    />
+                    <text class="scheduler-chart-label is-top" x="${point.x}" y="${point.y - 12}">
+                      ${point.bucket.count.toLocaleString('ko-KR')}명
+                    </text>
+                    <text class="scheduler-chart-xlabel" x="${point.x}" y="${height - padding + 20}">
+                      ${point.bucket.weekday}
+                    </text>
+                    <text class="scheduler-chart-xlabel is-date" x="${point.x}" y="${height - padding + 36}">
+                      ${point.bucket.label}
+                    </text>
+                  `
+                )
+                .join('')}
+            </svg>
+          </div>
+        `
       }
 
       function buildCurrentWeekBuckets(list) {

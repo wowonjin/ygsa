@@ -1939,6 +1939,99 @@ body.modal-open {
         text-align: center;
         color: #8b949e;
       }
+      .scheduler-chart-body {
+        gap: 16px;
+      }
+      #schedulerChartModal .simple-modal {
+        width: min(1100px, 95vw);
+      }
+      .scheduler-chart-graph {
+        border: none;
+        border-radius: 0;
+        background: transparent;
+        padding: 0;
+      }
+      .scheduler-chart-wrapper {
+        width: 100%;
+        height: auto;
+      }
+      .scheduler-chart-wrapper svg {
+        width: 100%;
+        height: 520px;
+        display: block;
+      }
+      .scheduler-chart-grid {
+        stroke: rgba(148, 163, 184, 0.25);
+        stroke-width: 1;
+      }
+      .scheduler-chart-grid.is-vertical {
+        stroke-dasharray: 4 4;
+      }
+      .scheduler-chart-area {
+        fill: url(#schedulerLineGradient);
+      }
+      .scheduler-chart-line {
+        fill: none;
+        stroke: #60a5fa;
+        stroke-width: 3;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        filter: drop-shadow(0 8px 14px rgba(37, 99, 235, 0.15));
+      }
+      .scheduler-chart-point {
+        fill: #60a5fa;
+        stroke: #0b1220;
+        stroke-width: 2;
+      }
+      .scheduler-chart-point.is-today {
+        fill: #f87171;
+      }
+      .scheduler-chart-label {
+        fill: #c9d1d9;
+        font-size: 12px;
+        text-anchor: middle;
+      }
+      .scheduler-chart-label.is-top {
+        font-size: 11px;
+      }
+      .scheduler-chart-xlabel {
+        fill: #9da4b0;
+        font-size: 12px;
+        text-anchor: middle;
+      }
+      .scheduler-chart-xlabel.is-date {
+        font-size: 11px;
+        fill: #6b7280;
+      }
+      .scheduler-chart-legend {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #cbd5e1;
+        font-size: 13px;
+      }
+      .legend-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+        background: linear-gradient(90deg, #60a5fa, #1d4ed8);
+      }
+      .legend-dot.is-count {
+        box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.18);
+      }
+      .scheduler-chart-today {
+        margin-left: auto;
+        color: #fbbf24;
+        font-weight: 600;
+      }
+      .scheduler-chart-empty {
+        margin: 0;
+        padding: 18px;
+        text-align: center;
+        color: #8b949e;
+        font-size: 14px;
+      }
       .matched-couples-modal {
         width: min(600px, 92vw);
       }
