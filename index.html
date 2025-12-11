@@ -81,6 +81,10 @@
                 <span class="material-symbols-rounded" aria-hidden="true">calendar_month</span>
                 <span>캘린더 보기</span>
               </button>
+              <button type="button" id="schedulerChartBtn" class="scheduler-calendar-btn">
+                <span class="material-symbols-rounded" aria-hidden="true">stacked_bar_chart</span>
+                <span>그래프로 보기</span>
+              </button>
           </div>
           <p id="schedulerSubtitle">최근 7일 신청 인원 흐름</p>
         </div>
@@ -149,6 +153,18 @@
             <h4 id="calendarSelectedTitle">선택된 일정</h4>
             <ul id="calendarAppointmentList" class="calendar-appointments"></ul>
           </aside>
+        </div>
+      </div>
+    </div>
+    <div class="simple-modal-overlay" id="schedulerChartModal" hidden>
+      <div class="simple-modal">
+        <header class="simple-modal-header">
+          <h3>최근 7일 그래프</h3>
+          <button type="button" id="schedulerChartCloseBtn" aria-label="그래프 모달 닫기">×</button>
+        </header>
+        <div class="referral-chart-body">
+          <p class="referral-chart-summary">일자별 증가량과 누적 합계를 확인하세요.</p>
+          <ul id="schedulerChartBars" class="referral-chart-list"></ul>
         </div>
       </div>
     </div>

@@ -318,6 +318,10 @@
       const schedulerSubtitleEl = document.getElementById('schedulerSubtitle')
       const schedulerTotalEl = document.getElementById('schedulerTotal')
       const schedulerGridEl = document.getElementById('schedulerGrid')
+      const schedulerChartBtn = document.getElementById('schedulerChartBtn')
+      const schedulerChartModal = document.getElementById('schedulerChartModal')
+      const schedulerChartCloseBtn = document.getElementById('schedulerChartCloseBtn')
+      const schedulerChartBars = document.getElementById('schedulerChartBars')
       const pageHeadingEl = document.getElementById('pageHeading')
       const noteToggleBtn = document.getElementById('noteToggleBtn')
       const stickyNoteEl = document.getElementById('stickyNote')
@@ -1028,6 +1032,16 @@
         openWeeklyModal('picker')
       })
       weeklySummaryList?.addEventListener('click', handleWeeklySummaryClick)
+      schedulerChartBtn?.addEventListener('click', () => {
+        renderSchedulerChart()
+        if (schedulerChartModal) schedulerChartModal.hidden = false
+      })
+      schedulerChartCloseBtn?.addEventListener('click', () => {
+        if (schedulerChartModal) schedulerChartModal.hidden = true
+      })
+      schedulerChartModal?.addEventListener('click', (event) => {
+        if (event.target === schedulerChartModal) schedulerChartModal.hidden = true
+      })
       searchInput.addEventListener('input', (event) => {
         viewState.search = event.target.value.trim()
         render()
@@ -1131,6 +1145,37 @@
           `
           schedulerGridEl.appendChild(card)
         })
+      }
+
+      function renderSchedulerChart() {
+        if (!schedulerChartBars) return
+        const buckets = buildSchedulerBuckets(items, SCHEDULER_DAY_WINDOW)
+        let cumulative = 0
+        const data = buckets.map((bucket) => {
+          cumulative += bucket.count
+          return {
+            label: `${bucket.label} (${bucket.weekday})`,
+            count: bucket.count,
+            cumulative,
+            isToday: bucket.isToday,
+          }
+        })
+        const maxCumulative = Math.max(...data.map((d) => d.cumulative), 0) || 1
+        schedulerChartBars.innerHTML = data
+          .map((entry) => {
+            const width = Math.round((entry.cumulative / maxCumulative) * 100)
+            const todayClass = entry.isToday ? 'referral-list-active' : ''
+            return `
+              <li class="referral-chart-item ${todayClass}">
+                <div class="referral-chart-label">${escapeHtml(entry.label)}</div>
+                <div class="referral-chart-bar" style="--bar-width:${width}%;">
+                  <span class="referral-chart-value">${entry.cumulative.toLocaleString('ko-KR')}명</span>
+                </div>
+                <p class="referral-chart-note">일별 +${entry.count.toLocaleString('ko-KR')}명</p>
+              </li>
+            `
+          })
+          .join('')
       }
 
       function renderWeeklySummary() {
