@@ -1149,7 +1149,7 @@
 
       function renderSchedulerChart() {
         if (!schedulerChartBars) return
-        const buckets = buildSchedulerBuckets(items, SCHEDULER_DAY_WINDOW)
+        const buckets = buildCurrentWeekBuckets(items)
         let cumulative = 0
         const data = buckets.map((bucket) => {
           cumulative += bucket.count
@@ -1176,6 +1176,29 @@
             `
           })
           .join('')
+      }
+
+      function buildCurrentWeekBuckets(list) {
+        const now = new Date()
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        const mondayOffset = (today.getDay() + 6) % 7 // 0=Sun -> 6, 1=Mon ->0
+        const monday = new Date(today)
+        monday.setDate(today.getDate() - mondayOffset)
+        const buckets = []
+        for (let i = 0; i < 7; i += 1) {
+          const start = new Date(monday)
+          start.setDate(monday.getDate() + i)
+          const end = new Date(start)
+          end.setDate(start.getDate() + 1)
+          const count = countRecordsInRange(list, start, end)
+          buckets.push({
+            label: `${start.getMonth() + 1}/${start.getDate()}`,
+            weekday: WEEKDAY_LABELS[start.getDay()],
+            count,
+            isToday: start.getTime() === today.getTime(),
+          })
+        }
+        return buckets
       }
 
       function renderWeeklySummary() {
