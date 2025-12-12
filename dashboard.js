@@ -1151,11 +1151,11 @@
 
       function renderSchedulerChart() {
         if (!schedulerChartGraph) return
-        const buckets = buildCurrentWeekBuckets(items)
+        const buckets = buildAllTimeDailyBuckets(items)
         const startLabel = buckets[0]?.label
         const endLabel = buckets[buckets.length - 1]?.label
         if (schedulerChartSummaryEl && startLabel && endLabel) {
-          schedulerChartSummaryEl.textContent = `${startLabel} ~ ${endLabel} 신청 인원 (월~일)`
+          schedulerChartSummaryEl.textContent = `${startLabel} ~ ${endLabel} 신청 인원 (전체)`
         }
         const todayBucket = buckets.find((bucket) => bucket.isToday)
         if (schedulerChartTodayLabel) {
@@ -1292,6 +1292,37 @@
             count,
             isToday: start.getTime() === today.getTime(),
           })
+        }
+        return buckets
+      }
+
+      function buildAllTimeDailyBuckets(list) {
+        const source = Array.isArray(list) ? list : []
+        const dates = source
+          .map((item) => {
+            const created = item?.createdAt ? new Date(item.createdAt) : null
+            return created && !Number.isNaN(created.getTime()) ? created : null
+          })
+          .filter(Boolean)
+          .sort((a, b) => a.getTime() - b.getTime())
+        if (!dates.length) return []
+        const startDate = new Date(dates[0].getFullYear(), dates[0].getMonth(), dates[0].getDate())
+        const now = new Date()
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        const buckets = []
+        const cursor = new Date(startDate)
+        while (cursor.getTime() <= today.getTime()) {
+          const start = new Date(cursor)
+          const end = new Date(cursor)
+          end.setDate(cursor.getDate() + 1)
+          const count = countRecordsInRange(source, start, end)
+          buckets.push({
+            label: `${start.getMonth() + 1}/${start.getDate()}`,
+            weekday: WEEKDAY_LABELS[start.getDay()],
+            count,
+            isToday: start.getTime() === today.getTime(),
+          })
+          cursor.setDate(cursor.getDate() + 1)
         }
         return buckets
       }
