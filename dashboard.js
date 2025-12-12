@@ -1168,27 +1168,39 @@
             '<p class="scheduler-chart-empty">표시할 데이터가 없습니다.</p>'
           return
         }
-        const maxCount = Math.max(...buckets.map((bucket) => bucket.count), 1)
+        let runningTotal = 0
+        const data = buckets.map((bucket) => {
+          runningTotal += bucket.count
+          return { ...bucket, cumulative: runningTotal }
+        })
+        const maxSeriesValue = Math.max(
+          ...data.map((bucket) => Math.max(bucket.count, bucket.cumulative)),
+          1
+        )
         const tickCount = 4
-        const tickStep = Math.max(1, Math.ceil(maxCount / tickCount))
+        const tickStep = Math.max(1, Math.ceil(maxSeriesValue / tickCount))
         const chartMax = tickStep * tickCount
         const width = 1100
         const height = 520
         const padding = 64
         const usableW = width - padding * 2
         const usableH = height - padding * 2
-        const points = buckets.map((bucket, index) => {
-          const ratio = buckets.length > 1 ? index / (buckets.length - 1) : 0
+        const points = data.map((bucket, index) => {
+          const ratio = data.length > 1 ? index / (data.length - 1) : 0
           const x = padding + ratio * usableW
-          const y = padding + (1 - bucket.count / chartMax) * usableH
-          return { x, y, bucket }
+          const yDaily = padding + (1 - bucket.count / chartMax) * usableH
+          const yCumulative = padding + (1 - bucket.cumulative / chartMax) * usableH
+          return { x, yDaily, yCumulative, bucket }
         })
-        const pathD = points
-          .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`)
+        const dailyPath = points
+          .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.yDaily}`)
+          .join(' ')
+        const cumulativePath = points
+          .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.yCumulative}`)
           .join(' ')
         const areaD = [
           `M ${points[0].x} ${height - padding}`,
-          ...points.map((point) => `L ${point.x} ${point.y}`),
+          ...points.map((point) => `L ${point.x} ${point.yDaily}`),
           `L ${points[points.length - 1].x} ${height - padding}`,
           'Z',
         ].join(' ')
@@ -1227,17 +1239,24 @@
                 )
                 .join('')}
               <path class="scheduler-chart-area" d="${areaD}" />
-              <path class="scheduler-chart-line" d="${pathD}" />
+              <path class="scheduler-chart-line" d="${dailyPath}" />
+              <path class="scheduler-chart-line is-cumulative" d="${cumulativePath}" />
               ${points
                 .map(
                   (point) => `
                     <circle
                       class="scheduler-chart-point ${point.bucket.isToday ? 'is-today' : ''}"
                       cx="${point.x}"
-                      cy="${point.y}"
+                      cy="${point.yDaily}"
                       r="5"
                     />
-                    <text class="scheduler-chart-label is-top" x="${point.x}" y="${point.y - 12}">
+                    <circle
+                      class="scheduler-chart-point is-cumulative"
+                      cx="${point.x}"
+                      cy="${point.yCumulative}"
+                      r="5"
+                    />
+                    <text class="scheduler-chart-label is-top" x="${point.x}" y="${point.yDaily - 12}">
                       ${point.bucket.count.toLocaleString('ko-KR')}명
                     </text>
                     <text class="scheduler-chart-xlabel" x="${point.x}" y="${height - padding + 20}">
