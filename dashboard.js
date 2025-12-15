@@ -1610,10 +1610,22 @@
       }
 
       function render() {
+        // NOTE: 렌더 중 예외가 발생하면 cardsEl.innerHTML='' 이후로 진행이 멈춰
+        // "카드가 전부 사라진 것처럼" 보일 수 있습니다.
+        // 따라서 준비/통계 계산을 먼저 수행하고, 성공했을 때만 DOM을 교체합니다.
+        let prepared = []
+        try {
+          prepared = getPreparedItems()
+          updateGenderStatsDisplay(prepared)
+          updateReferralStats(prepared)
+        } catch (error) {
+          console.error('[render] failed:', error)
+          // 기존 UI는 유지 (빈 화면 방지)
+          showToast('화면 갱신 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.')
+          return
+        }
+
         cardsEl.innerHTML = ''
-        const prepared = getPreparedItems()
-        updateGenderStatsDisplay(prepared)
-        updateReferralStats(prepared)
         if (!prepared.length) {
           if (emptyEl) {
             emptyEl.textContent =
@@ -1628,8 +1640,12 @@
         const fragment = document.createDocumentFragment()
         const cardFields = IS_MOIM_VIEW ? null : getCardFieldDefs()
         prepared.forEach((item) => {
-          const card = IS_MOIM_VIEW ? renderMoimCard(item) : renderConsultCard(item, cardFields)
-          fragment.appendChild(card)
+          try {
+            const card = IS_MOIM_VIEW ? renderMoimCard(item) : renderConsultCard(item, cardFields)
+            fragment.appendChild(card)
+          } catch (error) {
+            console.error('[render] card failed:', error, item)
+          }
         })
         cardsEl.appendChild(fragment)
         refreshWeeklySummaryIfOpen()
