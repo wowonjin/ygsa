@@ -324,6 +324,12 @@
       const schedulerChartGraph = document.getElementById('schedulerChartGraph')
       const schedulerChartTodayLabel = document.getElementById('schedulerChartTodayLabel')
       const schedulerChartSummaryEl = document.getElementById('schedulerChartSummary')
+      const monthlyRevenueBtn = document.getElementById('monthlyRevenueBtn')
+      const monthlyRevenueModal = document.getElementById('monthlyRevenueModal')
+      const monthlyRevenueCloseBtn = document.getElementById('monthlyRevenueCloseBtn')
+      const monthlyRevenueList = document.getElementById('monthlyRevenueList')
+      const monthlyRevenueSummary = document.getElementById('monthlyRevenueSummary')
+      const monthlyRevenueEmpty = document.getElementById('monthlyRevenueEmpty')
       const pageHeadingEl = document.getElementById('pageHeading')
       const noteToggleBtn = document.getElementById('noteToggleBtn')
       const stickyNoteEl = document.getElementById('stickyNote')
@@ -1044,6 +1050,16 @@
       schedulerChartModal?.addEventListener('click', (event) => {
         if (event.target === schedulerChartModal) schedulerChartModal.hidden = true
       })
+      monthlyRevenueBtn?.addEventListener('click', () => {
+        renderMonthlyRevenueChart()
+        if (monthlyRevenueModal) monthlyRevenueModal.hidden = false
+      })
+      monthlyRevenueCloseBtn?.addEventListener('click', () => {
+        if (monthlyRevenueModal) monthlyRevenueModal.hidden = true
+      })
+      monthlyRevenueModal?.addEventListener('click', (event) => {
+        if (event.target === monthlyRevenueModal) monthlyRevenueModal.hidden = true
+      })
       searchInput.addEventListener('input', (event) => {
         viewState.search = event.target.value.trim()
         render()
@@ -1325,6 +1341,79 @@
           cursor.setDate(cursor.getDate() + 1)
         }
         return buckets
+      }
+
+      function buildMonthlyRevenueBuckets(list) {
+        const source = Array.isArray(list) ? list : []
+        const map = new Map()
+        const addEntry = (amount, date) => {
+          const numeric = Number(sanitizePaymentAmount(amount))
+          if (!Number.isFinite(numeric) || numeric <= 0) return
+          const paidAt = new Date(date)
+          if (Number.isNaN(paidAt.getTime())) return
+          const year = paidAt.getFullYear()
+          const month = paidAt.getMonth() + 1
+          const key = `${year}-${String(month).padStart(2, '0')}`
+          if (!map.has(key)) {
+            map.set(key, { key, year, month, monthlyAmount: 0 })
+          }
+          map.get(key).monthlyAmount += numeric
+        }
+        source.forEach((record) => {
+          const history = getPaymentHistoryEntries(record)
+          history.forEach((entry) => {
+            const dateValue = entry.paymentDate || entry.recordedAt
+            addEntry(entry.paymentAmount, dateValue)
+          })
+        })
+        const buckets = Array.from(map.values()).sort((a, b) => {
+          if (a.year === b.year) return a.month - b.month
+          return a.year - b.year
+        })
+        let cumulative = 0
+        return buckets.map((bucket) => {
+          cumulative += bucket.monthlyAmount
+          return {
+            ...bucket,
+            label: `${bucket.year}년 ${String(bucket.month).padStart(2, '0')}월`,
+            monthlyAmount: bucket.monthlyAmount,
+            cumulativeAmount: cumulative,
+          }
+        })
+      }
+
+      function renderMonthlyRevenueChart() {
+        if (!monthlyRevenueList || !monthlyRevenueSummary || !monthlyRevenueEmpty) return
+        const buckets = buildMonthlyRevenueBuckets(items)
+        if (!buckets.length) {
+          monthlyRevenueSummary.textContent = '표시할 월간 매출 데이터가 없습니다.'
+          monthlyRevenueList.innerHTML = ''
+          monthlyRevenueEmpty.hidden = false
+          return
+        }
+        monthlyRevenueEmpty.hidden = true
+        const total = buckets.reduce((sum, bucket) => sum + bucket.monthlyAmount, 0)
+        const maxMonthly = Math.max(...buckets.map((b) => b.monthlyAmount), 1)
+        const last = buckets[buckets.length - 1]
+        monthlyRevenueSummary.textContent = `총 ${total.toLocaleString(
+          'ko-KR',
+        )}원 · 최근 ${last.label} 기준 누적 ${last.cumulativeAmount.toLocaleString('ko-KR')}원`
+        monthlyRevenueList.innerHTML = buckets
+          .map((bucket) => {
+            const width = Math.round((bucket.monthlyAmount / maxMonthly) * 100)
+            return `
+              <li class="revenue-chart-item">
+                <div class="revenue-chart-label">
+                  <strong>${escapeHtml(bucket.label)}</strong>
+                  <span>당월 ${bucket.monthlyAmount.toLocaleString('ko-KR')}원 · 누적 ${bucket.cumulativeAmount.toLocaleString('ko-KR')}원</span>
+                </div>
+                <div class="revenue-chart-bar">
+                  <span style="width:${width}%"></span>
+                </div>
+              </li>
+            `
+          })
+          .join('')
       }
 
       function renderWeeklySummary() {

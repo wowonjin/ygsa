@@ -85,6 +85,10 @@
                 <span class="material-symbols-rounded" aria-hidden="true">stacked_bar_chart</span>
                 <span>그래프로 보기</span>
               </button>
+              <button type="button" id="monthlyRevenueBtn" class="scheduler-calendar-btn">
+                <span class="material-symbols-rounded" aria-hidden="true">trending_up</span>
+                <span>월간 매출 보기</span>
+              </button>
           </div>
           <p id="schedulerSubtitle">최근 7일 신청 인원 흐름</p>
         </div>
@@ -177,6 +181,19 @@
             <span>누적 인원</span>
             <span class="scheduler-chart-today" id="schedulerChartTodayLabel"></span>
           </div>
+        </div>
+      </div>
+    </div>
+    <div class="simple-modal-overlay" id="monthlyRevenueModal" hidden>
+      <div class="simple-modal revenue-chart-modal">
+        <header class="simple-modal-header">
+          <h3>월간 매출 현황</h3>
+          <button type="button" id="monthlyRevenueCloseBtn" aria-label="매출 모달 닫기">×</button>
+        </header>
+        <div class="revenue-chart-body">
+          <p id="monthlyRevenueSummary" class="revenue-chart-summary">회원 결제 내역을 월별로 집계합니다.</p>
+          <ul id="monthlyRevenueList" class="revenue-chart-list"></ul>
+          <p id="monthlyRevenueEmpty" class="revenue-chart-empty" hidden>표시할 데이터가 없습니다.</p>
         </div>
       </div>
     </div>
