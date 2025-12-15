@@ -330,6 +330,7 @@
       const monthlyRevenueList = document.getElementById('monthlyRevenueList')
       const monthlyRevenueSummary = document.getElementById('monthlyRevenueSummary')
       const monthlyRevenueEmpty = document.getElementById('monthlyRevenueEmpty')
+      const monthlyRevenueGraph = document.getElementById('monthlyRevenueGraph')
       const pageHeadingEl = document.getElementById('pageHeading')
       const noteToggleBtn = document.getElementById('noteToggleBtn')
       const stickyNoteEl = document.getElementById('stickyNote')
@@ -1383,21 +1384,30 @@
       }
 
       function renderMonthlyRevenueChart() {
-        if (!monthlyRevenueList || !monthlyRevenueSummary || !monthlyRevenueEmpty) return
+        if (
+          !monthlyRevenueList ||
+          !monthlyRevenueSummary ||
+          !monthlyRevenueEmpty ||
+          !monthlyRevenueGraph
+        )
+          return
         const buckets = buildMonthlyRevenueBuckets(items)
         if (!buckets.length) {
           monthlyRevenueSummary.textContent = '표시할 월간 매출 데이터가 없습니다.'
           monthlyRevenueList.innerHTML = ''
+          monthlyRevenueGraph.innerHTML = ''
           monthlyRevenueEmpty.hidden = false
           return
         }
         monthlyRevenueEmpty.hidden = true
         const total = buckets.reduce((sum, bucket) => sum + bucket.monthlyAmount, 0)
-        const maxMonthly = Math.max(...buckets.map((b) => b.monthlyAmount), 1)
         const last = buckets[buckets.length - 1]
         monthlyRevenueSummary.textContent = `총 ${total.toLocaleString(
           'ko-KR',
         )}원 · 최근 ${last.label} 기준 누적 ${last.cumulativeAmount.toLocaleString('ko-KR')}원`
+
+        // Bar list (보조 정보)
+        const maxMonthly = Math.max(...buckets.map((b) => b.monthlyAmount), 1)
         monthlyRevenueList.innerHTML = buckets
           .map((bucket) => {
             const width = Math.round((bucket.monthlyAmount / maxMonthly) * 100)
@@ -1414,6 +1424,93 @@
             `
           })
           .join('')
+
+        // Line graph (월별/누적)
+        const width = 980
+        const height = 420
+        const padding = 64
+        const usableW = width - padding * 2
+        const usableH = height - padding * 2
+        const maxSeries = Math.max(...buckets.map((b) => Math.max(b.monthlyAmount, b.cumulativeAmount)), 1)
+        const tickCount = 4
+        const tickStep = Math.max(1, Math.ceil(maxSeries / tickCount))
+        const chartMax = tickStep * tickCount
+        const points = buckets.map((bucket, index) => {
+          const ratio = buckets.length > 1 ? index / (buckets.length - 1) : 0
+          const x = padding + ratio * usableW
+          const yMonthly = padding + (1 - bucket.monthlyAmount / chartMax) * usableH
+          const yCumulative = padding + (1 - bucket.cumulativeAmount / chartMax) * usableH
+          return { x, yMonthly, yCumulative, bucket }
+        })
+        const monthlyPath = points
+          .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.yMonthly}`)
+          .join(' ')
+        const cumulativePath = points
+          .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.yCumulative}`)
+          .join(' ')
+        const monthlyArea = [
+          `M ${points[0].x} ${height - padding}`,
+          ...points.map((point) => `L ${point.x} ${point.yMonthly}`),
+          `L ${points[points.length - 1].x} ${height - padding}`,
+          'Z',
+        ].join(' ')
+        const yTicks = Array.from({ length: tickCount + 1 }, (_, i) => i * tickStep)
+        monthlyRevenueGraph.innerHTML = `
+          <div class="revenue-chart-wrapper">
+            <svg viewBox="0 0 ${width} ${height}" role="presentation" aria-hidden="true">
+              <defs>
+                <linearGradient id="revenueLineGradient" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stop-color="#34d399" stop-opacity="0.35" />
+                  <stop offset="100%" stop-color="#2563eb" stop-opacity="0.08" />
+                </linearGradient>
+              </defs>
+              ${yTicks
+                .map((tick) => {
+                  const y = padding + (1 - tick / chartMax) * usableH
+                  return `
+                    <line class="scheduler-chart-grid" x1="${padding}" x2="${width - padding}" y1="${y}" y2="${y}" />
+                    <text class="scheduler-chart-label" x="${padding - 10}" y="${y + 4}">${tick.toLocaleString(
+                      'ko-KR',
+                    )}</text>
+                  `
+                })
+                .join('')}
+              ${points
+                .map(
+                  (point) => `
+                    <line
+                      class="scheduler-chart-grid is-vertical"
+                      x1="${point.x}"
+                      x2="${point.x}"
+                      y1="${padding}"
+                      y2="${height - padding}"
+                    />
+                  `
+                )
+                .join('')}
+              <path class="scheduler-chart-area" d="${monthlyArea}" />
+              <path class="scheduler-chart-line" d="${monthlyPath}" />
+              <path class="scheduler-chart-line is-cumulative" d="${cumulativePath}" />
+              ${points
+                .map(
+                  (point) => `
+                    <circle class="scheduler-chart-point" cx="${point.x}" cy="${point.yMonthly}" r="5" />
+                    <circle class="scheduler-chart-point is-cumulative" cx="${point.x}" cy="${point.yCumulative}" r="5" />
+                    <text class="scheduler-chart-label is-top" x="${point.x}" y="${point.yMonthly - 10}">
+                      ${point.bucket.monthlyAmount.toLocaleString('ko-KR')}원
+                    </text>
+                    <text class="scheduler-chart-label is-top is-cumulative" x="${point.x}" y="${point.yCumulative - 22}">
+                      ${point.bucket.cumulativeAmount.toLocaleString('ko-KR')}원
+                    </text>
+                    <text class="scheduler-chart-xlabel" x="${point.x}" y="${height - padding + 20}">
+                      ${point.bucket.year}.${String(point.bucket.month).padStart(2, '0')}
+                    </text>
+                  `
+                )
+                .join('')}
+            </svg>
+          </div>
+        `
       }
 
       function renderWeeklySummary() {

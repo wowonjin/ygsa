@@ -83,7 +83,7 @@
               </button>
               <button type="button" id="schedulerChartBtn" class="scheduler-calendar-btn">
                 <span class="material-symbols-rounded" aria-hidden="true">stacked_bar_chart</span>
-                <span>그래프로 보기</span>
+                <span>신청인원 보기</span>
               </button>
               <button type="button" id="monthlyRevenueBtn" class="scheduler-calendar-btn">
                 <span class="material-symbols-rounded" aria-hidden="true">trending_up</span>
@@ -192,6 +192,18 @@
         </header>
         <div class="revenue-chart-body">
           <p id="monthlyRevenueSummary" class="revenue-chart-summary">회원 결제 내역을 월별로 집계합니다.</p>
+          <div
+            id="monthlyRevenueGraph"
+            class="revenue-chart-graph"
+            role="img"
+            aria-label="월별 매출 선 그래프"
+          ></div>
+          <div class="revenue-chart-legend">
+            <span class="legend-dot is-count" aria-hidden="true"></span>
+            <span>월별 매출</span>
+            <span class="legend-dot is-cumulative" aria-hidden="true"></span>
+            <span>누적 매출</span>
+          </div>
           <ul id="monthlyRevenueList" class="revenue-chart-list"></ul>
           <p id="monthlyRevenueEmpty" class="revenue-chart-empty" hidden>표시할 데이터가 없습니다.</p>
         </div>

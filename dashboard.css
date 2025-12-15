@@ -1946,7 +1946,7 @@ body.modal-open {
         width: min(1100px, 95vw);
       }
       #monthlyRevenueModal .simple-modal {
-        width: min(560px, 92vw);
+        width: min(980px, 94vw);
       }
       .scheduler-chart-graph {
         border: none;
@@ -2052,6 +2052,20 @@ body.modal-open {
         flex-direction: column;
         gap: 12px;
       }
+      .revenue-chart-graph {
+        border: none;
+        background: transparent;
+        padding: 0;
+      }
+      .revenue-chart-wrapper {
+        width: 100%;
+        height: auto;
+      }
+      .revenue-chart-wrapper svg {
+        width: 100%;
+        height: 420px;
+        display: block;
+      }
       .revenue-chart-summary {
         margin: 0;
         font-size: 15px;
@@ -2109,6 +2123,13 @@ body.modal-open {
         font-size: 14px;
         text-align: center;
         color: #8b949e;
+      }
+      .revenue-chart-legend {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #cbd5e1;
+        font-size: 13px;
       }
       .matched-couples-modal {
         width: min(600px, 92vw);
