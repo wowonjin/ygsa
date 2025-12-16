@@ -36,6 +36,7 @@ console.info(`[ygsa] 매칭 기록 저장 위치: ${MATCH_HISTORY_FILE}`)
 const sseClients = new Set()
 const FIREBASE_REQUIRED_KEYS = ['apiKey', 'projectId', 'storageBucket']
 let lastMatchHistoryBackfillAt = 0
+let lastFirebaseConfigLogAt = 0
 
 const EMAIL_RECIPIENTS = [
   { name: '공정아', email: 'chestnut01nse@gmail.com' },
@@ -133,7 +134,20 @@ app.get('/api/firebase-config', (req, res) => {
       message: `Firebase 설정이 구성되지 않았습니다. 누락된 항목: ${missing.join(', ')}`,
     })
   }
-  console.info('[firebase-config] Served config keys:', Object.keys(config))
+  // Render 로그가 과도하게 쌓이지 않도록 제어:
+  // - FIREBASE_CONFIG_LOG=false면 아예 출력 안 함
+  // - production에서는 1분에 1번만 출력
+  const now = Date.now()
+  const shouldLog =
+    String(process.env.FIREBASE_CONFIG_LOG || '').toLowerCase() !== 'false' &&
+    (String(process.env.NODE_ENV || '').toLowerCase() !== 'production' ||
+      now - lastFirebaseConfigLogAt > 60 * 1000)
+  if (shouldLog) {
+    lastFirebaseConfigLogAt = now
+    console.info('[firebase-config] Served config keys:', Object.keys(config))
+  }
+  // 브라우저 캐시를 허용해 반복 요청(로그/트래픽)을 줄인다.
+  res.set('Cache-Control', 'public, max-age=3600')
   res.json({ ok: true, config })
 })
 
