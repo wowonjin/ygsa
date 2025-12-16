@@ -25,6 +25,7 @@ const ALLOW_MATCH_HISTORY_FALLBACK =
   String(process.env.ALLOW_MATCH_HISTORY_FALLBACK || '').toLowerCase() === 'true' ||
   String(process.env.NODE_ENV || '').toLowerCase() !== 'production'
 const MATCH_HISTORY_DEBUG_TOKEN = String(process.env.MATCH_HISTORY_DEBUG_TOKEN || '').trim()
+const MATCH_HISTORY_IMPORT_TOKEN = String(process.env.MATCH_HISTORY_IMPORT_TOKEN || '').trim()
 const FRONTEND_DIST = path.join(__dirname, 'frontend', 'dist')
 const FRONTEND_INDEX = path.join(FRONTEND_DIST, 'index.html')
 const HAS_FRONTEND_BUILD = fsSync.existsSync(FRONTEND_INDEX)
@@ -438,6 +439,64 @@ app.get('/api/match-history/debug', async (req, res) => {
   } catch (error) {
     console.error('[match-history:debug]', error)
     res.status(500).json({ ok: false, message: 'debug 실패', error: String(error?.message || error) })
+  }
+})
+
+app.post('/api/match-history/import', async (req, res) => {
+  const token = String(req.headers['x-import-token'] || '').trim()
+  if (!MATCH_HISTORY_IMPORT_TOKEN || token !== MATCH_HISTORY_IMPORT_TOKEN) {
+    return res.status(403).json({ ok: false, message: '권한이 없습니다.' })
+  }
+
+  const mode = String(req.query?.mode || 'merge').toLowerCase()
+  const allowReplace = mode === 'replace'
+  const extracted = extractMatchHistoryImportPayload(req.body)
+  if (!extracted.ok) {
+    return res.status(400).json({ ok: false, message: extracted.message })
+  }
+
+  try {
+    const existing = allowReplace ? [] : await readMatchHistory()
+    const incoming = extracted.entries
+
+    const map = new Map()
+    existing.forEach((entry) => {
+      if (!entry) return
+      const key = entry.id || buildMatchHistoryEntryKey(entry)
+      if (!key) return
+      map.set(key, entry)
+    })
+    incoming.forEach((entry) => {
+      if (!entry) return
+      const key = entry.id || buildMatchHistoryEntryKey(entry)
+      if (!key) return
+      const prior = map.get(key)
+      if (!prior) {
+        map.set(key, entry)
+        return
+      }
+      map.set(key, mergeMatchHistoryEntries(prior, entry))
+    })
+
+    const merged = Array.from(map.values())
+      .map((entry) => normalizeMatchHistoryEntryLoose(entry))
+      .filter(Boolean)
+      .sort((a, b) => (b.matchedAt || 0) - (a.matchedAt || 0))
+      .slice(0, MATCH_HISTORY_LIMIT)
+
+    await writeMatchHistory(merged)
+    res.json({
+      ok: true,
+      data: {
+        mode: allowReplace ? 'replace' : 'merge',
+        before: Array.isArray(existing) ? existing.length : 0,
+        incoming: incoming.length,
+        after: merged.length,
+      },
+    })
+  } catch (error) {
+    console.error('[match-history:import]', error)
+    res.status(500).json({ ok: false, message: '복구 데이터를 저장하지 못했습니다.' })
   }
 })
 
@@ -1334,6 +1393,50 @@ async function writeJsonFileAtomic(filePath, data) {
   const tmpPath = `${filePath}.tmp-${Date.now()}-${Math.random().toString(16).slice(2)}`
   await fs.writeFile(tmpPath, payload, 'utf-8')
   await fs.rename(tmpPath, filePath)
+}
+
+function buildMatchHistoryEntryKey(entry) {
+  if (!entry) return ''
+  const candidateId = sanitizeText(entry.candidateId || entry.candidate?.id)
+  const targetId = sanitizeText(entry.targetId || entry.target?.id)
+  const targetPhone = normalizePhoneNumber(entry.targetPhone || entry.target?.phone || '')
+  const matchedAt = Number(entry.matchedAt || entry.confirmedAt || 0)
+  if (!candidateId || !targetId) return ''
+  return `${targetId}-${candidateId}-${targetPhone}-${matchedAt || ''}`
+}
+
+function extractMatchHistoryImportPayload(payload) {
+  // 허용 포맷:
+  // 1) [ ... ] (match-history entries)
+  // 2) { matchHistory: [...], confirmedMatches?: [...] }
+  // 3) { data: [...] } or { history: [...] }
+  if (Array.isArray(payload)) {
+    return {
+      ok: true,
+      entries: payload.map((e) => normalizeMatchHistoryEntryLoose(e)).filter(Boolean),
+    }
+  }
+  if (!payload || typeof payload !== 'object') {
+    return { ok: false, message: '유효한 JSON payload가 필요합니다.' }
+  }
+  const history =
+    (Array.isArray(payload.matchHistory) && payload.matchHistory) ||
+    (Array.isArray(payload.history) && payload.history) ||
+    (Array.isArray(payload.data) && payload.data) ||
+    null
+  const confirmed = Array.isArray(payload.confirmedMatches) ? payload.confirmedMatches : null
+
+  const combined = []
+  if (history) combined.push(...history)
+  if (confirmed) combined.push(...confirmed)
+  if (!combined.length) {
+    return {
+      ok: false,
+      message: 'payload에서 matchHistory/history/data 또는 confirmedMatches 배열을 찾지 못했습니다.',
+    }
+  }
+  const entries = combined.map((e) => normalizeMatchHistoryEntryLoose(e)).filter(Boolean)
+  return { ok: true, entries }
 }
 
 function getMatchHistoryFileCandidates() {

@@ -335,6 +335,9 @@
       const noteToggleBtn = document.getElementById('noteToggleBtn')
       const stickyNoteEl = document.getElementById('stickyNote')
       const stickyNoteCloseBtn = document.getElementById('stickyNoteCloseBtn')
+      const matchHistoryBackupBtn = document.getElementById('matchHistoryBackupBtn')
+      const matchHistoryRestoreBtn = document.getElementById('matchHistoryRestoreBtn')
+      const matchHistoryRestoreInput = document.getElementById('matchHistoryRestoreInput')
       const calendarScrollBtn = document.getElementById('calendarScrollBtn')
       const calendarModal = document.getElementById('calendarModal')
       const calendarModalTitle = document.getElementById('calendarModalTitle')
@@ -886,6 +889,9 @@
         renderMatchedCouplesModal()
         openMatchedCouplesModal()
       })
+      matchHistoryBackupBtn?.addEventListener('click', handleMatchHistoryBackup)
+      matchHistoryRestoreBtn?.addEventListener('click', () => matchHistoryRestoreInput?.click())
+      matchHistoryRestoreInput?.addEventListener('change', handleMatchHistoryRestoreFile)
       matchedCouplesCloseBtn?.addEventListener('click', closeMatchedCouplesModal)
       matchedCouplesModal?.addEventListener('click', (event) => {
         if (event.target === matchedCouplesModal) {
@@ -5954,6 +5960,81 @@
         toastEl.textContent = message
         toastEl.classList.add('show')
         setTimeout(() => toastEl.classList.remove('show'), 2500)
+      }
+
+      function downloadJson(filename, data) {
+        try {
+          const payload = JSON.stringify(data, null, 2)
+          const blob = new Blob([payload], { type: 'application/json;charset=utf-8' })
+          const url = URL.createObjectURL(blob)
+          const link = document.createElement('a')
+          link.href = url
+          link.download = filename
+          document.body.appendChild(link)
+          link.click()
+          link.remove()
+          URL.revokeObjectURL(url)
+        } catch (error) {
+          console.warn('[backup] 다운로드 실패', error)
+          showToast('백업 다운로드에 실패했습니다.')
+        }
+      }
+
+      function handleMatchHistoryBackup() {
+        const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+        const bundle = {
+          version: 1,
+          exportedAt: Date.now(),
+          exportedAtIso: new Date().toISOString(),
+          backend: API_BASE_URL,
+          matchHistory: Array.isArray(matchHistory) ? matchHistory : [],
+          confirmedMatches: Array.isArray(confirmedMatches) ? confirmedMatches : [],
+        }
+        downloadJson(`ygsa-match-backup-${stamp}.json`, bundle)
+        showToast('매칭 기록 백업 파일을 다운로드했습니다.')
+      }
+
+      async function handleMatchHistoryRestoreFile(event) {
+        const file = event?.target?.files?.[0]
+        if (!file) return
+        try {
+          const text = await file.text()
+          const parsed = JSON.parse(text)
+          const importToken = window.prompt(
+            '복구를 위해 서버 Import 토큰이 필요합니다. (Render 환경변수 MATCH_HISTORY_IMPORT_TOKEN 값)',
+            '',
+          )
+          if (!importToken) {
+            showToast('복구 토큰이 없어 업로드를 취소했습니다.')
+            return
+          }
+          const response = await fetch(`${MATCH_HISTORY_API_URL}/import?mode=merge`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-import-token': String(importToken).trim(),
+            },
+            body: JSON.stringify(parsed),
+          })
+          const body = await response.json().catch(() => ({}))
+          if (!response.ok || body?.ok === false) {
+            throw new Error(body?.message || `HTTP ${response.status}`)
+          }
+          await refreshMatchHistoryFromServer()
+          await refreshMatchedCouplesFromServer()
+          showToast(
+            `복구 완료: 서버 기록 ${body?.data?.after ?? '-'}건 (입력 ${body?.data?.incoming ?? '-'})`,
+          )
+        } catch (error) {
+          console.error('[match-history:restore]', error)
+          showToast(`복구 실패: ${error?.message || error}`)
+        } finally {
+          try {
+            event.target.value = ''
+          } catch (_) {
+            // ignore
+          }
+        }
       }
 
       function formatDateInputValue(dateInput) {

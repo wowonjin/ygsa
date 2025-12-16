@@ -252,6 +252,28 @@ body.modal-open {
         transform: translateY(-1px);
         box-shadow: 0 10px 24px rgba(13, 17, 23, 0.35);
       }
+      .quick-links .quick-link-btn {
+        border: 1px solid rgba(107, 114, 128, 0.7);
+        background: #2e2e2e;
+        color: #f3f4f6;
+        padding: 8px 14px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        transition: transform 0.15s ease, background 0.2s ease, border-color 0.2s ease,
+          color 0.2s ease;
+      }
+      .quick-links .quick-link-btn:hover {
+        background: rgba(55, 65, 81, 0.95);
+        border-color: rgba(148, 163, 184, 0.9);
+        color: #ffffff;
+        transform: translateY(-1px);
+        box-shadow: 0 10px 24px rgba(13, 17, 23, 0.35);
+      }
       .stats-summary > span {
         margin-right: 12px;
       }
