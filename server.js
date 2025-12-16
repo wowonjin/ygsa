@@ -14,8 +14,12 @@ const PORT = Number(process.env.PORT) || 5000
 const DATA_ROOT = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(__dirname, 'data')
 const DATA_FILE_NAME = process.env.DATA_FILE || 'consultations.json'
 const DATA_DIR = DATA_ROOT
+// NOTE: DATA_FILE_NAME이 절대경로면 path.join이 해당 절대경로를 그대로 사용한다.
 const DATA_FILE = path.join(DATA_DIR, DATA_FILE_NAME)
-const MATCH_HISTORY_FILE = path.join(DATA_DIR, 'match-history.json')
+// match-history는 consultations.json과 동일한 디렉토리를 사용하도록 고정한다.
+// (Render에서 DATA_FILE만 디스크 경로로 설정된 경우에도 매칭 기록이 사라지지 않게)
+const MATCH_HISTORY_DIR = path.dirname(DATA_FILE)
+const MATCH_HISTORY_FILE = path.join(MATCH_HISTORY_DIR, 'match-history.json')
 const MATCH_HISTORY_LIMIT = 5000
 const ALLOW_MATCH_HISTORY_FALLBACK =
   String(process.env.ALLOW_MATCH_HISTORY_FALLBACK || '').toLowerCase() === 'true' ||
@@ -26,6 +30,7 @@ const FRONTEND_INDEX = path.join(FRONTEND_DIST, 'index.html')
 const HAS_FRONTEND_BUILD = fsSync.existsSync(FRONTEND_INDEX)
 
 console.info(`[ygsa] 상담 데이터 저장 위치: ${DATA_FILE}`)
+console.info(`[ygsa] 매칭 기록 저장 위치: ${MATCH_HISTORY_FILE}`)
 
 const sseClients = new Set()
 const FIREBASE_REQUIRED_KEYS = ['apiKey', 'projectId', 'storageBucket']
@@ -1116,7 +1121,7 @@ app.get('*', (req, res) => {
 
 async function readConsultations() {
   try {
-    await fs.mkdir(DATA_DIR, { recursive: true })
+    await fs.mkdir(path.dirname(DATA_FILE), { recursive: true })
     const raw = await fs.readFile(DATA_FILE, 'utf-8')
     const parsed = JSON.parse(raw)
     if (Array.isArray(parsed)) {
@@ -1129,6 +1134,7 @@ async function readConsultations() {
     return []
   } catch (error) {
     if (error.code === 'ENOENT') {
+      await fs.mkdir(path.dirname(DATA_FILE), { recursive: true })
       await fs.writeFile(DATA_FILE, '[]', 'utf-8')
       return []
     }
@@ -1143,6 +1149,7 @@ async function writeConsultations(data) {
     ? [normalizeStoredRecord(data)]
     : []
   const deduped = dedupeConsultations(normalized)
+  await fs.mkdir(path.dirname(DATA_FILE), { recursive: true })
   await fs.writeFile(DATA_FILE, JSON.stringify(deduped, null, 2), 'utf-8')
 }
 
@@ -1214,7 +1221,7 @@ function hasMeaningfulValue(value) {
 
 async function readMatchHistory() {
   try {
-    await fs.mkdir(DATA_DIR, { recursive: true })
+    await fs.mkdir(path.dirname(MATCH_HISTORY_FILE), { recursive: true })
     const candidates = getMatchHistoryFileCandidates()
     let best = []
     for (const filePath of candidates) {
@@ -1241,6 +1248,7 @@ async function readMatchHistory() {
     return best
   } catch (error) {
     if (error.code === 'ENOENT') {
+      await fs.mkdir(path.dirname(MATCH_HISTORY_FILE), { recursive: true })
       await fs.writeFile(MATCH_HISTORY_FILE, '[]', 'utf-8')
       return []
     }
@@ -1253,7 +1261,7 @@ async function writeMatchHistory(data) {
     ? data.map((entry) => normalizeMatchHistoryEntryLoose(entry)).filter(Boolean)
     : []
   const limited = normalized.slice(0, MATCH_HISTORY_LIMIT)
-  await fs.mkdir(DATA_DIR, { recursive: true })
+  await fs.mkdir(path.dirname(MATCH_HISTORY_FILE), { recursive: true })
   await writeJsonFileAtomic(MATCH_HISTORY_FILE, limited)
 }
 
