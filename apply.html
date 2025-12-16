@@ -2540,22 +2540,67 @@
         function mergeIncomingRequests(primary = [], fallback = []) {
           if (!primary.length && !fallback.length) return []
           const map = new Map()
-          const push = (request) => {
-            if (!request) return
-            const key =
-              normalizeCandidateKey(request.requesterId) ||
-              normalizeCandidateKey(request.candidateId) ||
-              normalizeCandidateKey(request.profile?.id) ||
-              request.requestId ||
-              `${map.size}`
-            const existing = map.get(key)
-            if (!existing || (request.requestRecordedAt || 0) > (existing.requestRecordedAt || 0)) {
-              map.set(key, request)
+          const buildKey = (request) =>
+            normalizeCandidateKey(request?.requesterId) ||
+            normalizeCandidateKey(request?.candidateId) ||
+            normalizeCandidateKey(request?.profile?.id) ||
+            request?.requestId ||
+            ''
+          const ensureBucket = (key) => {
+            if (!map.has(key)) {
+              map.set(key, { server: null, local: null })
             }
+            return map.get(key)
           }
-          primary.forEach(push)
-          fallback.forEach(push)
-          return Array.from(map.values())
+          const pickLatest = (prev, next) => {
+            if (!prev) return next
+            if (!next) return prev
+            return (next.requestRecordedAt || 0) >= (prev.requestRecordedAt || 0) ? next : prev
+          }
+          primary.forEach((req) => {
+            if (!req) return
+            const key = buildKey(req) || `${map.size}`
+            const bucket = ensureBucket(key)
+            bucket.server = pickLatest(bucket.server, req)
+          })
+          fallback.forEach((req) => {
+            if (!req) return
+            const key = buildKey(req) || `${map.size}`
+            const bucket = ensureBucket(key)
+            bucket.local = pickLatest(bucket.local, req)
+          })
+          const merged = []
+          map.forEach(({ server, local }, key) => {
+            if (server) {
+              // 서버값을 우선시해서, 예전 localStorage의 잘못된 extraMatch/status가 덮어쓰지 못하게 한다.
+              const next = {
+                ...(local || {}),
+                ...(server || {}),
+              }
+              // 서버에서 extraMatch가 내려오면 그것을 강제 사용
+              if (server.extraMatch !== undefined) {
+                next.extraMatch = Boolean(server.extraMatch)
+              }
+              // 서버에서 status가 내려오면 그것을 강제 사용
+              if (server.status) {
+                next.status = server.status
+              }
+              // requestRecordedAt/requestId는 서버 우선
+              if (server.requestRecordedAt) {
+                next.requestRecordedAt = server.requestRecordedAt
+              }
+              if (server.requestId) {
+                next.requestId = server.requestId
+              }
+              merged.push(next)
+              return
+            }
+            if (local) {
+              merged.push(local)
+              return
+            }
+          })
+          return merged
         }
 
         function persistIncomingRequestUpdate(requesterKey, updated) {
