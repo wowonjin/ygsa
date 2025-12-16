@@ -17,6 +17,10 @@ const DATA_DIR = DATA_ROOT
 const DATA_FILE = path.join(DATA_DIR, DATA_FILE_NAME)
 const MATCH_HISTORY_FILE = path.join(DATA_DIR, 'match-history.json')
 const MATCH_HISTORY_LIMIT = 5000
+const ALLOW_MATCH_HISTORY_FALLBACK =
+  String(process.env.ALLOW_MATCH_HISTORY_FALLBACK || '').toLowerCase() === 'true' ||
+  String(process.env.NODE_ENV || '').toLowerCase() !== 'production'
+const MATCH_HISTORY_DEBUG_TOKEN = String(process.env.MATCH_HISTORY_DEBUG_TOKEN || '').trim()
 const FRONTEND_DIST = path.join(__dirname, 'frontend', 'dist')
 const FRONTEND_INDEX = path.join(FRONTEND_DIST, 'index.html')
 const HAS_FRONTEND_BUILD = fsSync.existsSync(FRONTEND_INDEX)
@@ -395,6 +399,40 @@ app.get('/api/match-history', async (_req, res) => {
   } catch (error) {
     console.error('[match-history:list]', error)
     res.status(500).json({ ok: false, message: '매칭 기록을 불러오지 못했습니다.' })
+  }
+})
+
+app.get('/api/match-history/debug', async (req, res) => {
+  const token = String(req.headers['x-debug-token'] || '').trim()
+  if (!MATCH_HISTORY_DEBUG_TOKEN || token !== MATCH_HISTORY_DEBUG_TOKEN) {
+    return res.status(403).json({ ok: false, message: '권한이 없습니다.' })
+  }
+  try {
+    const candidates = getMatchHistoryFileCandidates()
+    const stats = await Promise.all(
+      candidates.map(async (filePath) => {
+        try {
+          const st = await fs.stat(filePath)
+          return { filePath, exists: true, size: st.size }
+        } catch (error) {
+          return { filePath, exists: false, code: error?.code || 'ERR' }
+        }
+      }),
+    )
+    const entries = await readMatchHistory()
+    res.json({
+      ok: true,
+      data: {
+        allowFallback: ALLOW_MATCH_HISTORY_FALLBACK,
+        dataDir: DATA_DIR,
+        matchHistoryFile: MATCH_HISTORY_FILE,
+        candidates: stats,
+        entryCount: Array.isArray(entries) ? entries.length : 0,
+      },
+    })
+  } catch (error) {
+    console.error('[match-history:debug]', error)
+    res.status(500).json({ ok: false, message: 'debug 실패', error: String(error?.message || error) })
   }
 })
 
@@ -1258,13 +1296,15 @@ async function writeJsonFileAtomic(filePath, data) {
 }
 
 function getMatchHistoryFileCandidates() {
-  const candidates = [
-    MATCH_HISTORY_FILE,
-    path.join(__dirname, 'match-history.json'),
-    path.join(__dirname, 'data', 'match-history.json'),
-    path.join(process.cwd(), 'match-history.json'),
-    path.join(process.cwd(), 'data', 'match-history.json'),
-  ]
+  const candidates = [MATCH_HISTORY_FILE]
+  if (ALLOW_MATCH_HISTORY_FALLBACK) {
+    candidates.push(
+      path.join(__dirname, 'match-history.json'),
+      path.join(__dirname, 'data', 'match-history.json'),
+      path.join(process.cwd(), 'match-history.json'),
+      path.join(process.cwd(), 'data', 'match-history.json'),
+    )
+  }
   const uniq = []
   const seen = new Set()
   candidates.forEach((filePath) => {
