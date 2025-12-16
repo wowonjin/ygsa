@@ -1105,10 +1105,43 @@
 
       async function loadData() {
         try {
-          const res = await fetch(API_URL)
-          const body = await res.json()
-          if (!body?.ok) throw new Error(body?.message || '데이터 오류')
-          items = filterByVariant((body.data || []).map(normalizeRecord))
+          // 1) Firestore(있으면) → 2) 기존 API fallback
+          let loadedFrom = 'api'
+          let rawList = null
+          try {
+            rawList = await loadConsultationsFromFirestore()
+            if (Array.isArray(rawList) && rawList.length) {
+              loadedFrom = 'firestore'
+            } else {
+              rawList = null
+            }
+          } catch (error) {
+            rawList = null
+          }
+
+          if (!rawList) {
+            try {
+              const res = await fetch(API_URL)
+              const body = await res.json()
+              if (!body?.ok) throw new Error(body?.message || '데이터 오류')
+              rawList = body.data || []
+              loadedFrom = 'api'
+            } catch (apiError) {
+              rawList = null
+            }
+          }
+
+          // 3) Storage profiles fallback (backend 없이도 카드 표시 가능)
+          if (!rawList) {
+            try {
+              rawList = await loadConsultationsFromFirebaseStorageProfiles()
+              loadedFrom = 'storage'
+            } catch (storageError) {
+              rawList = null
+            }
+          }
+
+          items = filterByVariant((rawList || []).map(normalizeRecord))
           syncSelectionWithItems()
           syncFilterOptions()
           syncMatchMemberOptions()
@@ -1120,6 +1153,18 @@
           }
           maybeApplyPendingMatchSelection()
           refreshMatchedCouplesFromServer()
+
+          // Firestore에 카드(회원) 데이터가 없다면 한번 생성 시도(권한/규칙에 따라 실패할 수 있음)
+          if (loadedFrom !== 'firestore' && loadedFrom !== 'storage') {
+            try {
+              const seeded = await maybeSeedFirestoreFromApi(items)
+              if (seeded) {
+                showToast('Firebase(Firestore)에 회원 카드 데이터가 생성되었습니다.')
+              }
+            } catch (_) {
+              // 규칙/권한 문제면 조용히 무시 (기존 API 화면은 유지)
+            }
+          }
         } catch (error) {
           console.error(error)
           showToast('데이터를 불러오는데 실패했습니다.')
@@ -3895,6 +3940,161 @@
           })
 
         return firebaseInitPromise
+      }
+
+      async function loadConsultationsFromFirebaseStorageProfiles(options = {}) {
+        if (IS_MOIM_VIEW) return null
+        const limit = Number.isFinite(options.limit) ? options.limit : 800
+        const concurrency = Number.isFinite(options.concurrency) ? options.concurrency : 10
+        const storage = await ensureFirebaseStorage()
+        const basePath = getProfilesBasePath().replace(/\/?$/, '/')
+
+        // Storage list 권한이 없으면(규칙) 여기서 실패할 수 있음 → 상위에서 fallback 처리
+        const baseRef = storage.ref().child(basePath)
+        const listed = await baseRef.listAll()
+        const prefixes = Array.isArray(listed?.prefixes) ? listed.prefixes : []
+        if (!prefixes.length) return []
+
+        const targets = prefixes.slice(0, Math.max(0, limit))
+        const results = []
+
+        let cursor = 0
+        const runWorker = async () => {
+          while (cursor < targets.length) {
+            const index = cursor++
+            const folderRef = targets[index]
+            try {
+              const jsonRef = folderRef.child('profile.json')
+              const url = await jsonRef.getDownloadURL()
+              const res = await fetch(url, { cache: 'no-store' })
+              if (!res.ok) throw new Error(`profile.json fetch failed (${res.status})`)
+              const data = await res.json()
+              if (!data || typeof data !== 'object') continue
+              const phoneKey = String(folderRef?.name || '').trim()
+              const record = { ...data }
+              if (!record.phone && phoneKey) record.phone = phoneKey
+              if (!record.id && phoneKey) record.id = phoneKey
+              if (!record.createdAt) record.createdAt = record.updatedAt || new Date().toISOString()
+              results.push(record)
+            } catch (_) {
+              // profile.json이 없거나 권한 문제인 경우는 무시
+            }
+          }
+        }
+
+        const workers = Array.from(
+          { length: Math.max(1, Math.min(concurrency, targets.length)) },
+          () => runWorker(),
+        )
+        await Promise.all(workers)
+        return results
+      }
+
+      function resolveFirestoreCollectionName() {
+        const fromWindow =
+          typeof window !== 'undefined' && typeof window.FIREBASE_CONSULT_COLLECTION === 'string'
+            ? window.FIREBASE_CONSULT_COLLECTION.trim()
+            : ''
+        if (fromWindow) return fromWindow
+        const fromMeta =
+          typeof document !== 'undefined'
+            ? document
+                .querySelector('meta[name="firebase-consult-collection"]')
+                ?.getAttribute('content')
+                ?.trim()
+            : ''
+        return fromMeta || 'consultations'
+      }
+
+      async function ensureFirestore() {
+        if (typeof firebase === 'undefined' || typeof firebase.initializeApp !== 'function') {
+          throw new Error('Firebase SDK를 불러오지 못했습니다.')
+        }
+        let config = window.FIREBASE_CONFIG
+        if (!config || !config.apiKey) {
+          const configPromise = window.__FIREBASE_CONFIG_PROMISE__
+          if (configPromise && typeof configPromise.then === 'function') {
+            config = await configPromise
+          }
+        }
+        if (!config || !config.apiKey) {
+          throw new Error('Firebase 설정을 불러오지 못했습니다.')
+        }
+        if (!firebase.apps || !firebase.apps.length) {
+          try {
+            firebase.initializeApp(config)
+          } catch (error) {
+            if (!/already exists/i.test(error?.message || '')) throw error
+          }
+        }
+        if (!firebase.firestore) {
+          throw new Error('Firestore SDK를 불러오지 못했습니다.')
+        }
+        return firebase.firestore()
+      }
+
+      function normalizeFirestoreDocData(doc) {
+        const data = doc && typeof doc.data === 'function' ? doc.data() : null
+        const raw = data && typeof data === 'object' ? { ...data } : {}
+        // createdAt/updatedAt이 Timestamp로 들어오는 경우 문자열로 변환
+        ;['createdAt', 'updatedAt'].forEach((key) => {
+          const value = raw[key]
+          if (value && typeof value === 'object' && typeof value.toDate === 'function') {
+            try {
+              raw[key] = value.toDate().toISOString()
+            } catch (_) {}
+          }
+        })
+        // 문서 id를 기본 id로 사용 (데이터에 id가 없을 때)
+        if (!raw.id && doc && doc.id) raw.id = doc.id
+        return raw
+      }
+
+      async function loadConsultationsFromFirestore() {
+        if (IS_MOIM_VIEW) return null
+        const db = await ensureFirestore()
+        const collectionName = resolveFirestoreCollectionName()
+        const snapshot = await db.collection(collectionName).get()
+        if (!snapshot || snapshot.empty) return []
+        return snapshot.docs.map((doc) => normalizeFirestoreDocData(doc))
+      }
+
+      async function maybeSeedFirestoreFromApi(list) {
+        if (IS_MOIM_VIEW) return false
+        const markerKey = 'YGSA_FIRESTORE_SEEDED_CONSULTATIONS_V1'
+        try {
+          if (localStorage.getItem(markerKey) === '1') return false
+        } catch (_) {}
+        const source = Array.isArray(list) ? list : []
+        if (!source.length) return false
+
+        const db = await ensureFirestore()
+        const collectionName = resolveFirestoreCollectionName()
+        const col = db.collection(collectionName)
+        const probe = await col.limit(1).get()
+        if (probe && !probe.empty) {
+          try {
+            localStorage.setItem(markerKey, '1')
+          } catch (_) {}
+          return false
+        }
+
+        const chunkSize = 400 // Firestore batch 제한(500) 여유
+        for (let i = 0; i < source.length; i += chunkSize) {
+          const batch = db.batch()
+          const chunk = source.slice(i, i + chunkSize)
+          chunk.forEach((record) => {
+            const id = record?.id ? String(record.id) : ''
+            const docRef = id ? col.doc(id) : col.doc()
+            batch.set(docRef, { ...record }, { merge: true })
+          })
+          await batch.commit()
+        }
+
+        try {
+          localStorage.setItem(markerKey, '1')
+        } catch (_) {}
+        return true
       }
 
       async function saveProfileJsonToStorage(record) {
