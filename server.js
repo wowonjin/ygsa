@@ -25,6 +25,7 @@ console.info(`[ygsa] 상담 데이터 저장 위치: ${DATA_FILE}`)
 
 const sseClients = new Set()
 const FIREBASE_REQUIRED_KEYS = ['apiKey', 'projectId', 'storageBucket']
+let lastMatchHistoryBackfillAt = 0
 
 const EMAIL_RECIPIENTS = [
   { name: '공정아', email: 'chestnut01nse@gmail.com' },
@@ -379,8 +380,18 @@ app.post('/api/profile-share/verify', async (req, res) => {
 
 app.get('/api/match-history', async (_req, res) => {
   try {
-    const history = await readMatchHistory()
-    res.json({ ok: true, data: history })
+    const [records, history] = await Promise.all([readConsultations(), readMatchHistory()])
+    const { history: hydrated, changed } = hydrateMatchHistoryWithConsultations(records, history)
+    // 과거 데이터 정합성 문제(이름/전화/주차 누락)를 자동 치유한다.
+    // 너무 자주 쓰지 않도록 throttling.
+    const now = Date.now()
+    if (changed && now - lastMatchHistoryBackfillAt > 60 * 1000) {
+      lastMatchHistoryBackfillAt = now
+      writeMatchHistory(hydrated).catch((error) =>
+        console.warn('[match-history] backfill 저장 실패', error),
+      )
+    }
+    res.json({ ok: true, data: hydrated })
   } catch (error) {
     console.error('[match-history:list]', error)
     res.status(500).json({ ok: false, message: '매칭 기록을 불러오지 못했습니다.' })
@@ -394,14 +405,16 @@ app.post('/api/match-history', async (req, res) => {
   }
 
   try {
-    const history = await readMatchHistory()
+    const [records, history] = await Promise.all([readConsultations(), readMatchHistory()])
+    // 저장 시점에도 consultations를 기준으로 누락 정보를 보강해 둔다.
+    const entrySeed = hydrateSingleMatchHistoryEntry(records, entry)
     const index = history.findIndex((item) => item.id === entry.id)
-    let nextEntry = entry
+    let nextEntry = entrySeed
     if (index !== -1) {
-      nextEntry = mergeMatchHistoryEntries(history[index], entry)
+      nextEntry = mergeMatchHistoryEntries(history[index], entrySeed)
       history[index] = nextEntry
     } else {
-      history.unshift(entry)
+      history.unshift(entrySeed)
     }
     const mutualUpdates = promoteMutualMatches(history, nextEntry)
     await writeMatchHistory(history)
@@ -1320,6 +1333,72 @@ function doesRecordMatchIdentifier(record, identifier) {
   return candidates.some((value) => value && value === identifier)
 }
 
+function hydrateSingleMatchHistoryEntry(records = [], entry = {}) {
+  if (!entry || typeof entry !== 'object') return entry
+  const hydrated = { ...entry }
+  const candidateRecord =
+    findRecordByCandidateIdentifier(records, hydrated.candidateId) ||
+    findRecordByCandidateIdentifier(records, hydrated.candidatePhone) ||
+    null
+  const targetRecord =
+    findRecordByCandidateIdentifier(records, hydrated.targetId) ||
+    findRecordByCandidateIdentifier(records, hydrated.targetPhone) ||
+    null
+
+  if (candidateRecord) {
+    const phoneKey = normalizePhoneNumber(candidateRecord.phone || '')
+    if (!hasContent(hydrated.candidateName) && hasContent(candidateRecord.name)) {
+      hydrated.candidateName = candidateRecord.name
+    }
+    if (!hasContent(hydrated.candidateGender) && hasContent(candidateRecord.gender)) {
+      hydrated.candidateGender = candidateRecord.gender
+    }
+    if (!hasContent(hydrated.candidatePhone) && phoneKey) {
+      hydrated.candidatePhone = phoneKey
+    }
+    // 과거에 candidateId에 전화번호가 들어간 경우 id로 정규화
+    if (normalizePhoneNumber(hydrated.candidateId) && candidateRecord.id) {
+      hydrated.candidateId = candidateRecord.id
+    }
+  }
+
+  if (targetRecord) {
+    const phoneKey = normalizePhoneNumber(targetRecord.phone || '')
+    if (!hasContent(hydrated.targetName) && hasContent(targetRecord.name)) {
+      hydrated.targetName = targetRecord.name
+    }
+    if (!hasContent(hydrated.targetGender) && hasContent(targetRecord.gender)) {
+      hydrated.targetGender = targetRecord.gender
+    }
+    if (!hasContent(hydrated.targetPhone) && phoneKey) {
+      hydrated.targetPhone = phoneKey
+    }
+    if (normalizePhoneNumber(hydrated.targetId) && targetRecord.id) {
+      hydrated.targetId = targetRecord.id
+    }
+  }
+
+  hydrated.week = sanitizeWeekDescriptor(hydrated.week, hydrated.matchedAt || Date.now())
+  return hydrated
+}
+
+function hydrateMatchHistoryWithConsultations(records = [], history = []) {
+  if (!Array.isArray(history) || !Array.isArray(records)) return { history, changed: false }
+  let changed = false
+  const next = history.map((entry) => {
+    const hydrated = hydrateSingleMatchHistoryEntry(records, entry)
+    if (!changed) {
+      try {
+        if (JSON.stringify(hydrated) !== JSON.stringify(entry)) changed = true
+      } catch (_) {
+        // ignore stringify issues; still return hydrated
+      }
+    }
+    return hydrated
+  })
+  return { history: next, changed }
+}
+
 function buildFallbackMatchCardPayload(entry, candidateIdOverride) {
   const candidateId = normalizeCandidateIdentifier(candidateIdOverride || entry?.candidateId)
   if (!candidateId) return null
@@ -1500,7 +1579,10 @@ function buildIncomingRequestsPayload({ viewer, records, history }) {
   history
     .filter((entry) => entry?.candidateId === viewerId && entry?.targetSelected)
     .forEach((entry) => {
-      const requester = records.find((item) => item.id === entry.targetId)
+      const requester =
+        findRecordByCandidateIdentifier(records, entry.targetId) ||
+        findRecordByCandidateIdentifier(records, entry.targetPhone) ||
+        records.find((item) => item.id === entry.targetId)
       if (!requester) return
       const category = sanitizeMatchHistoryCategory(entry.category)
       const existing = requestMap.get(requester.id)

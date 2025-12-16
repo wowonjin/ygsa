@@ -7159,7 +7159,7 @@
       }
 
       function mergeConfirmedEntriesForActiveTarget(activeEntries = []) {
-        const list = Array.isArray(activeEntries) ? [...activeEntries] : []
+        let list = Array.isArray(activeEntries) ? [...activeEntries] : []
         if (!matchSelectionTargetId && !matchSelectionTargetPhoneKey) {
           return list
         }
@@ -7180,12 +7180,25 @@
         if (!confirmedForTarget.length) {
           return list
         }
+        const confirmedCandidateIds = new Set(
+          confirmedForTarget.map((entry) => entry?.candidateId).filter(Boolean),
+        )
         confirmedForTarget.forEach((entry) => {
           if (entry?.id) {
             seenIds.add(entry.id)
           }
           list.push(entry)
         })
+        // 확정이 존재하면, 동일 후보에 대한 "나를 선택한 사람(incoming)" 항목은 제거해서
+        // UI에서 자연스럽게 "나를 선택한 사람" → "추가 매칭 완료/매칭 완료"로 전환되게 한다.
+        list = list.filter(
+          (entry) =>
+            !(
+              entry?.direction === 'incoming' &&
+              entry?.candidateId &&
+              confirmedCandidateIds.has(entry.candidateId)
+            ),
+        )
         return list.sort((a, b) => (b.matchedAt || 0) - (a.matchedAt || 0))
       }
 
@@ -7230,7 +7243,7 @@
 
       function getMatchHistoryStatusLabel(entry) {
         if (entry?.direction === 'incoming') {
-          return entry?.extraIncoming ? '추가 매칭 카드' : '선택 당함'
+          return '나를 선택한 사람'
         }
         if (isConfirmedMatchEntry(entry)) {
           return entry?.extraMatch ? '추가 매칭 완료' : '매칭 완료'

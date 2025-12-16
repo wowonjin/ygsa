@@ -487,6 +487,13 @@
         border-color: #166534;
       }
 
+      /* 추가 매칭 완료(= extra + mutual) 버튼은 초록 hover 대신 어두운 분홍 hover */
+      .match-card-extra .match-card-select-btn.is-mutual:hover,
+      .match-card-select-btn.is-mutual.is-extra:hover {
+        background: #be185d;
+        border-color: #9d174d;
+      }
+
       .match-card-select-btn.incoming-select-btn {
         background: #f472b6;
         border-color: #ec4899;
@@ -1599,7 +1606,13 @@
           })
         }
 
-        function markIncomingRequestConfirmed(candidateKey, request, contactInfo, extraMatchOverride) {
+        function markIncomingRequestConfirmed(
+          candidateKey,
+          request,
+          contactInfo,
+          extraMatchOverride,
+          options = {},
+        ) {
           if (!candidateKey) return
           const normalizedKey = normalizeCandidateKey(candidateKey)
           const existingRequest = request || matchState.incomingById.get(normalizedKey)
@@ -1622,7 +1635,9 @@
             matchState.incomingList.unshift(updated)
           }
           persistIncomingRequestUpdate(normalizedKey, updated)
-          renderIncomingRequests()
+          if (!options?.skipRender) {
+            renderIncomingRequests()
+          }
         }
 
         function isExtraMatchCandidate(candidateId) {
@@ -2160,7 +2175,15 @@
             })
             if (hasIncomingRequest) {
               matchedCandidateIds.add(candidateKey)
-              markIncomingRequestConfirmed(candidateKey, incomingRequest, contactInfo, isExtraMatch)
+              // 확정 순간 incoming 영역에서만 사라지고 추천 카드로 즉시 안 올라가 "깜빡"이는 현상 방지:
+              // 1) incoming 상태만 갱신(렌더는 잠시 보류)
+              // 2) 추천 카드 영역으로 즉시 이동(생성/업데이트)
+              // 3) 마지막에 incoming 영역 재렌더
+              markIncomingRequestConfirmed(candidateKey, incomingRequest, contactInfo, isExtraMatch, {
+                skipRender: true,
+              })
+              ensureConfirmedCardInMatchDeck(candidateKey, incomingRequest, contactInfo, isExtraMatch)
+              renderIncomingRequests()
               await recordMutualMatchForRequester(incomingRequest, payload)
               if (pendingSelectionSet.delete(candidateKey)) {
                 savePendingSelections(lastLookupPhoneKey, pendingSelectionSet)
@@ -3374,6 +3397,58 @@
           return Array.from(
             document.querySelectorAll(`.match-card-select-btn[data-candidate-id="${selectorValue}"]`),
           )
+        }
+
+        function ensureConfirmedCardInMatchDeck(candidateKey, incomingRequest, contact, extraMatch = false) {
+          if (!candidateKey || !matchCards) return
+          const key = normalizeCandidateKey(candidateKey)
+          if (!key) return
+
+          // 이미 추천 영역(matchCards)에 카드가 있으면 버튼 상태만 갱신
+          const buttons = findCandidateButtons(key)
+          if (buttons.length) {
+            buttons.forEach((button) => {
+              const cancelButton = getCancelButton(button)
+              markMatchButtonCompleted(button, {
+                mutual: true,
+                contact: contact || getContactInfo(key),
+                cancelButton,
+                matchEntryId: incomingRequest?.requestId || button.dataset.matchEntryId || '',
+                extraMatch: Boolean(extraMatch),
+              })
+              const wrapper = button.closest('.match-card')
+              if (wrapper && extraMatch) {
+                wrapper.classList.add('match-card-extra')
+              }
+              revealMatchCard(wrapper)
+            })
+            return
+          }
+
+          // 추천 덱에 없던 incoming-only 후보면 추천 카드 영역에 즉시 생성
+          const profile =
+            incomingRequest?.profile && typeof incomingRequest.profile === 'object'
+              ? incomingRequest.profile
+              : {}
+          const record = {
+            ...profile,
+            id: key,
+            candidateId: key,
+            matchEntryId: incomingRequest?.requestId || '',
+            matchRecordedAt: Number(incomingRequest?.requestRecordedAt) || Date.now(),
+            matchCategory: 'confirmed',
+            targetSelected: true,
+          }
+          const cardElement = renderMatchCard(record, null, {
+            coverTitle: extraMatch ? '추가 매칭 완료' : '매칭 완료',
+            coverSubtitle: '이미 매칭되었습니다',
+            initialContact: contact || getContactInfo(key),
+            extraMatch: Boolean(extraMatch),
+          })
+          if (cardElement) {
+            matchCards.prepend(cardElement)
+            matchState.currentDeckIds.add(key)
+          }
         }
 
         function escapeAttributeValue(value) {
