@@ -1281,6 +1281,33 @@ function safeParseJsonArray(raw, options = {}) {
     } catch (_) {
       // ignore recovery errors
     }
+    // NDJSON(라인별 JSON 객체) 형태로 깨진 경우 복구 시도
+    try {
+      const lines = text
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+      if (lines.length > 1) {
+        const recovered = []
+        for (const line of lines) {
+          if (!line.startsWith('{') || !line.endsWith('}')) continue
+          try {
+            const obj = JSON.parse(line)
+            if (obj && typeof obj === 'object') recovered.push(obj)
+          } catch (_) {
+            // skip invalid line
+          }
+        }
+        if (recovered.length) {
+          console.warn(
+            `[${options.label || 'json'}] JSON 손상 감지 → NDJSON 복구 성공 (${recovered.length}개)`,
+          )
+          return recovered
+        }
+      }
+    } catch (_) {
+      // ignore
+    }
     console.error(
       `[${options.label || 'json'}] JSON 파싱 실패: ${error?.message || error} (데이터는 빈 배열로 처리됩니다.)`,
     )
