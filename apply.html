@@ -1450,6 +1450,9 @@
             if (!candidateId) return
             if (indexMap.has(candidateId)) {
               merged[indexMap.get(candidateId)] = { ...merged[indexMap.get(candidateId)], ...card }
+            } else {
+              indexMap.set(candidateId, merged.length)
+              merged.push(card)
             }
           })
           return merged
@@ -1534,13 +1537,12 @@
             if (!requesterKey) return
             const requestStatus = String(req?.status || '').toLowerCase()
             const isConfirmedIncoming = requestStatus === 'confirmed'
+            // 확정(매칭 완료/추가 매칭 완료)된 요청은 "추천 카드"로 이동시키므로 incoming 영역에서 숨김
+            if (isConfirmedIncoming) return
             const isInDeck = matchState.currentDeckIds.has(requesterKey)
             const isExtraIncoming = !isInDeck || Boolean(req?.extraMatch)
             if (!isConfirmedIncoming && matchState.currentDeckIds.has(requesterKey)) return
             if (!isConfirmedIncoming && matchState.confirmedById.has(requesterKey)) return
-            // 이번주 소개(덱)에 이미 있는 후보가 "추가 매칭"이 아닌 상태로 확정되었다면
-            // incoming 영역에서는 중복 노출하지 않는다.
-            if (isConfirmedIncoming && isInDeck && !isExtraIncoming) return
             visible.push({ request: req, requesterKey, isConfirmedIncoming })
           })
           incomingCards.innerHTML = ''
@@ -1705,9 +1707,6 @@
             const candidateId = deriveCandidateKey(entry)
             if (!candidateId || matchState.currentDeckIds.has(candidateId)) return
             if (viewerKey && candidateId === viewerKey) return
-            // "나와 연결되고 싶은 사람(incoming)"으로 들어온 확정 카드는 추천 카드 영역으로 끌어올리지 않는다.
-            // (새로고침 시에도 추가 매칭 완료 카드는 incoming 섹션에 유지)
-            if (matchState.incomingById.has(candidateId)) return
             const fallbackRecord = buildFallbackConfirmedRecord(entry, candidateId)
             if (!fallbackRecord) return
             matchState.currentDeckIds.add(candidateId)

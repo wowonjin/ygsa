@@ -596,6 +596,7 @@ app.post('/api/match-history/lookup', async (req, res) => {
           matchCandidateId: counterpart.partnerId || basePayload.id,
           matchCategory: sanitizeMatchHistoryCategory(entry.category),
           targetSelected: true,
+          extraMatch: normalizeBooleanFlag(entry.extraMatch),
         }
       })
       .filter(Boolean)
