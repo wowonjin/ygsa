@@ -7960,6 +7960,14 @@
             throw new Error(body?.message || '응답이 올바르지 않습니다.')
           }
           const rawEntries = Array.isArray(body?.data) ? body.data : []
+          // 서버가 일시적으로 빈 배열을 주는 경우(파일 경로/배포/일시 장애 등),
+          // 로컬에 기존 확정 커플 기록이 있으면 덮어써서 지우지 않는다.
+          if (!rawEntries.length && Array.isArray(confirmedMatches) && confirmedMatches.length) {
+            console.warn('[match-confirmed] 서버 응답이 비어있어 로컬 confirmedMatches를 유지합니다.')
+            updateMatchedCouplesButton()
+            rebuildMatchedCandidateIds()
+            return
+          }
           confirmedMatches = rawEntries
             .map((entry) => mapServerMatchEntry(entry))
             .filter((entry) => entry && isConfirmedMatchEntry(entry))
@@ -8082,6 +8090,11 @@
         try {
           const serverEntries = await fetchMatchHistoryFromServerRaw()
           if (!serverEntries.length) {
+            // 서버가 일시적으로 빈 배열을 준 경우 로컬 matchHistory를 지우지 않는다.
+            if (Array.isArray(matchHistory) && matchHistory.length) {
+              console.warn('[match] 서버 매칭 기록이 비어있어 로컬 matchHistory를 유지합니다.')
+              updateMatchHistoryUI()
+            }
             attemptMatchHistoryResync()
             return
           }
