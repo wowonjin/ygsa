@@ -1178,10 +1178,8 @@ async function readMatchHistory() {
   try {
     await fs.mkdir(DATA_DIR, { recursive: true })
     const raw = await fs.readFile(MATCH_HISTORY_FILE, 'utf-8')
-    const parsed = JSON.parse(raw)
-    if (!Array.isArray(parsed)) {
-      return []
-    }
+    const parsed = safeParseJsonArray(raw, { label: 'match-history' })
+    if (!Array.isArray(parsed)) return []
     return parsed.map((entry) => normalizeMatchHistoryEntry(entry)).filter(Boolean)
   } catch (error) {
     if (error.code === 'ENOENT') {
@@ -1198,7 +1196,45 @@ async function writeMatchHistory(data) {
     : []
   const limited = normalized.slice(0, MATCH_HISTORY_LIMIT)
   await fs.mkdir(DATA_DIR, { recursive: true })
-  await fs.writeFile(MATCH_HISTORY_FILE, JSON.stringify(limited, null, 2), 'utf-8')
+  await writeJsonFileAtomic(MATCH_HISTORY_FILE, limited)
+}
+
+function safeParseJsonArray(raw, options = {}) {
+  const text = String(raw ?? '')
+  if (!text.trim()) return []
+  try {
+    const parsed = JSON.parse(text)
+    return Array.isArray(parsed) ? parsed : []
+  } catch (error) {
+    // 부분 쓰기/손상된 JSON을 최대한 복구 시도: 첫 '['부터 마지막 ']'까지 잘라 다시 파싱
+    try {
+      const start = text.indexOf('[')
+      const end = text.lastIndexOf(']')
+      if (start !== -1 && end !== -1 && end > start) {
+        const candidate = text.slice(start, end + 1)
+        const recovered = JSON.parse(candidate)
+        if (Array.isArray(recovered)) {
+          console.warn(
+            `[${options.label || 'json'}] JSON 손상 감지 → 부분 복구 성공 (원본 파싱 실패: ${error?.message || error})`,
+          )
+          return recovered
+        }
+      }
+    } catch (_) {
+      // ignore recovery errors
+    }
+    console.error(
+      `[${options.label || 'json'}] JSON 파싱 실패: ${error?.message || error} (데이터는 빈 배열로 처리됩니다.)`,
+    )
+    return []
+  }
+}
+
+async function writeJsonFileAtomic(filePath, data) {
+  const payload = JSON.stringify(data, null, 2)
+  const tmpPath = `${filePath}.tmp-${Date.now()}-${Math.random().toString(16).slice(2)}`
+  await fs.writeFile(tmpPath, payload, 'utf-8')
+  await fs.rename(tmpPath, filePath)
 }
 
 function sanitizeMatchHistoryPayload(body) {
