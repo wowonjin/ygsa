@@ -335,9 +335,6 @@
       const noteToggleBtn = document.getElementById('noteToggleBtn')
       const stickyNoteEl = document.getElementById('stickyNote')
       const stickyNoteCloseBtn = document.getElementById('stickyNoteCloseBtn')
-      const matchHistoryBackupBtn = document.getElementById('matchHistoryBackupBtn')
-      const matchHistoryRestoreBtn = document.getElementById('matchHistoryRestoreBtn')
-      const matchHistoryRestoreInput = document.getElementById('matchHistoryRestoreInput')
       const calendarScrollBtn = document.getElementById('calendarScrollBtn')
       const calendarModal = document.getElementById('calendarModal')
       const calendarModalTitle = document.getElementById('calendarModalTitle')
@@ -889,9 +886,6 @@
         renderMatchedCouplesModal()
         openMatchedCouplesModal()
       })
-      matchHistoryBackupBtn?.addEventListener('click', handleMatchHistoryBackup)
-      matchHistoryRestoreBtn?.addEventListener('click', () => matchHistoryRestoreInput?.click())
-      matchHistoryRestoreInput?.addEventListener('change', handleMatchHistoryRestoreFile)
       matchedCouplesCloseBtn?.addEventListener('click', closeMatchedCouplesModal)
       matchedCouplesModal?.addEventListener('click', (event) => {
         if (event.target === matchedCouplesModal) {
@@ -5913,21 +5907,6 @@
         }
       }
 
-      function normalizeWeekMeta(weekMeta, timestampFallback) {
-        const matchedAt = Number.isFinite(Number(timestampFallback)) ? Number(timestampFallback) : Date.now()
-        const fallback = buildWeekMeta(matchedAt)
-        if (!weekMeta || typeof weekMeta !== 'object') return fallback
-        const year = Number(weekMeta.year ?? weekMeta.yearNumber)
-        const week = Number(weekMeta.week ?? weekMeta.weekNumber)
-        return {
-          label: typeof weekMeta.label === 'string' && weekMeta.label.trim() ? weekMeta.label : fallback.label,
-          startTime: Number.isFinite(Number(weekMeta.startTime)) ? Number(weekMeta.startTime) : fallback.startTime,
-          endTime: Number.isFinite(Number(weekMeta.endTime)) ? Number(weekMeta.endTime) : fallback.endTime,
-          year: Number.isFinite(year) ? year : fallback.year,
-          week: Number.isFinite(week) ? week : fallback.week,
-        }
-      }
-
       function decodeBase64(value) {
         try {
           return decodeURIComponent(escape(atob(value)))
@@ -5960,81 +5939,6 @@
         toastEl.textContent = message
         toastEl.classList.add('show')
         setTimeout(() => toastEl.classList.remove('show'), 2500)
-      }
-
-      function downloadJson(filename, data) {
-        try {
-          const payload = JSON.stringify(data, null, 2)
-          const blob = new Blob([payload], { type: 'application/json;charset=utf-8' })
-          const url = URL.createObjectURL(blob)
-          const link = document.createElement('a')
-          link.href = url
-          link.download = filename
-          document.body.appendChild(link)
-          link.click()
-          link.remove()
-          URL.revokeObjectURL(url)
-        } catch (error) {
-          console.warn('[backup] 다운로드 실패', error)
-          showToast('백업 다운로드에 실패했습니다.')
-        }
-      }
-
-      function handleMatchHistoryBackup() {
-        const stamp = new Date().toISOString().replace(/[:.]/g, '-')
-        const bundle = {
-          version: 1,
-          exportedAt: Date.now(),
-          exportedAtIso: new Date().toISOString(),
-          backend: API_BASE_URL,
-          matchHistory: Array.isArray(matchHistory) ? matchHistory : [],
-          confirmedMatches: Array.isArray(confirmedMatches) ? confirmedMatches : [],
-        }
-        downloadJson(`ygsa-match-backup-${stamp}.json`, bundle)
-        showToast('매칭 기록 백업 파일을 다운로드했습니다.')
-      }
-
-      async function handleMatchHistoryRestoreFile(event) {
-        const file = event?.target?.files?.[0]
-        if (!file) return
-        try {
-          const text = await file.text()
-          const parsed = JSON.parse(text)
-          const importToken = window.prompt(
-            '복구를 위해 서버 Import 토큰이 필요합니다. (Render 환경변수 MATCH_HISTORY_IMPORT_TOKEN 값)',
-            '',
-          )
-          if (!importToken) {
-            showToast('복구 토큰이 없어 업로드를 취소했습니다.')
-            return
-          }
-          const response = await fetch(`${MATCH_HISTORY_API_URL}/import?mode=merge`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-import-token': String(importToken).trim(),
-            },
-            body: JSON.stringify(parsed),
-          })
-          const body = await response.json().catch(() => ({}))
-          if (!response.ok || body?.ok === false) {
-            throw new Error(body?.message || `HTTP ${response.status}`)
-          }
-          await refreshMatchHistoryFromServer()
-          await refreshMatchedCouplesFromServer()
-          showToast(
-            `복구 완료: 서버 기록 ${body?.data?.after ?? '-'}건 (입력 ${body?.data?.incoming ?? '-'})`,
-          )
-        } catch (error) {
-          console.error('[match-history:restore]', error)
-          showToast(`복구 실패: ${error?.message || error}`)
-        } finally {
-          try {
-            event.target.value = ''
-          } catch (_) {
-            // ignore
-          }
-        }
       }
 
       function formatDateInputValue(dateInput) {
@@ -6499,7 +6403,11 @@
           return matchHistory.some((entry) => {
             if (!entry || isConfirmedMatchEntry(entry)) return false
             if (!doesHistoryEntryMatchTarget(entry, targetId, targetPhoneKey)) return false
-            if (entry.week && !isSameWeek(entry.week, currentWeek)) return false
+            if (entry.week) {
+              if (entry.week.year !== currentWeek.year || entry.week.week !== currentWeek.week) {
+                return false
+              }
+            }
             const candidateId = entry.candidateId || entry.candidate?.id || ''
             const candidatePhoneKey = normalizePhoneKey(
               entry.candidatePhone || entry.candidate?.phone || '',
@@ -6523,7 +6431,7 @@
             const phoneMatch = targetPhoneKey && entryCandidatePhoneKey === targetPhoneKey
             if (!candidateMatch && !phoneMatch) return false
             if (!entry.week) return true
-            return isSameWeek(entry.week, currentWeek)
+            return entry.week.year === currentWeek.year && entry.week.week === currentWeek.week
           })
           .map((entry) => {
             const initiator =
@@ -6654,7 +6562,7 @@
             const samePhone = targetPhoneKey && entryPhoneKey === targetPhoneKey
             if (!sameId && !samePhone) return false
             if (!entry.week) return true
-            return isSameWeek(entry.week, currentWeek)
+            return entry.week.year === currentWeek.year && entry.week.week === currentWeek.week
           })
           .map((entry) => {
             const record = findMemberByIdOrPhone(entry.targetId, entry.target?.phone)
@@ -7405,8 +7313,8 @@
         const currentWeekEntries = confirmedMatches.filter(
           (entry) =>
             isConfirmedMatchEntry(entry) &&
-            entry.week &&
-            isSameWeek(entry.week, weekInfo),
+            entry.week?.year === weekInfo.year &&
+            entry.week?.week === weekInfo.week,
         )
         return dedupeConfirmedCouples(currentWeekEntries)
       }
@@ -8052,14 +7960,6 @@
             throw new Error(body?.message || '응답이 올바르지 않습니다.')
           }
           const rawEntries = Array.isArray(body?.data) ? body.data : []
-          // 서버가 일시적으로 빈 배열을 주는 경우(파일 경로/배포/일시 장애 등),
-          // 로컬에 기존 확정 커플 기록이 있으면 덮어써서 지우지 않는다.
-          if (!rawEntries.length && Array.isArray(confirmedMatches) && confirmedMatches.length) {
-            console.warn('[match-confirmed] 서버 응답이 비어있어 로컬 confirmedMatches를 유지합니다.')
-            updateMatchedCouplesButton()
-            rebuildMatchedCandidateIds()
-            return
-          }
           confirmedMatches = rawEntries
             .map((entry) => mapServerMatchEntry(entry))
             .filter((entry) => entry && isConfirmedMatchEntry(entry))
@@ -8107,7 +8007,7 @@
           target: targetSnapshot,
           candidate: candidateSnapshot,
           confirmedAt,
-          week: normalizeWeekMeta(entry.week, confirmedAt),
+          week: entry.week || buildWeekMeta(confirmedAt),
           targetPhone: entry.targetPhone || '',
           candidatePhone: entry.candidatePhone || '',
           category,
@@ -8123,10 +8023,22 @@
         return parsed
           .map((entry) => {
             const matchedAt = entry.matchedAt || Date.now()
+            const weekData = entry.week && entry.week.startTime
+              ? entry.week
+              : (() => {
+                  const info = getWeekInfo(new Date(matchedAt))
+                  return {
+                    label: info.label,
+                    startTime: info.start.getTime(),
+                    endTime: info.end.getTime(),
+                    year: info.year,
+                    week: info.week,
+                  }
+                })()
             return {
               ...entry,
               matchedAt,
-              week: normalizeWeekMeta(entry.week, matchedAt),
+              week: weekData,
               category: normalizeMatchHistoryCategory(entry.category),
               extraMatch: Boolean(entry.extraMatch),
             }
@@ -8170,11 +8082,6 @@
         try {
           const serverEntries = await fetchMatchHistoryFromServerRaw()
           if (!serverEntries.length) {
-            // 서버가 일시적으로 빈 배열을 준 경우 로컬 matchHistory를 지우지 않는다.
-            if (Array.isArray(matchHistory) && matchHistory.length) {
-              console.warn('[match] 서버 매칭 기록이 비어있어 로컬 matchHistory를 유지합니다.')
-              updateMatchHistoryUI()
-            }
             attemptMatchHistoryResync()
             return
           }
@@ -8227,11 +8134,8 @@
         const candidateRecord = items.find((item) => item.id === entry.candidateId)
         const targetRecord = items.find((item) => item.id === entry.targetId)
         const category = normalizeMatchHistoryCategory(entry.category)
-        const matchedAt = entry.matchedAt || entry.confirmedAt || Date.now()
         return {
           ...entry,
-          matchedAt,
-          week: normalizeWeekMeta(entry.week, matchedAt),
           candidate: candidateRecord ? buildCandidateSnapshot(candidateRecord) : entry.candidate || null,
           target: targetRecord ? buildCandidateSnapshot(targetRecord) : entry.target || null,
           category,
