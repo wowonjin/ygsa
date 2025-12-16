@@ -1177,12 +1177,30 @@ function hasMeaningfulValue(value) {
 async function readMatchHistory() {
   try {
     await fs.mkdir(DATA_DIR, { recursive: true })
-    const raw = await fs.readFile(MATCH_HISTORY_FILE, 'utf-8')
-    const parsed = safeParseJsonArray(raw, { label: 'match-history' })
-    if (!Array.isArray(parsed)) return []
-    // 과거 데이터(특히 targetPhone 누락 등)가 있어도 읽기 단계에서 떨어뜨리지 말고,
-    // GET /api/match-history에서 consultations 기반으로 보강(hydrate)할 수 있도록 느슨하게 정규화한다.
-    return parsed.map((entry) => normalizeMatchHistoryEntryLoose(entry)).filter(Boolean)
+    const candidates = getMatchHistoryFileCandidates()
+    let best = []
+    for (const filePath of candidates) {
+      try {
+        const raw = await fs.readFile(filePath, 'utf-8')
+        const parsed = safeParseJsonArray(raw, { label: `match-history:${path.basename(filePath)}` })
+        if (!Array.isArray(parsed)) continue
+        const normalized = parsed.map((entry) => normalizeMatchHistoryEntryLoose(entry)).filter(Boolean)
+        if (normalized.length > best.length) {
+          best = normalized
+        }
+        if (normalized.length) {
+          // 첫 번째로 유효한 데이터가 나오면 반환(다른 후보는 참고용)
+          best = normalized
+          break
+        }
+      } catch (error) {
+        if (error?.code === 'ENOENT') continue
+        // 특정 파일이 깨져도 다른 후보를 계속 시도
+        console.warn('[match-history] 파일 읽기 실패', filePath, error?.code || error?.message || error)
+        continue
+      }
+    }
+    return best
   } catch (error) {
     if (error.code === 'ENOENT') {
       await fs.writeFile(MATCH_HISTORY_FILE, '[]', 'utf-8')
@@ -1237,6 +1255,25 @@ async function writeJsonFileAtomic(filePath, data) {
   const tmpPath = `${filePath}.tmp-${Date.now()}-${Math.random().toString(16).slice(2)}`
   await fs.writeFile(tmpPath, payload, 'utf-8')
   await fs.rename(tmpPath, filePath)
+}
+
+function getMatchHistoryFileCandidates() {
+  const candidates = [
+    MATCH_HISTORY_FILE,
+    path.join(__dirname, 'match-history.json'),
+    path.join(__dirname, 'data', 'match-history.json'),
+    path.join(process.cwd(), 'match-history.json'),
+    path.join(process.cwd(), 'data', 'match-history.json'),
+  ]
+  const uniq = []
+  const seen = new Set()
+  candidates.forEach((filePath) => {
+    const resolved = path.resolve(filePath)
+    if (seen.has(resolved)) return
+    seen.add(resolved)
+    uniq.push(resolved)
+  })
+  return uniq
 }
 
 function normalizeMatchHistoryEntryLoose(entry) {
