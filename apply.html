@@ -1406,7 +1406,12 @@
                 : null
             const incomingStatus = String(incomingRequestForCard?.status || '').toLowerCase()
             const isIncomingConfirmed = incomingStatus === 'confirmed'
-            const isExtraMatch = Boolean(incomingRequestForCard && isIncomingConfirmed)
+            // "추가 매칭"은 status=confirmed 여부가 아니라 extraMatch 플래그로만 판단한다.
+            // (이번주 소개 카드끼리 확정된 경우 incomingRequest가 confirmed라도 extraMatch=false여야 함)
+            const isExtraMatch =
+              isIncomingConfirmed && incomingRequestForCard?.extraMatch !== undefined
+                ? Boolean(incomingRequestForCard.extraMatch)
+                : false
             if (candidateId) {
               matchState.currentDeckIds.add(candidateId)
             }
@@ -1592,16 +1597,18 @@
           })
         }
 
-        function markIncomingRequestConfirmed(candidateKey, request, contactInfo) {
+        function markIncomingRequestConfirmed(candidateKey, request, contactInfo, extraMatchOverride) {
           if (!candidateKey) return
           const normalizedKey = normalizeCandidateKey(candidateKey)
           const existingRequest = request || matchState.incomingById.get(normalizedKey)
           if (!existingRequest) return
+          const resolvedExtraMatch =
+            extraMatchOverride !== undefined ? Boolean(extraMatchOverride) : Boolean(existingRequest.extraMatch)
           const updated = {
             ...existingRequest,
             status: 'confirmed',
             contact: contactInfo || existingRequest.contact || null,
-            extraMatch: true,
+            extraMatch: resolvedExtraMatch,
           }
           matchState.incomingById.set(normalizedKey, updated)
           const listIndex = matchState.incomingList.findIndex(
@@ -1624,7 +1631,7 @@
           if (req.extraMatch !== undefined) {
             return Boolean(req.extraMatch)
           }
-          return String(req?.status || '').toLowerCase() === 'confirmed'
+          return false
         }
 
         async function recordMutualMatchForRequester(incomingRequest, primaryPayload) {
@@ -2154,7 +2161,7 @@
             })
             if (hasIncomingRequest) {
               matchedCandidateIds.add(candidateKey)
-              markIncomingRequestConfirmed(candidateKey, incomingRequest, contactInfo)
+              markIncomingRequestConfirmed(candidateKey, incomingRequest, contactInfo, isExtraMatch)
               await recordMutualMatchForRequester(incomingRequest, payload)
               if (pendingSelectionSet.delete(candidateKey)) {
                 savePendingSelections(lastLookupPhoneKey, pendingSelectionSet)

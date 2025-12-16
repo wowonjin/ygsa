@@ -1511,6 +1511,7 @@ function buildIncomingRequestsPayload({ viewer, records, history }) {
           requestRecordedAt: entry.matchedAt || Date.now(),
           requestWeek: entry.week || null,
           status: category,
+          extraMatch: normalizeBooleanFlag(entry.extraMatch),
           profile: buildMatchCardPayload(requester),
           contact: {
             name: requester.name || '',
