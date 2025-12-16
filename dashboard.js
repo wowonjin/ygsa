@@ -5907,6 +5907,21 @@
         }
       }
 
+      function normalizeWeekMeta(weekMeta, timestampFallback) {
+        const matchedAt = Number.isFinite(Number(timestampFallback)) ? Number(timestampFallback) : Date.now()
+        const fallback = buildWeekMeta(matchedAt)
+        if (!weekMeta || typeof weekMeta !== 'object') return fallback
+        const year = Number(weekMeta.year ?? weekMeta.yearNumber)
+        const week = Number(weekMeta.week ?? weekMeta.weekNumber)
+        return {
+          label: typeof weekMeta.label === 'string' && weekMeta.label.trim() ? weekMeta.label : fallback.label,
+          startTime: Number.isFinite(Number(weekMeta.startTime)) ? Number(weekMeta.startTime) : fallback.startTime,
+          endTime: Number.isFinite(Number(weekMeta.endTime)) ? Number(weekMeta.endTime) : fallback.endTime,
+          year: Number.isFinite(year) ? year : fallback.year,
+          week: Number.isFinite(week) ? week : fallback.week,
+        }
+      }
+
       function decodeBase64(value) {
         try {
           return decodeURIComponent(escape(atob(value)))
@@ -6403,11 +6418,7 @@
           return matchHistory.some((entry) => {
             if (!entry || isConfirmedMatchEntry(entry)) return false
             if (!doesHistoryEntryMatchTarget(entry, targetId, targetPhoneKey)) return false
-            if (entry.week) {
-              if (entry.week.year !== currentWeek.year || entry.week.week !== currentWeek.week) {
-                return false
-              }
-            }
+            if (entry.week && !isSameWeek(entry.week, currentWeek)) return false
             const candidateId = entry.candidateId || entry.candidate?.id || ''
             const candidatePhoneKey = normalizePhoneKey(
               entry.candidatePhone || entry.candidate?.phone || '',
@@ -6431,7 +6442,7 @@
             const phoneMatch = targetPhoneKey && entryCandidatePhoneKey === targetPhoneKey
             if (!candidateMatch && !phoneMatch) return false
             if (!entry.week) return true
-            return entry.week.year === currentWeek.year && entry.week.week === currentWeek.week
+            return isSameWeek(entry.week, currentWeek)
           })
           .map((entry) => {
             const initiator =
@@ -6562,7 +6573,7 @@
             const samePhone = targetPhoneKey && entryPhoneKey === targetPhoneKey
             if (!sameId && !samePhone) return false
             if (!entry.week) return true
-            return entry.week.year === currentWeek.year && entry.week.week === currentWeek.week
+            return isSameWeek(entry.week, currentWeek)
           })
           .map((entry) => {
             const record = findMemberByIdOrPhone(entry.targetId, entry.target?.phone)
@@ -7313,8 +7324,8 @@
         const currentWeekEntries = confirmedMatches.filter(
           (entry) =>
             isConfirmedMatchEntry(entry) &&
-            entry.week?.year === weekInfo.year &&
-            entry.week?.week === weekInfo.week,
+            entry.week &&
+            isSameWeek(entry.week, weekInfo),
         )
         return dedupeConfirmedCouples(currentWeekEntries)
       }
@@ -8015,7 +8026,7 @@
           target: targetSnapshot,
           candidate: candidateSnapshot,
           confirmedAt,
-          week: entry.week || buildWeekMeta(confirmedAt),
+          week: normalizeWeekMeta(entry.week, confirmedAt),
           targetPhone: entry.targetPhone || '',
           candidatePhone: entry.candidatePhone || '',
           category,
@@ -8031,22 +8042,10 @@
         return parsed
           .map((entry) => {
             const matchedAt = entry.matchedAt || Date.now()
-            const weekData = entry.week && entry.week.startTime
-              ? entry.week
-              : (() => {
-                  const info = getWeekInfo(new Date(matchedAt))
-                  return {
-                    label: info.label,
-                    startTime: info.start.getTime(),
-                    endTime: info.end.getTime(),
-                    year: info.year,
-                    week: info.week,
-                  }
-                })()
             return {
               ...entry,
               matchedAt,
-              week: weekData,
+              week: normalizeWeekMeta(entry.week, matchedAt),
               category: normalizeMatchHistoryCategory(entry.category),
               extraMatch: Boolean(entry.extraMatch),
             }
@@ -8147,8 +8146,11 @@
         const candidateRecord = items.find((item) => item.id === entry.candidateId)
         const targetRecord = items.find((item) => item.id === entry.targetId)
         const category = normalizeMatchHistoryCategory(entry.category)
+        const matchedAt = entry.matchedAt || entry.confirmedAt || Date.now()
         return {
           ...entry,
+          matchedAt,
+          week: normalizeWeekMeta(entry.week, matchedAt),
           candidate: candidateRecord ? buildCandidateSnapshot(candidateRecord) : entry.candidate || null,
           target: targetRecord ? buildCandidateSnapshot(targetRecord) : entry.target || null,
           category,

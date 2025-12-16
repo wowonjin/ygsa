@@ -1224,6 +1224,7 @@ async function readMatchHistory() {
     await fs.mkdir(path.dirname(MATCH_HISTORY_FILE), { recursive: true })
     const candidates = getMatchHistoryFileCandidates()
     let best = []
+    let bestPath = ''
     for (const filePath of candidates) {
       try {
         const raw = await fs.readFile(filePath, 'utf-8')
@@ -1232,11 +1233,7 @@ async function readMatchHistory() {
         const normalized = parsed.map((entry) => normalizeMatchHistoryEntryLoose(entry)).filter(Boolean)
         if (normalized.length > best.length) {
           best = normalized
-        }
-        if (normalized.length) {
-          // 첫 번째로 유효한 데이터가 나오면 반환(다른 후보는 참고용)
-          best = normalized
-          break
+          bestPath = filePath
         }
       } catch (error) {
         if (error?.code === 'ENOENT') continue
@@ -1244,6 +1241,15 @@ async function readMatchHistory() {
         console.warn('[match-history] 파일 읽기 실패', filePath, error?.code || error?.message || error)
         continue
       }
+    }
+    if (best.length && bestPath && path.resolve(bestPath) !== path.resolve(MATCH_HISTORY_FILE)) {
+      console.warn(
+        '[match-history] 기본 파일이 비어있거나 작아 다른 후보 파일을 선택했습니다:',
+        path.basename(bestPath),
+        '→',
+        path.basename(MATCH_HISTORY_FILE),
+        `(entries=${best.length})`,
+      )
     }
     return best
   } catch (error) {
@@ -1332,10 +1338,15 @@ async function writeJsonFileAtomic(filePath, data) {
 
 function getMatchHistoryFileCandidates() {
   const candidates = [MATCH_HISTORY_FILE]
+  // 배포/환경변수(DATA_FILE) 변경 등으로 MATCH_HISTORY_FILE 경로가 바뀌면,
+  // 과거에 다른 위치에 저장된 match-history.json이 있어도 "갑자기 기록이 사라진 것처럼" 보일 수 있다.
+  // 따라서 프로덕션에서도 최소한의 후보 경로는 항상 함께 훑어서 복구 가능성을 높인다.
+  candidates.push(
+    path.join(__dirname, 'match-history.json'),
+    path.join(__dirname, 'data', 'match-history.json'),
+  )
   if (ALLOW_MATCH_HISTORY_FALLBACK) {
     candidates.push(
-      path.join(__dirname, 'match-history.json'),
-      path.join(__dirname, 'data', 'match-history.json'),
       path.join(process.cwd(), 'match-history.json'),
       path.join(process.cwd(), 'data', 'match-history.json'),
     )
