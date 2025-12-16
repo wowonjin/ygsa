@@ -6154,7 +6154,7 @@
         }
         if (!hasPreferences) {
           matchStatusEl.textContent =
-            '선호 조건이 없어도 상담 완료 회원을 모두 보여줍니다. (상담 예정/상담 전은 추천에서 제외됩니다.)'
+            '선호 조건이 없어도 상담 완료 회원을 모두 보여줍니다. 조건을 입력하면 우선순위가 더 정확해집니다.'
         } else if (hasPriority) {
           const fragments = []
           if (priorityEntries.length > priorityDisplayed) {
