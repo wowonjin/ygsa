@@ -491,6 +491,7 @@
       const districtFilter = document.getElementById('districtFilter')
       const heightFilter = document.getElementById('heightFilter')
       const sortSelect = document.getElementById('sortSelect')
+      const monthMembershipFilter = document.getElementById('monthMembershipFilter')
       const detailModal = document.getElementById('detailModal')
       const detailForm = document.getElementById('detailForm')
       const detailCancelBtn = document.getElementById('detailCancelBtn')
@@ -629,6 +630,7 @@
         gender: 'all',
         district: 'all',
         height: 'all',
+        monthMembership: 'all',
         sort: 'latest',
         weekRange: IS_MOIM_VIEW ? getCurrentWeekRange() : null,
       }
@@ -1093,6 +1095,12 @@
         viewState.sort = event.target.value
         render()
       })
+      if (monthMembershipFilter) {
+        monthMembershipFilter.addEventListener('change', (event) => {
+          viewState.monthMembership = event.target.value
+          render()
+        })
+      }
       updateSelectionInfo()
 
       async function loadData() {
@@ -1846,6 +1854,7 @@
         const idAttr = escapeHtml(item.id || '')
         const isSelected = selectedIds.has(item.id)
         const ratingChip = buildMatchRatingChip(item)
+        const membershipChip = buildThisMonthMembershipChip(item)
         const entries = (cardFields || [])
           .map(({ label, key, formatter }) => {
             const value = formatter ? formatter(item[key], item) : item[key]
@@ -1860,6 +1869,7 @@
                 <span class="status-chip ${escapeHtml(getStatusClass(item.phoneConsultStatus))}">
                   ${escapeHtml(formatPhoneStatus(item.phoneConsultStatus))}
                 </span>
+                ${membershipChip}
                 ${ratingChip}
               </div>
               <div class="meta">${formatDate(item.createdAt)} 접수</div>
@@ -1882,6 +1892,21 @@
           ${renderProfileCardButtonSection(item.id)}
         `
         return card
+      }
+
+      function buildThisMonthMembershipChip(record) {
+        if (!record || IS_MOIM_VIEW) return ''
+        const now = new Date()
+        const types = getThisMonthMembershipTypes(record, now)
+        if (!types.length) return ''
+        const latest = getThisMonthLatestMembershipType(record, now) || types[0]
+        const label = types.length > 1 ? `${latest} 외 ${types.length - 1}` : latest
+        const title = types.length > 1 ? `이번달 회원권: ${types.join(', ')}` : '이번달 회원권'
+        return `
+          <span class="membership-chip" title="${escapeHtml(title)}">
+            ${escapeHtml(label)}
+          </span>
+        `
       }
 
       function buildMatchRatingChip(record) {
@@ -2516,6 +2541,89 @@
           }
         }
         return null
+      }
+
+      function parsePaymentDateValue(value) {
+        if (!value) return null
+        if (value instanceof Date) {
+          return Number.isNaN(value.getTime()) ? null : value
+        }
+        if (typeof value === 'number') {
+          const d = new Date(value)
+          return Number.isNaN(d.getTime()) ? null : d
+        }
+        const raw = String(value).trim()
+        if (!raw) return null
+        // YYYY-MM-DD 형태는 로컬 자정으로 고정 (타임존 offset으로 하루 밀리는 현상 방지)
+        if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+          const d = new Date(`${raw}T00:00:00`)
+          return Number.isNaN(d.getTime()) ? null : d
+        }
+        const d = new Date(raw)
+        return Number.isNaN(d.getTime()) ? null : d
+      }
+
+      function getCurrentMonthRange(refDate = new Date()) {
+        const base = refDate instanceof Date ? refDate : new Date(refDate)
+        const safe = Number.isNaN(base.getTime()) ? new Date() : base
+        const start = new Date(safe.getFullYear(), safe.getMonth(), 1)
+        const end = new Date(safe.getFullYear(), safe.getMonth() + 1, 1)
+        return { start, end }
+      }
+
+      function getPaymentEntryDate(entry) {
+        if (!entry) return null
+        return (
+          parsePaymentDateValue(entry.paymentDate) ||
+          parsePaymentDateValue(entry.recordedAt) ||
+          null
+        )
+      }
+
+      function getThisMonthPaymentEntries(record, refDate = new Date()) {
+        const history = getPaymentHistoryEntries(record)
+        if (!history.length) return []
+        const { start, end } = getCurrentMonthRange(refDate)
+        const startTime = start.getTime()
+        const endTime = end.getTime()
+        return history.filter((entry) => {
+          const d = getPaymentEntryDate(entry)
+          if (!d) return false
+          const t = d.getTime()
+          return Number.isFinite(t) && t >= startTime && t < endTime
+        })
+      }
+
+      function getThisMonthMembershipTypes(record, refDate = new Date()) {
+        const entries = getThisMonthPaymentEntries(record, refDate)
+        if (!entries.length) return []
+        const set = new Set()
+        entries.forEach((entry) => {
+          const type = entry?.membershipType != null ? String(entry.membershipType).trim() : ''
+          if (type) set.add(type)
+        })
+        return Array.from(set).sort((a, b) => a.localeCompare(b, 'ko-KR'))
+      }
+
+      function getThisMonthLatestMembershipType(record, refDate = new Date()) {
+        const entries = getThisMonthPaymentEntries(record, refDate)
+        if (!entries.length) return ''
+        const sorted = entries
+          .slice()
+          .sort((a, b) => {
+            const aTime = getPaymentEntryDate(a)?.getTime() || 0
+            const bTime = getPaymentEntryDate(b)?.getTime() || 0
+            return bTime - aTime
+          })
+        const latest = sorted[0]
+        return latest?.membershipType != null ? String(latest.membershipType).trim() : ''
+      }
+
+      function hasThisMonthMembershipType(record, membershipType, refDate = new Date()) {
+        const target = membershipType != null ? String(membershipType).trim() : ''
+        if (!target) return false
+        const types = getThisMonthMembershipTypes(record, refDate)
+        return types.includes(target)
       }
 
       function getPaymentTotalAmount(entries) {
@@ -5401,6 +5509,13 @@
         if (viewState.height !== 'all') {
           result = result.filter((item) => (item.height || '') === viewState.height)
         }
+        if (!IS_MOIM_VIEW && viewState.monthMembership !== 'all') {
+          const selected = String(viewState.monthMembership || '').trim()
+          if (selected && selected !== 'all') {
+            const now = new Date()
+            result = result.filter((item) => hasThisMonthMembershipType(item, selected, now))
+          }
+        }
         if (
           IS_MOIM_VIEW &&
           viewState.weekRange &&
@@ -5458,6 +5573,15 @@
             '신장 전체'
           )
         }
+        if (!IS_MOIM_VIEW && monthMembershipFilter) {
+          const now = new Date()
+          const values = []
+          items.forEach((item) => {
+            const types = getThisMonthMembershipTypes(item, now)
+            if (types.length) values.push(...types)
+          })
+          populateSelect(monthMembershipFilter, uniqueSorted(values), '이번달 회원권 전체')
+        }
       }
 
       function populateSelect(selectEl, values, placeholder) {
@@ -5492,6 +5616,9 @@
         if (selectEl === heightFilter) {
           viewState.height = selectEl.value
         }
+        if (selectEl === monthMembershipFilter) {
+          viewState.monthMembership = selectEl.value
+        }
         if (selectEl === statusFilter) {
           viewState.status = selectEl.value
         }
@@ -5501,6 +5628,9 @@
       }
       if (districtFilter) {
         districtFilter.value = viewState.district || 'all'
+      }
+      if (monthMembershipFilter) {
+        monthMembershipFilter.value = viewState.monthMembership || 'all'
       }
 
       function uniqueSorted(values) {
