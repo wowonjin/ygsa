@@ -1180,7 +1180,9 @@ async function readMatchHistory() {
     const raw = await fs.readFile(MATCH_HISTORY_FILE, 'utf-8')
     const parsed = safeParseJsonArray(raw, { label: 'match-history' })
     if (!Array.isArray(parsed)) return []
-    return parsed.map((entry) => normalizeMatchHistoryEntry(entry)).filter(Boolean)
+    // 과거 데이터(특히 targetPhone 누락 등)가 있어도 읽기 단계에서 떨어뜨리지 말고,
+    // GET /api/match-history에서 consultations 기반으로 보강(hydrate)할 수 있도록 느슨하게 정규화한다.
+    return parsed.map((entry) => normalizeMatchHistoryEntryLoose(entry)).filter(Boolean)
   } catch (error) {
     if (error.code === 'ENOENT') {
       await fs.writeFile(MATCH_HISTORY_FILE, '[]', 'utf-8')
@@ -1192,7 +1194,7 @@ async function readMatchHistory() {
 
 async function writeMatchHistory(data) {
   const normalized = Array.isArray(data)
-    ? data.map((entry) => normalizeMatchHistoryEntry(entry)).filter(Boolean)
+    ? data.map((entry) => normalizeMatchHistoryEntryLoose(entry)).filter(Boolean)
     : []
   const limited = normalized.slice(0, MATCH_HISTORY_LIMIT)
   await fs.mkdir(DATA_DIR, { recursive: true })
@@ -1235,6 +1237,46 @@ async function writeJsonFileAtomic(filePath, data) {
   const tmpPath = `${filePath}.tmp-${Date.now()}-${Math.random().toString(16).slice(2)}`
   await fs.writeFile(tmpPath, payload, 'utf-8')
   await fs.rename(tmpPath, filePath)
+}
+
+function normalizeMatchHistoryEntryLoose(entry) {
+  if (!entry || typeof entry !== 'object') return null
+  const candidateId = sanitizeText(entry.candidateId || entry.candidate?.id)
+  const targetId = sanitizeText(entry.targetId || entry.target?.id)
+  const candidatePhone = normalizePhoneNumber(entry.candidatePhone || entry.candidate?.phone || '')
+  const targetPhone = normalizePhoneNumber(
+    entry.targetPhone ||
+      entry.target?.phone ||
+      entry.targetPhoneKey ||
+      entry.targetPhoneMasked ||
+      entry.target?.phoneMasked ||
+      '',
+  )
+  // 최소 식별자가 전혀 없으면만 제외(보강 불가)
+  if (!candidateId && !candidatePhone) return null
+  if (!targetId && !targetPhone) return null
+
+  const matchedAt = Number(entry.matchedAt)
+  const normalizedMatchedAt =
+    Number.isFinite(matchedAt) && matchedAt > 0 ? matchedAt : Date.now()
+  const category = sanitizeMatchHistoryCategory(entry.category || entry.type || '')
+
+  return {
+    ...entry,
+    candidateId,
+    targetId,
+    candidatePhone,
+    targetPhone,
+    matchedAt: normalizedMatchedAt,
+    week: sanitizeWeekDescriptor(entry.week, normalizedMatchedAt),
+    category,
+    targetSelected: normalizeBooleanFlag(entry.targetSelected),
+    extraMatch: normalizeBooleanFlag(entry.extraMatch),
+    candidateName: sanitizeText(entry.candidateName || entry.candidate?.name),
+    candidateGender: sanitizeText(entry.candidateGender || entry.candidate?.gender),
+    targetName: sanitizeText(entry.targetName || entry.target?.name),
+    targetGender: sanitizeText(entry.targetGender || entry.target?.gender),
+  }
 }
 
 function sanitizeMatchHistoryPayload(body) {
@@ -1396,6 +1438,10 @@ function hydrateSingleMatchHistoryEntry(records = [], entry = {}) {
     if (normalizePhoneNumber(hydrated.candidateId) && candidateRecord.id) {
       hydrated.candidateId = candidateRecord.id
     }
+    // candidateId가 비어있던 과거 데이터도 id로 채움
+    if (!hasContent(hydrated.candidateId) && candidateRecord.id) {
+      hydrated.candidateId = candidateRecord.id
+    }
   }
 
   if (targetRecord) {
@@ -1410,6 +1456,9 @@ function hydrateSingleMatchHistoryEntry(records = [], entry = {}) {
       hydrated.targetPhone = phoneKey
     }
     if (normalizePhoneNumber(hydrated.targetId) && targetRecord.id) {
+      hydrated.targetId = targetRecord.id
+    }
+    if (!hasContent(hydrated.targetId) && targetRecord.id) {
       hydrated.targetId = targetRecord.id
     }
   }
