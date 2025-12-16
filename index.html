@@ -1088,6 +1088,19 @@
                 <h4>선택된 후보</h4>
                 <span id="matchSelectionCount">0명</span>
               </div>
+              <div class="match-selection-tools" aria-label="소개 주차 설정">
+                <label class="match-selection-tool">
+                  <span>소개 주차</span>
+                  <input id="matchIntroDate" type="date" />
+                </label>
+                <label class="match-selection-tool match-selection-tool-check">
+                  <input id="matchIntroMutual" type="checkbox" />
+                  <span>서로 소개로도 추가</span>
+                </label>
+              </div>
+              <p class="match-selection-hint">
+                날짜를 선택하면 해당 날짜가 속한 <strong>주차(월~일)</strong>로 “이번주 소개” 기록이 저장됩니다.
+              </p>
               <p id="matchSelectionEmpty" class="match-selection-empty">아직 선택한 후보가 없습니다.</p>
               <ul id="matchSelectionList" class="match-selection-list"></ul>
             </div>

@@ -482,6 +482,8 @@
       const matchSelectionCountEl = document.getElementById('matchSelectionCount')
       const matchSelectionList = document.getElementById('matchSelectionList')
       const matchSelectionEmptyEl = document.getElementById('matchSelectionEmpty')
+      const matchIntroDateInput = document.getElementById('matchIntroDate')
+      const matchIntroMutualCheckbox = document.getElementById('matchIntroMutual')
       const matchHistoryList = document.getElementById('matchHistoryList')
       const matchHistorySummaryEl = document.getElementById('matchHistorySummary')
       const matchHistoryTitleEl = document.getElementById('matchHistoryTitle')
@@ -5939,6 +5941,32 @@
         setTimeout(() => toastEl.classList.remove('show'), 2500)
       }
 
+      function formatDateInputValue(dateInput) {
+        const date = dateInput instanceof Date ? dateInput : new Date(dateInput)
+        if (!Number.isFinite(date.getTime())) return ''
+        const yyyy = String(date.getFullYear())
+        const mm = String(date.getMonth() + 1).padStart(2, '0')
+        const dd = String(date.getDate()).padStart(2, '0')
+        return `${yyyy}-${mm}-${dd}`
+      }
+
+      function ensureMatchIntroDefaults() {
+        if (matchIntroDateInput && !matchIntroDateInput.value) {
+          matchIntroDateInput.value = formatDateInputValue(new Date())
+        }
+      }
+
+      function getSelectedIntroMatchedAt() {
+        if (!matchIntroDateInput) return Date.now()
+        const raw = String(matchIntroDateInput.value || '').trim()
+        if (!raw) return Date.now()
+        const date = new Date(raw)
+        if (!Number.isFinite(date.getTime())) return Date.now()
+        // 주차 계산 안정화를 위해 정오로 고정
+        date.setHours(12, 0, 0, 0)
+        return date.getTime()
+      }
+
       function openMatchModal(initialId) {
         if (!matchModal || !isAuthenticated) return
         if (matchModalHideTimer) {
@@ -5946,6 +5974,7 @@
           matchModalHideTimer = null
         }
         syncMatchMemberOptions()
+        ensureMatchIntroDefaults()
         matchModal.hidden = false
         requestAnimationFrame(() => matchModal.classList.add('visible'))
         const targetId = initialId || matchSelectedMemberId
@@ -6125,7 +6154,7 @@
         }
         if (!hasPreferences) {
           matchStatusEl.textContent =
-            '선호 조건이 없어도 상담 완료 회원을 모두 보여줍니다. 조건을 입력하면 우선순위가 더 정확해집니다.'
+            '선호 조건이 없어도 상담 완료 회원을 모두 보여줍니다. (상담 예정/상담 전은 추천에서 제외됩니다.)'
         } else if (hasPriority) {
           const fragments = []
           if (priorityEntries.length > priorityDisplayed) {
@@ -6276,7 +6305,8 @@
         const candidateStatus = PHONE_STATUS_VALUES.includes(candidate.phoneConsultStatus)
           ? candidate.phoneConsultStatus
           : 'pending'
-        if (candidateStatus === 'pending') return null
+        // 추천 후보는 "상담 완료(done)"만 노출 (상담 예정/상담 전은 제외)
+        if (candidateStatus !== 'done') return null
         const targetGender = normalizeMatchGender(target.gender)
         const candidateGender = normalizeMatchGender(candidate.gender)
         if (targetGender && candidateGender && targetGender === candidateGender) return null
@@ -6487,7 +6517,8 @@
         const statusKey = PHONE_STATUS_VALUES.includes(record.phoneConsultStatus)
           ? record.phoneConsultStatus
           : 'pending'
-        if (statusKey === 'pending') return null
+        // 선매칭(우선 추천)도 "상담 완료(done)"만 대상으로 한다.
+        if (statusKey !== 'done') return null
         const candidateBirthLabel = formatBirthLabel(record.birth)
         return {
           candidate: record,
@@ -6974,7 +7005,11 @@
         const [entry] = matchSelectedCandidates.splice(index, 1)
         const candidateRecord = items.find((item) => item.id === candidateId)
         const targetRecord = items.find((item) => item.id === matchSelectionTargetId)
-        const historyEntry = buildMatchHistoryEntry(entry.snapshot || candidateRecord, targetRecord)
+        const matchedAt = getSelectedIntroMatchedAt()
+        const weekInfo = getWeekInfo(new Date(matchedAt))
+        const historyEntry = buildMatchHistoryEntry(entry.snapshot || candidateRecord, targetRecord, {
+          matchedAt,
+        })
         matchHistory.unshift(historyEntry)
         rememberMatchInitiatorByEntry(historyEntry)
         if (historyEntry.candidateId) {
@@ -6982,10 +7017,26 @@
         }
         saveMatchHistory()
         syncMatchHistoryEntryWithServer(historyEntry, targetRecord)
+
+        // (옵션) 서로 소개로도 추가: 상대방(후보)에게도 대상자를 "이번주 소개"로 넣는다.
+        const shouldMutual = Boolean(matchIntroMutualCheckbox?.checked)
+        if (shouldMutual && candidateRecord && targetRecord) {
+          const reverseEntry = buildMatchHistoryEntry(targetRecord, candidateRecord, { matchedAt })
+          matchHistory.unshift(reverseEntry)
+          rememberMatchInitiatorByEntry(reverseEntry)
+          if (reverseEntry.candidateId) {
+            matchedCandidateIds.add(reverseEntry.candidateId)
+          }
+          saveMatchHistory()
+          syncMatchHistoryEntryWithServer(reverseEntry, candidateRecord)
+        }
+
         updateMatchSelectionSummary()
         updateMatchHistoryUI()
         runMatchRecommendation()
-        showToast(`${historyEntry.candidate?.name || '후보'} 님을 이번주 소개에 추가했습니다.`)
+        showToast(
+          `${historyEntry.candidate?.name || '후보'} 님을 ${weekInfo?.label || '선택 주차'} 소개에 추가했습니다.`,
+        )
       }
 
       function updateMatchSelectionSummary() {
@@ -7055,20 +7106,23 @@
         }
       }
 
-      function buildMatchHistoryEntry(candidateRecord, targetRecord) {
-        const now = Date.now()
+      function buildMatchHistoryEntry(candidateRecord, targetRecord, options = {}) {
+        const createdAt = Date.now()
+        const matchedAt = Number.isFinite(Number(options?.matchedAt))
+          ? Number(options.matchedAt)
+          : Date.now()
         const candidateSnapshot = buildCandidateSnapshot(candidateRecord)
         const targetSnapshot = targetRecord ? buildCandidateSnapshot(targetRecord) : null
         const targetPhoneKey = normalizePhoneKey(targetSnapshot?.phone)
-        const weekInfo = getWeekInfo(new Date(now))
+        const weekInfo = getWeekInfo(new Date(matchedAt))
         return {
-          id: `${candidateSnapshot.id || 'candidate'}-${now}`,
+          id: `${candidateSnapshot.id || 'candidate'}-${createdAt}`,
           candidateId: candidateSnapshot.id || '',
           candidate: candidateSnapshot,
           target: targetSnapshot,
           targetId: targetSnapshot?.id || targetRecord?.id || '',
           targetPhone: targetPhoneKey,
-          matchedAt: now,
+          matchedAt,
           week: {
             label: weekInfo.label,
             startTime: weekInfo.start.getTime(),
