@@ -44,6 +44,15 @@
       let appInitialized = false
       const MATCH_CONFIRMED_STORAGE_KEY = 'YGSA_CONFIRMED_MATCHES'
       const MATCH_INITIATOR_STORAGE_KEY = 'YGSA_MATCH_INITIATORS_V1'
+      // match-history는 초기화 직후(loadConfirmedMatches/loadMatchHistory)에도 사용되므로
+      // TDZ(선언 전 접근) 에러를 피하기 위해 상수들을 상단에 둔다.
+      const MATCH_HISTORY_STORAGE_KEY = 'ygsa_match_history_v1'
+      const MATCH_HISTORY_RESYNC_KEY = 'ygsa_match_history_resync_at'
+      const MATCH_HISTORY_RESYNC_INTERVAL_MS = 6 * 60 * 60 * 1000
+      const MATCH_HISTORY_CATEGORY = {
+        INTRO: 'intro',
+        CONFIRMED: 'confirmed',
+      }
       let pendingExternalMatchSelection = extractSelectionFromHash()
       let confirmedMatches = loadConfirmedMatches()
       let matchInitiatorCache = loadMatchInitiators()
@@ -655,13 +664,6 @@
         Number.isFinite(MATCH_RESULT_LIMIT) && MATCH_RESULT_LIMIT > 0
       const MATCH_RESULT_LIMIT_VALUE = HAS_MATCH_RESULT_LIMIT ? MATCH_RESULT_LIMIT : Infinity
       const MATCH_SCORE_MAX = 3
-      const MATCH_HISTORY_STORAGE_KEY = 'ygsa_match_history_v1'
-      const MATCH_HISTORY_RESYNC_KEY = 'ygsa_match_history_resync_at'
-      const MATCH_HISTORY_RESYNC_INTERVAL_MS = 6 * 60 * 60 * 1000
-      const MATCH_HISTORY_CATEGORY = {
-        INTRO: 'intro',
-        CONFIRMED: 'confirmed',
-      }
       const MATCH_FEEDBACK_MAX = 12
       let genderStatsData = { male: 0, female: 0 }
       let referralStatsData = { total: 0, breakdown: [] }
@@ -1147,6 +1149,23 @@
           syncMatchMemberOptions()
           updateStats()
           render()
+
+          // Storage profile.json을 "전화번호 기반"으로 병합(리스트 권한(listAll) 없이도 반영 가능)
+          // UI는 먼저 보여주고, 병합이 끝나면 한번 더 갱신한다.
+          if (!IS_MOIM_VIEW) {
+            Promise.resolve()
+              .then(async () => {
+                const changed = await hydrateItemsFromStorageProfiles(items, { concurrency: 10 })
+                if (changed) {
+                  syncFilterOptions()
+                  syncMatchMemberOptions()
+                  updateStats()
+                  render()
+                }
+              })
+              .catch(() => {})
+          }
+
           await refreshMatchHistoryFromServer()
           if (!calendarModal.hidden) {
             refreshCalendar(true)
@@ -3988,6 +4007,57 @@
         )
         await Promise.all(workers)
         return results
+      }
+
+      async function fetchStorageProfileJsonByPhone(phoneKey) {
+        const normalized = normalizePhoneKey(phoneKey || '')
+        if (!normalized) return null
+        const storage = await ensureFirebaseStorage()
+        const basePath = getProfilesBasePath().replace(/\/?$/, '/')
+        const ref = storage.ref().child(`${basePath}${normalized}/profile.json`)
+        const url = await ref.getDownloadURL()
+        const res = await fetch(url, { cache: 'no-store' })
+        if (!res.ok) throw new Error(`profile.json fetch failed (${res.status})`)
+        const data = await res.json()
+        return data && typeof data === 'object' ? data : null
+      }
+
+      async function hydrateItemsFromStorageProfiles(list, options = {}) {
+        if (IS_MOIM_VIEW) return false
+        const itemsList = Array.isArray(list) ? list : []
+        if (!itemsList.length) return false
+        const concurrency = Number.isFinite(options.concurrency) ? options.concurrency : 10
+        const max = Number.isFinite(options.limit) ? options.limit : itemsList.length
+        const targets = itemsList.slice(0, Math.max(0, max))
+
+        let changed = false
+        let cursor = 0
+        const runWorker = async () => {
+          while (cursor < targets.length) {
+            const index = cursor++
+            const record = targets[index]
+            const phoneKey = normalizePhoneKey(record?.phone || record?.phoneMasked || '')
+            if (!phoneKey) continue
+            try {
+              const profile = await fetchStorageProfileJsonByPhone(phoneKey)
+              if (!profile) continue
+              // Storage의 profile.json을 우선(덮어쓰기)하되, id/phone은 유지/보강
+              const merged = { ...record, ...profile }
+              if (!merged.phone) merged.phone = phoneKey
+              if (!merged.id) merged.id = record?.id || phoneKey
+              itemsList[itemsList.indexOf(record)] = merged
+              changed = true
+            } catch (_) {
+              // 권한/존재하지 않음/네트워크 오류면 조용히 스킵
+            }
+          }
+        }
+        const workers = Array.from(
+          { length: Math.max(1, Math.min(concurrency, targets.length)) },
+          () => runWorker(),
+        )
+        await Promise.all(workers)
+        return changed
       }
 
       function resolveFirestoreCollectionName() {
