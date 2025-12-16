@@ -6365,9 +6365,35 @@
         const targetId = targetRecord.id || ''
         const targetPhoneKey = normalizePhoneKey(targetRecord.phone)
         const targetSnapshot = buildCandidateSnapshot(targetRecord)
+        const wasIntroducedToTargetThisWeek = (requesterSnapshot) => {
+          if (!requesterSnapshot) return false
+          const requesterId = requesterSnapshot.id || ''
+          const requesterPhoneKey = normalizePhoneKey(requesterSnapshot.phone)
+          if (!requesterId && !requesterPhoneKey) return false
+          return matchHistory.some((entry) => {
+            if (!entry || isConfirmedMatchEntry(entry)) return false
+            if (!doesHistoryEntryMatchTarget(entry, targetId, targetPhoneKey)) return false
+            if (entry.week) {
+              if (entry.week.year !== currentWeek.year || entry.week.week !== currentWeek.week) {
+                return false
+              }
+            }
+            const candidateId = entry.candidateId || entry.candidate?.id || ''
+            const candidatePhoneKey = normalizePhoneKey(
+              entry.candidatePhone || entry.candidate?.phone || '',
+            )
+            if (requesterId && candidateId && requesterId === candidateId) return true
+            if (requesterPhoneKey && candidatePhoneKey && requesterPhoneKey === candidatePhoneKey) {
+              return true
+            }
+            return false
+          })
+        }
         return matchHistory
           .filter((entry) => {
             if (!entry || isConfirmedMatchEntry(entry)) return false
+            // "추가 매칭 카드"는 apply.html에서 '매칭 선택하기'를 눌러 생성된 요청(= targetSelected=true)만 해당
+            if (!entry.targetSelected) return false
             const candidateMatch = targetId && entry.candidateId === targetId
             const entryCandidatePhoneKey = normalizePhoneKey(
               entry.candidatePhone || entry.candidate?.phone || '',
@@ -6384,6 +6410,9 @@
               entry.target ||
               null
             const initiatorSnapshot = initiator ? buildCandidateSnapshot(initiator) : null
+            const extraIncoming = initiatorSnapshot
+              ? !wasIntroducedToTargetThisWeek(initiatorSnapshot)
+              : true
             return {
               ...entry,
               id: entry.id,
@@ -6394,6 +6423,7 @@
               target: targetSnapshot || entry.candidate || null,
               targetPhone: targetSnapshot.phone || entry.candidatePhone || '',
               targetSelected: true,
+              extraIncoming,
             }
           })
           .filter((entry) => entry.candidateId)
@@ -7200,7 +7230,7 @@
 
       function getMatchHistoryStatusLabel(entry) {
         if (entry?.direction === 'incoming') {
-          return '선택 당함'
+          return entry?.extraIncoming ? '추가 매칭 카드' : '선택 당함'
         }
         if (isConfirmedMatchEntry(entry)) {
           return entry?.extraMatch ? '추가 매칭 완료' : '매칭 완료'

@@ -710,6 +710,17 @@
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
         scrollbar-width: thin;
+        overscroll-behavior: contain;
+        background: #ffffff;
+      }
+
+      /* 카드 내부 스크롤에서 오버스크롤 시 부모 배경이 비치며 색 번짐처럼 보이는 현상 방지 */
+      .profile-card-preview.profile-card-preview-female .profile-card-slide-info {
+        background: linear-gradient(135deg, #fff1f5, #ffe4e8);
+      }
+
+      .profile-card-preview.profile-card-preview-male .profile-card-slide-info {
+        background: linear-gradient(135deg, #ecfeff, #dbeafe);
       }
 
       .profile-card-info {
@@ -996,6 +1007,12 @@
         body {
           padding: 16px;
         }
+      }
+
+      /* 페이지 오버스크롤(끝에서 튕길 때 나타나는 색 번짐/글로우) 최소화 */
+      html,
+      body {
+        overscroll-behavior: none;
       }
     </style>
   </head>
@@ -1428,9 +1445,6 @@
             if (!candidateId) return
             if (indexMap.has(candidateId)) {
               merged[indexMap.get(candidateId)] = { ...merged[indexMap.get(candidateId)], ...card }
-            } else {
-              indexMap.set(candidateId, merged.length)
-              merged.push(card)
             }
           })
           return merged
@@ -1515,8 +1529,13 @@
             if (!requesterKey) return
             const requestStatus = String(req?.status || '').toLowerCase()
             const isConfirmedIncoming = requestStatus === 'confirmed'
+            const isInDeck = matchState.currentDeckIds.has(requesterKey)
+            const isExtraIncoming = !isInDeck || Boolean(req?.extraMatch)
             if (!isConfirmedIncoming && matchState.currentDeckIds.has(requesterKey)) return
             if (!isConfirmedIncoming && matchState.confirmedById.has(requesterKey)) return
+            // 이번주 소개(덱)에 이미 있는 후보가 "추가 매칭"이 아닌 상태로 확정되었다면
+            // incoming 영역에서는 중복 노출하지 않는다.
+            if (isConfirmedIncoming && isInDeck && !isExtraIncoming) return
             visible.push({ request: req, requesterKey, isConfirmedIncoming })
           })
           incomingCards.innerHTML = ''
@@ -1549,15 +1568,23 @@
               matchState.contactById.get(candidateId) ||
               matchState.contactById.get(requesterKey) ||
               contactFromRequest
+            const isInDeck = matchState.currentDeckIds.has(requesterKey)
+            const isExtraIncoming = !isInDeck || Boolean(request?.extraMatch)
             const card = renderMatchCard(profileRecord, null, {
               isIncomingOnly: true,
-              coverTitle: isConfirmedIncoming ? '상호 매칭 완료' : '실시간 요청',
+              coverTitle: isConfirmedIncoming
+                ? isExtraIncoming
+                  ? '추가 매칭 완료'
+                  : '매칭 완료'
+                : isExtraIncoming
+                  ? '추가 매칭 카드'
+                  : '실시간 요청',
               coverSubtitle: isConfirmedIncoming
                 ? '이미 연결된 회원입니다'
-                : '지금 확인하고 선택하세요',
+                : '지금 확인하고 수락하세요',
               incomingRequest: request,
               initialContact,
-              extraMatch: isConfirmedIncoming,
+              extraMatch: isExtraIncoming,
             })
             if (card) {
               incomingCards.appendChild(card)
@@ -1671,6 +1698,9 @@
             const candidateId = deriveCandidateKey(entry)
             if (!candidateId || matchState.currentDeckIds.has(candidateId)) return
             if (viewerKey && candidateId === viewerKey) return
+            // "나와 연결되고 싶은 사람(incoming)"으로 들어온 확정 카드는 추천 카드 영역으로 끌어올리지 않는다.
+            // (새로고침 시에도 추가 매칭 완료 카드는 incoming 섹션에 유지)
+            if (matchState.incomingById.has(candidateId)) return
             const fallbackRecord = buildFallbackConfirmedRecord(entry, candidateId)
             if (!fallbackRecord) return
             matchState.currentDeckIds.add(candidateId)
@@ -2086,9 +2116,13 @@
           const candidateKey = normalizeCandidateKey(candidateId)
           const incomingRequest = matchState.incomingById.get(candidateKey)
           const resolvedMatchEntryId = matchEntryId || incomingRequest?.requestId || ''
+          const hasIncomingRequest = Boolean(incomingRequest)
+          const isInDeck = candidateKey ? matchState.currentDeckIds.has(candidateKey) : false
+          // "추가 매칭"은 상대가 나를 선택한 요청이 있으면서(=incoming) 이번주 소개 덱에는 없을 때만
+          const isExtraMatch = hasIncomingRequest && !isInDeck
           const payload = buildMatchSelectionPayload(record, candidateId, resolvedMatchEntryId, {
             categoryOverride: incomingRequest ? 'confirmed' : 'intro',
-            extraMatch: hasIncomingRequest,
+            extraMatch: isExtraMatch,
           })
           if (!payload) {
             showMessage('매칭 정보를 준비할 수 없습니다. 관리자에게 문의해주세요.', true)
@@ -2099,10 +2133,8 @@
           if (cancelButton) {
             cancelButton.disabled = true
           }
-          let hasIncomingRequest = false
           try {
             await sendMatchRequest(payload)
-            hasIncomingRequest = Boolean(incomingRequest)
             let contactInfo = hasIncomingRequest ? getContactInfo(candidateKey) : null
             if (!contactInfo && hasIncomingRequest && incomingRequest?.contact) {
               contactInfo = buildContactSnapshot(
@@ -2118,7 +2150,7 @@
               contact: hasIncomingRequest ? contactInfo : null,
               cancelButton,
               matchEntryId: payload.id,
-              extraMatch: hasIncomingRequest,
+              extraMatch: isExtraMatch,
             })
             if (hasIncomingRequest) {
               matchedCandidateIds.add(candidateKey)

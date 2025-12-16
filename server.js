@@ -537,13 +537,6 @@ app.post('/api/match-history/lookup', async (req, res) => {
       return true
     }
 
-    const confirmedPrioritySource = weekFilteredConfirmed.length
-      ? weekFilteredConfirmed
-      : confirmedEntries
-    confirmedPrioritySource.forEach((entry) => {
-      tryPushEntry(entry)
-    })
-
     let introSlots = Math.max(limit, 0)
     const introSource = weekFilteredIntro.length ? weekFilteredIntro : introEntries
     for (const entry of introSource) {
@@ -553,10 +546,19 @@ app.post('/api/match-history/lookup', async (req, res) => {
       }
     }
 
+    // 추천 덱(matches)은 "이번주 소개(intro)"만 구성한다.
+    // confirmed(확정) 내역은 confirmedMatchCards / matchedCandidates / incomingRequests로 별도 전달한다.
+    // 단, intro가 전혀 없고 confirmed만 있는 경우에는 화면이 비는 것을 방지하기 위해
+    // extraMatch가 아닌 confirmed만 제한적으로 덱에 채워준다.
     if (!selection.length && confirmedEntries.length) {
-      confirmedEntries.forEach((entry) => {
+      const confirmedFallbackSource = weekFilteredConfirmed.length
+        ? weekFilteredConfirmed
+        : confirmedEntries
+      for (const entry of confirmedFallbackSource) {
+        if (selection.length >= limit) break
+        if (normalizeBooleanFlag(entry?.extraMatch)) continue
         tryPushEntry(entry)
-      })
+      }
     }
 
     if (!selection.length) {
@@ -1404,15 +1406,36 @@ function promoteMutualMatches(history = [], updatedEntry = null) {
       normalizeBooleanFlag(entry.targetSelected),
   )
   if (!candidates.length) return updates
-  const confirmEntry = (entry) => {
+  const resolvePairExtraMatch = (a, b) =>
+    normalizeBooleanFlag(a?.extraMatch) || normalizeBooleanFlag(b?.extraMatch)
+
+  const confirmEntry = (entry, extraMatchForPair = false) => {
     const index = history.findIndex((item) => item.id === entry.id)
     const alreadyConfirmed = sanitizeMatchHistoryCategory(entry.category) === 'confirmed'
     if (index === -1 && alreadyConfirmed) return entry
-    if (alreadyConfirmed) return entry
+    if (alreadyConfirmed) {
+      if (
+        extraMatchForPair &&
+        (!Object.prototype.hasOwnProperty.call(entry, 'extraMatch') ||
+          !normalizeBooleanFlag(entry.extraMatch))
+      ) {
+        const patched = {
+          ...entry,
+          extraMatch: true,
+        }
+        if (index !== -1) {
+          history[index] = patched
+        }
+        updates.push(patched)
+        return patched
+      }
+      return entry
+    }
     const confirmed = {
       ...entry,
       category: 'confirmed',
       confirmedAt: entry.confirmedAt || Date.now(),
+      extraMatch: Boolean(extraMatchForPair),
     }
     if (index !== -1) {
       history[index] = confirmed
@@ -1420,8 +1443,11 @@ function promoteMutualMatches(history = [], updatedEntry = null) {
     updates.push(confirmed)
     return confirmed
   }
-  confirmEntry(normalizedUpdated)
-  candidates.forEach((entry) => confirmEntry(entry))
+  candidates.forEach((reverseEntry) => {
+    const pairExtra = resolvePairExtraMatch(normalizedUpdated, reverseEntry)
+    confirmEntry(normalizedUpdated, pairExtra)
+    confirmEntry(reverseEntry, pairExtra)
+  })
   return updates
 }
 

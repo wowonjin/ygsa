@@ -4,7 +4,8 @@
   "description": "무료 상담 신청과 관리자 대시보드",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "migrate:match-extra": "node scripts/migrate-match-history-extraMatch.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
