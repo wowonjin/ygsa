@@ -488,6 +488,8 @@
       const matchPreferredLifestyleEl = document.getElementById('matchPreferredLifestyle')
       const matchStatusEl = document.getElementById('matchStatus')
       const matchResultsList = document.getElementById('matchResultsList')
+      const matchResultsSearchInput = document.getElementById('matchResultsSearchInput')
+      const matchResultsSearchClearBtn = document.getElementById('matchResultsSearchClearBtn')
       const matchSelectionCountEl = document.getElementById('matchSelectionCount')
       const matchSelectionList = document.getElementById('matchSelectionList')
       const matchSelectionEmptyEl = document.getElementById('matchSelectionEmpty')
@@ -496,6 +498,7 @@
       const matchHistoryList = document.getElementById('matchHistoryList')
       const matchHistorySummaryEl = document.getElementById('matchHistorySummary')
       const matchHistoryTitleEl = document.getElementById('matchHistoryTitle')
+      const matchHistorySyncBtn = document.getElementById('matchHistorySyncBtn')
       const genderFilter = document.getElementById('genderFilter')
       const districtFilter = document.getElementById('districtFilter')
       const heightFilter = document.getElementById('heightFilter')
@@ -629,10 +632,12 @@
       let matchSelectionTargetPhoneKey = ''
       let profileCardRecord = null
       let matchLatestResults = []
+      let matchResultsSearchQuery = ''
       let matchLatestAiRequestId = 0
       const matchAiInsightCache = new Map()
       let matchAiFeatureDisabled = false
       let matchedCouplesSelectedWeekKey = buildWeekKey(getWeekInfo(new Date()))
+      let isMatchHistorySyncing = false
       const viewState = {
         search: '',
         status: 'all',
@@ -913,8 +918,29 @@
       })
       matchTargetInput?.addEventListener('blur', () => handleMatchTargetSelection(false))
       matchResultsList?.addEventListener('click', handleMatchResultsClick)
+      matchResultsSearchInput?.addEventListener('input', (event) => {
+        setMatchResultsSearchQuery(event.target?.value || '')
+        renderMatchResultsWithSearch(matchLatestResults)
+      })
+      matchResultsSearchInput?.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape') return
+        if (!matchResultsSearchInput.value) return
+        event.preventDefault()
+        event.stopPropagation()
+        setMatchResultsSearchQuery('')
+        renderMatchResultsWithSearch(matchLatestResults)
+        matchResultsSearchInput.focus()
+      })
+      matchResultsSearchClearBtn?.addEventListener('click', () => {
+        setMatchResultsSearchQuery('')
+        renderMatchResultsWithSearch(matchLatestResults)
+        matchResultsSearchInput?.focus()
+      })
       matchSelectionList?.addEventListener('click', handleMatchSelectionClick)
       matchHistoryList?.addEventListener('click', handleMatchHistoryClick)
+      matchHistorySyncBtn?.addEventListener('click', () => {
+        forceSyncMatchHistoryFromServer()
+      })
       matchResetBtn?.addEventListener('click', () => clearMatchTarget())
       matchedCouplesList?.addEventListener('click', handleMatchedCouplesListClick)
       matchedCouplesWeekSelect?.addEventListener('change', (event) => {
@@ -6335,6 +6361,57 @@
           .replace(/'/g, '&#39;')
       }
 
+      function normalizeMatchSearchQuery(value) {
+        return String(value || '').trim().toLowerCase()
+      }
+
+      function setMatchResultsSearchEnabled(enabled) {
+        if (!matchResultsSearchInput) return
+        matchResultsSearchInput.disabled = !enabled
+        if (!enabled) {
+          setMatchResultsSearchQuery('')
+        }
+      }
+
+      function setMatchResultsSearchQuery(nextValue) {
+        matchResultsSearchQuery = String(nextValue || '')
+        if (matchResultsSearchInput) {
+          matchResultsSearchInput.value = matchResultsSearchQuery
+        }
+        if (matchResultsSearchClearBtn) {
+          matchResultsSearchClearBtn.hidden = !normalizeMatchSearchQuery(matchResultsSearchQuery)
+        }
+      }
+
+      function filterMatchResultsBySearch(results) {
+        const list = Array.isArray(results) ? results : []
+        const q = normalizeMatchSearchQuery(matchResultsSearchQuery)
+        if (!q) return list
+        return list.filter((entry) => {
+          const name = entry?.candidate?.name
+          const phone = entry?.candidate?.phone
+          return [name, phone]
+            .map((field) => String(field || '').toLowerCase())
+            .some((field) => field.includes(q))
+        })
+      }
+
+      function renderMatchResultsWithSearch(results) {
+        if (!matchResultsList) return
+        const list = Array.isArray(results) ? results : []
+        const q = normalizeMatchSearchQuery(matchResultsSearchQuery)
+        if (!q) {
+          renderMatchResults(list)
+          return
+        }
+        const filtered = filterMatchResultsBySearch(list)
+        if (!filtered.length && list.length) {
+          matchResultsList.innerHTML = '<li class="match-placeholder">검색 결과가 없습니다.</li>'
+          return
+        }
+        renderMatchResults(filtered)
+      }
+
       function showToast(message) {
         toastEl.textContent = message
         toastEl.classList.add('show')
@@ -6386,7 +6463,8 @@
           }
         } else {
           renderMatchTargetInfo(null)
-          renderMatchResults([])
+          setMatchResultsSearchEnabled(false)
+          renderMatchResultsWithSearch([])
           if (matchStatusEl) {
             matchStatusEl.textContent = '대상자를 선택하면 추천 리스트가 표시됩니다.'
           }
@@ -6481,10 +6559,10 @@
           updateMatchPreferenceSummary(null)
           return
         }
-        const age = getAgeFromBirth(record.birth)
+        const birthLabel = formatBirthLabel(record.birth)
         const metaPieces = [
           record.gender || '',
-          age ? `${age}세` : '',
+          birthLabel || '',
           record.height || '',
           record.mbti ? `MBTI ${record.mbti}` : '',
           record.job || '',
@@ -6531,9 +6609,13 @@
           : null
         if (!target) {
           matchStatusEl.textContent = '대상자를 먼저 선택해주세요.'
-          renderMatchResults([])
+          setMatchResultsSearchEnabled(false)
+          renderMatchResultsWithSearch([])
           return
         }
+        // 대상자 기준으로 추천을 새로 계산할 때는 검색어를 초기화해 혼동을 줄입니다.
+        setMatchResultsSearchEnabled(true)
+        setMatchResultsSearchQuery('')
         const hasPreferences =
           (Array.isArray(target.preferredHeights) && target.preferredHeights.length) ||
           (Array.isArray(target.preferredAges) && target.preferredAges.length) ||
@@ -6549,7 +6631,7 @@
         const limitValue = MATCH_RESULT_LIMIT_VALUE
         if (!displayList.length) {
           matchStatusEl.textContent = '조건에 맞는 추천 후보가 없습니다.'
-          renderMatchResults([])
+          renderMatchResultsWithSearch([])
           return
         }
         if (!hasPreferences) {
@@ -6598,7 +6680,7 @@
           }
         })
         matchLatestResults = decoratedResults
-        renderMatchResults(matchLatestResults)
+        renderMatchResultsWithSearch(matchLatestResults)
         if (!matchAiFeatureDisabled) {
           hydrateMatchResultsWithAi(target, matchLatestResults)
         }
@@ -7043,14 +7125,14 @@
             }
           })
           if (needsRender) {
-            renderMatchResults(resultEntries)
+            renderMatchResultsWithSearch(resultEntries)
           }
           return
         }
         pendingEntries.forEach((entry) => {
           entry.aiStatus = 'loading'
         })
-        renderMatchResults(resultEntries)
+        renderMatchResultsWithSearch(resultEntries)
         const requestId = ++matchLatestAiRequestId
         const requestedIds = new Set(requestPayload.candidates.map((candidate) => candidate.id))
         fetchMatchAiSummaries(requestPayload)
@@ -7064,7 +7146,7 @@
               matchLatestResults = (matchLatestResults || []).map((entry) =>
                 entry.aiStatus === 'loading' ? { ...entry, aiStatus: 'idle' } : entry,
               )
-              renderMatchResults(matchLatestResults)
+              renderMatchResultsWithSearch(matchLatestResults)
               return
             }
             if (requestId !== matchLatestAiRequestId) return
@@ -7081,7 +7163,7 @@
               return entry
             })
             if (shouldRender) {
-              renderMatchResults(matchLatestResults)
+              renderMatchResultsWithSearch(matchLatestResults)
             }
             console.warn('[match-ai] 추천 멘트 생성 실패', error)
           })
@@ -7180,7 +7262,7 @@
           }
         })
         if (shouldRender) {
-          renderMatchResults(matchLatestResults)
+          renderMatchResultsWithSearch(matchLatestResults)
         }
       }
 
@@ -8477,23 +8559,53 @@
       async function refreshMatchHistoryFromServer() {
         if (!MATCH_HISTORY_API_URL || typeof fetch !== 'function') {
           attemptMatchHistoryResync()
-          return
+          return false
         }
         try {
           const serverEntries = await fetchMatchHistoryFromServerRaw()
+          const fetchedOk = true
           if (!serverEntries.length) {
             attemptMatchHistoryResync()
-            return
+            return fetchedOk
           }
           const merged = mergeMatchHistoryEntries(serverEntries, matchHistory)
           matchHistory = merged
           rebuildMatchedCandidateIds()
           saveMatchHistory()
           updateMatchHistoryUI()
+          return fetchedOk
         } catch (error) {
           console.warn('[match] 서버 매칭 기록 불러오기 실패', error)
+          return false
         } finally {
           attemptMatchHistoryResync()
+        }
+      }
+
+      async function forceSyncMatchHistoryFromServer() {
+        if (isMatchHistorySyncing) return
+        isMatchHistorySyncing = true
+        const originalLabel = matchHistorySyncBtn?.textContent || ''
+        if (matchHistorySyncBtn) {
+          matchHistorySyncBtn.disabled = true
+          matchHistorySyncBtn.textContent = '동기화 중...'
+        }
+        try {
+          const ok = await refreshMatchHistoryFromServer()
+          if (ok) {
+            showToast('서버에서 이번주 소개를 동기화했습니다.')
+          } else {
+            showToast('서버 동기화에 실패했습니다. 새로고침 후 다시 시도해주세요.')
+          }
+        } catch (error) {
+          console.warn('[match] 서버 동기화 실패', error)
+          showToast('서버 동기화에 실패했습니다. 새로고침 후 다시 시도해주세요.')
+        } finally {
+          isMatchHistorySyncing = false
+          if (matchHistorySyncBtn) {
+            matchHistorySyncBtn.disabled = false
+            matchHistorySyncBtn.textContent = originalLabel || '서버 동기화'
+          }
         }
       }
 
@@ -8676,8 +8788,9 @@
         if (matchTargetInput) {
           matchTargetInput.value = ''
         }
+        setMatchResultsSearchEnabled(false)
         renderMatchTargetInfo(null)
-        renderMatchResults([])
+        renderMatchResultsWithSearch([])
         if (matchStatusEl) {
           matchStatusEl.textContent = '대상자를 선택하면 추천 리스트가 표시됩니다.'
         }

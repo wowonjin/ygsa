@@ -1195,11 +1195,13 @@
         const contactModalCloseBtn = document.getElementById('contactModalCloseBtn')
         const MATCH_MANAGER_URL =
           (window.MATCH_MANAGER_URL && String(window.MATCH_MANAGER_URL).trim()) || ''
+        // 특정 번호만 unlock/기간 제한을 우회할 수 있도록 허용(없으면 null 유지)
         const ADMIN_OVERRIDE_PHONES = null
-        const FIRST_UNLOCK_TIMESTAMP = new Date('2025-12-03T10:00:00+09:00').getTime()
+        // 오늘(2025-12-17) 오전 11시부터 휴대폰 번호 입력 후 조회/접속 가능
+        const FIRST_UNLOCK_TIMESTAMP = new Date('2025-12-17T11:00:00+09:00').getTime()
         const WEEK_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000
-        const UNLOCK_MESSAGE = '12월 3일 (수) 오전 10시부터 확인이 가능합니다.'
-        const NEXT_UNLOCK_MESSAGE = '12월 10일 (수) 오전 10시부터 확인이 가능합니다.'
+        const UNLOCK_MESSAGE = '12월 17일 (수) 오전 11시부터 확인이 가능합니다.'
+        const NEXT_UNLOCK_MESSAGE = '12월 24일 (수) 오전 11시부터 확인이 가능합니다.'
         const ACCESS_WINDOW_MS = 72 * 60 * 60 * 1000
         const ACCESS_GRANTS_STORAGE_KEY = 'match_access_grants_v1'
         let currentTargetProfile = null
@@ -1213,6 +1215,28 @@
           contactById: new Map(),
           currentDeckIds: new Set(),
         }
+        let contactModalRequestKey = ''
+        // #region agent log (debug-session)
+        function __dbg(hypothesisId, location, message, data) {
+          try {
+            fetch('http://127.0.0.1:7244/ingest/18122730-0b1f-4d35-9513-5329bc6405f1', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                sessionId: 'debug-session',
+                runId: 'pre-fix',
+                hypothesisId,
+                location,
+                message,
+                data,
+                timestamp: Date.now(),
+              }),
+            }).catch(() => {})
+          } catch (_) {
+            /* noop */
+          }
+        }
+        // #endregion agent log (debug-session)
         const realtimeState = {
           source: null,
           retryTimer: null,
@@ -1242,6 +1266,8 @@
           `${(resolvedOrigin || '').replace(/\/$/, '') || ''}/api/match-history`
         ).replace(/\/$/, '')
         const MATCH_LOOKUP_URL = `${(resolvedOrigin || '').replace(/\/$/, '') || ''}/api/match-history/lookup`
+        const MATCH_CONTACT_URL = `${(resolvedOrigin || '').replace(/\/$/, '') || ''}/api/match-history/contact`
+        const CONSULT_LIST_URL = `${(resolvedOrigin || '').replace(/\/$/, '') || ''}/api/consult`
         const EVENTS_URL = `${(resolvedOrigin || '').replace(/\/$/, '') || ''}/events`
 
         form?.addEventListener('submit', handleSubmit)
@@ -1274,13 +1300,31 @@
         function checkInitialUnlockState() {
           const now = Date.now()
           const unlockTime = getCurrentUnlockTime(now)
-          if (unlockTime && now < unlockTime) {
+          const locked = Boolean(unlockTime && now < unlockTime)
+
+          if (phoneInput) {
+            phoneInput.disabled = locked
+          }
+          if (submitButton) {
+            submitButton.disabled = locked
+          }
+          if (locked) {
             showMessage(UNLOCK_MESSAGE, true)
+            const delay = Math.max(0, unlockTime - now)
+            window.setTimeout(() => {
+              if (phoneInput) phoneInput.disabled = false
+              if (submitButton) submitButton.disabled = false
+              // 잠금 해제 시점에는 기존 메시지를 지워서 바로 입력/조회할 수 있게 함
+              showMessage('')
+            }, delay + 50)
           }
         }
 
         function isAdminOverridePhone(phoneDigits) {
-          return Boolean(String(phoneDigits || '').trim())
+          const digits = normalizePhoneKey(phoneDigits || '')
+          if (!digits) return false
+          if (!Array.isArray(ADMIN_OVERRIDE_PHONES) || ADMIN_OVERRIDE_PHONES.length === 0) return false
+          return ADMIN_OVERRIDE_PHONES.some((entry) => normalizePhoneKey(entry) === digits)
         }
 
         async function handleSubmit(event) {
@@ -1381,8 +1425,15 @@
           const weekInfo = data?.week || buildWeekMeta(new Date())
           currentWeekKey = buildWeekKey(weekInfo)
           const incomingRequestsRaw = Array.isArray(data?.incomingRequests) ? data.incomingRequests : []
+          // 주차가 바뀌었는데도 localStorage에 이전 주차 incoming이 남아있으면 누적처럼 보일 수 있으므로 정리한다.
+          cleanupStoredIncomingRequests(lastLookupPhoneKey, currentWeekKey)
+          // 서버가 주차를 잘못 내려주거나(레거시 데이터) 클라이언트 캐시가 섞여도,
+          // "나와 연결되고 싶은 사람"은 반드시 "이번 주" 요청만 노출되도록 한 번 더 필터링한다.
+          const incomingRequestsScoped = currentWeekKey
+            ? incomingRequestsRaw.filter((req) => buildWeekKey(req?.requestWeek) === currentWeekKey)
+            : incomingRequestsRaw
           const persistedIncoming = loadStoredIncomingRequests(lastLookupPhoneKey, currentWeekKey)
-          const incomingRequests = mergeIncomingRequests(incomingRequestsRaw, persistedIncoming)
+          const incomingRequests = mergeIncomingRequests(incomingRequestsScoped, persistedIncoming)
           saveStoredIncomingRequests(lastLookupPhoneKey, currentWeekKey, incomingRequests)
           const matchedContacts = Array.isArray(data?.matchedCandidates) ? data.matchedCandidates : []
           const hasAnyCards = mergedMatches.length || matchedContacts.length
@@ -1539,6 +1590,8 @@
         function renderIncomingRequests() {
           if (!incomingSection || !incomingCards) return
           const visible = []
+          let hasAnyPending = false
+          let pendingInDeckCount = 0
           matchState.incomingList.forEach((req) => {
             const requesterKey = normalizeCandidateKey(req?.requesterId)
             if (!requesterKey) return
@@ -1546,19 +1599,35 @@
             const isConfirmedIncoming = requestStatus === 'confirmed'
             // 확정(매칭 완료/추가 매칭 완료)된 요청은 "추천 카드"로 이동시키므로 incoming 영역에서 숨김
             if (isConfirmedIncoming) return
+            hasAnyPending = true
             const isInDeck = matchState.currentDeckIds.has(requesterKey)
             const isExtraIncoming = !isInDeck || Boolean(req?.extraMatch)
-            if (!isConfirmedIncoming && matchState.currentDeckIds.has(requesterKey)) return
-            if (!isConfirmedIncoming && matchState.confirmedById.has(requesterKey)) return
+            if (matchState.confirmedById.has(requesterKey)) return
+            // 이번주 추천 덱에 이미 포함된 후보가 "나를 선택"한 경우는, 중복 카드 노출 대신 추천 카드에서 표시한다.
+            if (isInDeck && !isExtraIncoming) {
+              pendingInDeckCount += 1
+              return
+            }
             visible.push({ request: req, requesterKey, isConfirmedIncoming })
           })
           incomingCards.innerHTML = ''
-          if (!visible.length) {
+          if (!hasAnyPending) {
+            // 대기중인 실시간 요청 자체가 없으면 섹션을 숨김
             incomingSection.hidden = true
-            if (incomingEmpty) incomingEmpty.hidden = false
             return
           }
+          // 대기중 요청이 있으면 섹션은 항상 보여주고, 비어있으면 안내문구를 보여준다.
           incomingSection.hidden = false
+          if (!visible.length) {
+            if (incomingEmpty) {
+              incomingEmpty.hidden = false
+              incomingEmpty.textContent =
+                pendingInDeckCount > 0
+                  ? '이번 주 추천 카드에서 "나를 선택함" 표시를 확인해주세요.'
+                  : '아직 도착한 실시간 요청 카드가 없습니다.'
+            }
+            return
+          }
           if (incomingEmpty) incomingEmpty.hidden = true
           visible.forEach(({ request, requesterKey, isConfirmedIncoming }) => {
             const profileRecord = {
@@ -1666,9 +1735,9 @@
               },
               incomingRequest.profile?.characterName || incomingRequest.profile?.name || '',
             )
-          const targetPhone = normalizePhoneKey(
-            contactSource?.phone || contactSource?.phoneMasked || '',
-          )
+          // phoneMasked(010-****-1234)에서 숫자만 추출하면 7자리처럼 깨진 값이 될 수 있어 저장/표시가 망가진다.
+          // 서버 저장용 phone은 "실제 숫자"가 확보된 경우에만 사용한다.
+          const targetPhone = normalizePhoneKey(contactSource?.phone || '')
           if (!targetPhone) return
           const viewerPhone = normalizePhoneKey(
             currentTargetProfile.phone ||
@@ -1790,15 +1859,20 @@
           preview.innerHTML = renderProfileCard(record)
           const cover = document.createElement('div')
           cover.className = 'match-card-cover'
+          const incomingStatus = String(incomingRequest?.status || '').toLowerCase()
+          const hasPendingIncomingRequest =
+            Boolean(incomingRequest) && incomingStatus !== 'confirmed' && !matchState.confirmedById.has(candidateId)
           const coverTitleText =
             coverTitle || (extraMatch ? '추가 매칭' : order ? `매칭 ${order || ''}` : '추천 카드')
           const coverSubtitleText =
             coverSubtitle ||
-            (extraMatch
-              ? '추가 매칭 완료'
-              : order
-                ? '카드를 펼쳐 확인하세요'
-                : '지금 확인해보세요')
+            (hasPendingIncomingRequest && !isIncomingOnly
+              ? '나를 선택한 카드입니다'
+              : extraMatch
+                ? '추가 매칭 완료'
+                : order
+                  ? '카드를 펼쳐 확인하세요'
+                  : '지금 확인해보세요')
           cover.innerHTML = `
             <span>${escapeHtml(coverTitleText)}</span>
             <small>${escapeHtml(coverSubtitleText)}</small>
@@ -2125,6 +2199,14 @@
           const currentState = button.dataset.matchState
           if (currentState === 'mutual') {
             const contact = getButtonContactData(button)
+            // #region agent log (debug-session)
+            __dbg('H4', 'apply.html:handleCardMatchSelect', 'open_contact_modal_from_mutual', {
+              hasCandidateId: Boolean(contact?.candidateId),
+              hasMatchEntryId: Boolean(contact?.matchEntryId),
+              phoneLen: String(contact?.phone || '').replace(/[^0-9]/g, '').length,
+              maskedHasStar: String(contact?.phoneMasked || '').includes('*'),
+            })
+            // #endregion agent log (debug-session)
             showContactModal(contact)
             return
           }
@@ -2173,6 +2255,15 @@
               matchEntryId: payload.id,
               extraMatch: isExtraMatch,
             })
+            if (hasIncomingRequest) {
+              showMatchConfirmationPopup(
+                isExtraMatch ? '추가 매칭이 완료되었습니다! 정보 확인을 눌러주세요.' : '매칭이 완료되었습니다! 정보 확인을 눌러주세요.',
+              )
+            } else {
+              showMatchConfirmationPopup(
+                isExtraMatch ? '추가 매칭이 신청되었습니다!' : '매칭이 신청되었습니다!',
+              )
+            }
             if (hasIncomingRequest) {
               matchedCandidateIds.add(candidateKey)
               // 확정 순간 incoming 영역에서만 사라지고 추천 카드로 즉시 안 올라가 "깜빡"이는 현상 방지:
@@ -2307,12 +2398,9 @@
             normalizedCandidateKey && matchState.contactById.has(normalizedCandidateKey)
               ? matchState.contactById.get(normalizedCandidateKey)
               : null
+          // phoneMasked에서 숫자를 추출하면(**** 제거) 전화번호가 깨질 수 있으므로 phoneMasked는 fallback으로 사용하지 않는다.
           const candidatePhone = normalizePhoneKey(
-            record.phone ||
-              record.phoneNumber ||
-              contactFallback?.phone ||
-              contactFallback?.phoneMasked ||
-              '',
+            record.phone || record.phoneNumber || contactFallback?.phone || '',
           )
           const candidateName =
             record.name || record.characterName || contactFallback?.name || '추천 후보'
@@ -2559,6 +2647,23 @@
           }
         }
 
+        function cleanupStoredIncomingRequests(phoneKey, weekKey) {
+          if (!phoneKey || !weekKey) return
+          try {
+            const raw = localStorage.getItem(INCOMING_REQUESTS_STORAGE_KEY)
+            if (!raw) return
+            const parsed = JSON.parse(raw)
+            const bucket = parsed?.[phoneKey]
+            if (!bucket) return
+            if (bucket.weekKey && bucket.weekKey !== weekKey) {
+              delete parsed[phoneKey]
+              localStorage.setItem(INCOMING_REQUESTS_STORAGE_KEY, JSON.stringify(parsed))
+            }
+          } catch (error) {
+            console.warn('[match:incoming] 정리 실패', error)
+          }
+        }
+
         function mergeIncomingRequests(primary = [], fallback = []) {
           if (!primary.length && !fallback.length) return []
           const map = new Map()
@@ -2660,6 +2765,8 @@
             name: button.dataset.contactName || '',
             phone: button.dataset.contactPhone || '',
             phoneMasked: button.dataset.contactPhoneMasked || '',
+            candidateId: button.dataset.candidateId || '',
+            matchEntryId: button.dataset.matchEntryId || '',
           }
           if (stored.phone || stored.phoneMasked) {
             return stored
@@ -2671,10 +2778,12 @@
             phoneMasked: fallbackPhone
               ? maskPhoneNumber(fallbackPhone)
               : stored.phoneMasked || '',
+            candidateId: stored.candidateId,
+            matchEntryId: stored.matchEntryId,
           }
         }
 
-        function showMatchConfirmationPopup() {
+        function showMatchConfirmationPopup(message = '매칭이 신청되었습니다!') {
           let overlay = document.getElementById('matchSelectionPopup')
           if (!overlay) {
             overlay = document.createElement('div')
@@ -2682,12 +2791,13 @@
             overlay.className = 'match-popup-overlay'
             const popup = document.createElement('div')
             popup.className = 'match-popup'
-            popup.textContent = '매칭이 신청되었습니다!'
+            popup.textContent = message
             overlay.appendChild(popup)
             overlay.addEventListener('click', hideMatchConfirmationPopup)
             document.body.appendChild(overlay)
           } else {
-            overlay.querySelector('.match-popup').textContent = '매칭이 신청되었습니다!'
+            const popup = overlay.querySelector('.match-popup')
+            if (popup) popup.textContent = message
           }
           overlay.hidden = false
           if (matchPopupTimer) {
@@ -2972,17 +3082,25 @@
         }
 
         function formatPhoneDisplay(value) {
-          const digits = String(value || '').replace(/[^0-9]/g, '')
-          if (!digits) return value || ''
-          if (digits.length === 11) {
-            return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`
+          const raw = String(value || '').trim()
+          if (!raw) return ''
+          // 마스킹 번호(010-****-1234 등)는 '*'가 포함되어 있어 숫자만 추출하면 가운데가 사라진다.
+          // 이 경우는 원문을 최대한 유지해서 표시한다.
+          if (raw.includes('*')) {
+            const compact = raw.replace(/\s+/g, '')
+            // 하이픈이 이미 있으면 그대로 사용
+            if (compact.includes('-')) return compact
+            // 하이픈이 없는 마스킹(010****1234 같은)도 보기 좋게 하이픈을 넣어준다.
+            const cleaned = compact.replace(/[^0-9*]/g, '')
+            const match = cleaned.match(/^(\d{2,3})(\*+)(\d{4})$/)
+            if (match) return `${match[1]}-${match[2]}-${match[3]}`
+            return cleaned || raw
           }
-          if (digits.length === 10) {
-            return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`
-          }
-          if (digits.length === 9) {
-            return `${digits.slice(0, 2)}-${digits.slice(2, 5)}-${digits.slice(5)}`
-          }
+          const digits = raw.replace(/[^0-9]/g, '')
+          if (!digits) return raw
+          if (digits.length === 11) return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`
+          if (digits.length === 10) return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`
+          if (digits.length === 9) return `${digits.slice(0, 2)}-${digits.slice(2, 5)}-${digits.slice(5)}`
           return digits.replace(/(\d{3,4})(?=\d)/g, '$1-')
         }
 
@@ -2995,13 +3113,170 @@
         function showContactModal(contact = {}) {
           if (!contactModal || !contactModalName || !contactModalPhone || !contactModalMessage) return
           const name = contact.name || '상대 이름'
-          const phoneRaw = contact.phone || contact.phoneMasked || '비공개'
-          const phone = formatPhoneDisplay(phoneRaw)
+          const phoneRaw = String(contact.phone || '').trim()
+          const phoneMaskedRaw = String(contact.phoneMasked || '').trim()
+          const digits = phoneRaw.replace(/[^0-9]/g, '')
+          // 정책: 매칭 완료 팝업에서는 "전체 번호"를 보여준다.
+          // 항상 서버(contact API)에서 "원장 번호"를 재조회해 최종 표시한다.
+          // (추가 매칭 완료에서 phone이 0101185처럼 깨져 들어오는 케이스가 있어 무조건 갱신)
+          const hasFullDigits = digits.length >= 9
+          const initialDisplay = hasFullDigits ? formatPhoneDisplay(digits) : '불러오는 중...'
+          const phone = initialDisplay
           contactModalName.textContent = `성함: ${name}`
           contactModalPhone.textContent = `휴대폰 번호: ${phone}`
           contactModalMessage.textContent = buildContactGuidelineMessage()
           contactModal.hidden = false
           launchContactCelebration()
+          const requestKey = `${String(contact.candidateId || '')}|${String(contact.matchEntryId || '')}|${Date.now()}`
+          contactModalRequestKey = requestKey
+          contactModal.dataset.contactRequestKey = requestKey
+          // #region agent log (debug-session)
+          __dbg('H5', 'apply.html:showContactModal', 'contact_modal_opened', {
+            requestKeySuffix: requestKey.slice(-6),
+            hasFullDigits,
+            hasCandidateId: Boolean(contact?.candidateId),
+            hasMatchEntryId: Boolean(contact?.matchEntryId),
+          })
+          // #endregion agent log (debug-session)
+          refreshContactModalPhone(contact, requestKey).catch(() => {
+            // 실패 시 "불러오는 중..."이 계속 남지 않도록 fallback 표시로 전환
+            const fallback =
+              hasFullDigits
+                ? formatPhoneDisplay(digits)
+                : phoneMaskedRaw
+                  ? formatPhoneDisplay(phoneMaskedRaw)
+                  : phoneRaw
+                    ? formatPhoneDisplay(phoneRaw)
+                    : '비공개'
+            if (contactModalPhone) {
+              contactModalPhone.textContent = `휴대폰 번호: ${fallback}`
+            }
+            // #region agent log (debug-session)
+            __dbg('H3', 'apply.html:showContactModal', 'contact_refresh_failed_fallback_used', {
+              requestKeySuffix: requestKey.slice(-6),
+              fallbackKind: fallback === '비공개' ? 'private' : 'non_private',
+            })
+            // #endregion agent log (debug-session)
+          })
+        }
+
+        async function refreshContactModalPhone(contact = {}, requestKey = '') {
+          if (!MATCH_CONTACT_URL || !lastLookupPhoneKey) return
+          const matchEntryId = String(contact.matchEntryId || '').trim()
+          const candidateId = String(contact.candidateId || '').trim()
+          if (!matchEntryId && !candidateId) return
+          // #region agent log (debug-session)
+          __dbg('H1', 'apply.html:refreshContactModalPhone', 'contact_refresh_request_start', {
+            requestKeySuffix: String(requestKey || '').slice(-6),
+            hasMatchEntryId: Boolean(matchEntryId),
+            hasCandidateId: Boolean(candidateId),
+          })
+          // #endregion agent log (debug-session)
+          const response = await fetch(MATCH_CONTACT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              phone: lastLookupPhoneKey,
+              candidateId: candidateId || undefined,
+              matchEntryId: matchEntryId || undefined,
+            }),
+            cache: 'no-store',
+          })
+          const body = await response.json().catch(() => ({}))
+          // #region agent log (debug-session)
+          __dbg('H1', 'apply.html:refreshContactModalPhone', 'contact_refresh_response', {
+            requestKeySuffix: String(requestKey || '').slice(-6),
+            httpOk: Boolean(response.ok),
+            bodyOk: body?.ok === true,
+            status: Number(response.status || 0),
+            host: (() => {
+              try {
+                return new URL(response.url).host
+              } catch (_) {
+                return ''
+              }
+            })(),
+            hasCandidatePhone: Boolean(body?.data?.candidatePhone),
+            candidatePhoneLen: String(body?.data?.candidatePhone || '').replace(/[^0-9]/g, '').length,
+          })
+          // #endregion agent log (debug-session)
+          if (!response.ok || body?.ok === false) return
+          const phone = String(body?.data?.candidatePhone || '').trim()
+          const digits = phone.replace(/[^0-9]/g, '')
+          if (!digits || digits.length < 9) {
+            // server가 깨진 번호(7자리 등)를 내려주는 케이스 -> index.html과 동일하게 consultations(회원 원장)에서 가져온다.
+            await refreshContactModalPhoneFromConsultations(candidateId, requestKey)
+            return
+          }
+          if (!contactModalPhone) return
+          // 늦게 도착한 이전 요청이 현재 팝업을 덮어쓰지 않도록 가드
+          if (
+            contactModal.hidden ||
+            (requestKey && contactModal.dataset.contactRequestKey !== requestKey) ||
+            (requestKey && contactModalRequestKey !== requestKey)
+          ) {
+            // #region agent log (debug-session)
+            __dbg('H5', 'apply.html:refreshContactModalPhone', 'contact_refresh_skipped_due_to_request_mismatch', {
+              requestKeySuffix: String(requestKey || '').slice(-6),
+              modalHidden: Boolean(contactModal.hidden),
+              datasetKeyMatch: contactModal.dataset.contactRequestKey === requestKey,
+              memoryKeyMatch: contactModalRequestKey === requestKey,
+            })
+            // #endregion agent log (debug-session)
+            return
+          }
+          contactModalPhone.textContent = `휴대폰 번호: ${formatPhoneDisplay(phone)}`
+          // #region agent log (debug-session)
+          __dbg('H2', 'apply.html:refreshContactModalPhone', 'contact_refresh_applied', {
+            requestKeySuffix: String(requestKey || '').slice(-6),
+            appliedPhoneLen: digits.length,
+          })
+          // #endregion agent log (debug-session)
+        }
+
+        async function refreshContactModalPhoneFromConsultations(candidateId, requestKey) {
+          if (!CONSULT_LIST_URL) return
+          const id = String(candidateId || '').trim()
+          if (!id) return
+          // #region agent log (debug-session)
+          __dbg('H2', 'apply.html:refreshContactModalPhoneFromConsultations', 'consult_fallback_start', {
+            requestKeySuffix: String(requestKey || '').slice(-6),
+            hasCandidateId: Boolean(id),
+          })
+          // #endregion agent log (debug-session)
+          const res = await fetch(CONSULT_LIST_URL, { cache: 'no-store' })
+          const body = await res.json().catch(() => ({}))
+          const list = Array.isArray(body?.data) ? body.data : []
+          const record = list.find((item) => item && String(item.id || '').trim() === id) || null
+          const phone = String(record?.phone || '').trim()
+          const digits = phone.replace(/[^0-9]/g, '')
+          // #region agent log (debug-session)
+          __dbg('H2', 'apply.html:refreshContactModalPhoneFromConsultations', 'consult_fallback_result', {
+            requestKeySuffix: String(requestKey || '').slice(-6),
+            httpOk: Boolean(res.ok),
+            status: Number(res.status || 0),
+            listCount: list.length,
+            found: Boolean(record),
+            phoneLen: digits.length,
+          })
+          // #endregion agent log (debug-session)
+          if (!res.ok || !record) return
+          if (!digits || digits.length < 9) return
+          if (!contactModalPhone) return
+          if (
+            contactModal.hidden ||
+            (requestKey && contactModal.dataset.contactRequestKey !== requestKey) ||
+            (requestKey && contactModalRequestKey !== requestKey)
+          ) {
+            return
+          }
+          contactModalPhone.textContent = `휴대폰 번호: ${formatPhoneDisplay(digits)}`
+          // #region agent log (debug-session)
+          __dbg('H2', 'apply.html:refreshContactModalPhoneFromConsultations', 'consult_fallback_applied', {
+            requestKeySuffix: String(requestKey || '').slice(-6),
+            appliedPhoneLen: digits.length,
+          })
+          // #endregion agent log (debug-session)
         }
 
         function hideContactModal() {

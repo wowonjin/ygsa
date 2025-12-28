@@ -699,6 +699,7 @@ app.post('/api/match-history/lookup', async (req, res) => {
       viewer: targetRecord,
       records,
       history,
+      activeWeekKey,
     })
     const confirmedMatchCards = confirmedEntries
       .map((entry) => {
@@ -781,35 +782,182 @@ app.post('/api/match-history/contact', async (req, res) => {
     const viewerId = targetRecord.id || ''
     const viewerPhoneKey = normalizePhoneNumber(targetRecord.phone || targetRecord.phoneNumber || '')
 
-    const matchingEntries = history
-      .filter((entry) => doesEntryBelongToViewer(entry, viewerId, viewerPhoneKey))
-      .filter((entry) => {
-        if (matchEntryId && entry.id === matchEntryId) return true
-        if (candidateKey && normalizeCandidateIdentifier(entry.candidateId) === candidateKey) {
-          return true
-        }
-        return false
-      })
-      .sort((a, b) => (b.matchedAt || 0) - (a.matchedAt || 0))
+    // #region agent log (debug-session)
+    try {
+      fetch('http://127.0.0.1:7244/ingest/18122730-0b1f-4d35-9513-5329bc6405f1', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: 'debug-session',
+          runId: 'pre-fix',
+          hypothesisId: 'H1',
+          location: 'server.js:/api/match-history/contact',
+          message: 'contact_request_received',
+          data: {
+            hasPhone: Boolean(phoneKey),
+            hasMatchEntryId: Boolean(matchEntryId),
+            hasCandidateKey: Boolean(candidateKey),
+            viewerHasId: Boolean(viewerId),
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {})
+    } catch (_) {}
+    // #endregion agent log (debug-session)
 
-    if (!matchingEntries.length) {
+    // ✅ 요구사항: index.html 회원 카드(consultations)의 실제 번호를 "그대로" 반환해야 한다.
+    // match-history에 저장된 번호가 깨져 있거나, viewer가 target/candidate 어느 쪽이든 상관 없이
+    // matchEntryId(우선) 또는 candidateId로 엔트리를 찾고, 최종 전화번호는 consultations에서만 가져온다.
+
+    const belongsToViewer = (entry) => {
+      if (!entry) return false
+      if (doesEntryBelongToViewer(entry, viewerId, viewerPhoneKey)) return true
+      // viewer가 candidate 쪽으로 기록된 과거/특수 케이스까지 허용
+      if (viewerId && normalizeCandidateIdentifier(entry.candidateId) === viewerId) return true
+      if (viewerPhoneKey && normalizePhoneNumber(entry.candidatePhone || '') === viewerPhoneKey) return true
+      return false
+    }
+
+    const findEntryById = () => {
+      if (!matchEntryId) return null
+      const found = history.find((entry) => entry && entry.id === matchEntryId) || null
+      return found && belongsToViewer(found) ? found : found
+    }
+
+    const findLatestEntryByCandidateId = () => {
+      if (!candidateKey) return null
+      const list = history
+        .filter(
+          (entry) =>
+            entry &&
+            normalizeCandidateIdentifier(entry.candidateId) === candidateKey &&
+            belongsToViewer(entry),
+        )
+        .sort((a, b) => (b.matchedAt || 0) - (a.matchedAt || 0))
+      return list[0] || null
+    }
+
+    const rawEntry = findEntryById() || findLatestEntryByCandidateId()
+    if (!rawEntry) {
+      // #region agent log (debug-session)
+      try {
+        fetch('http://127.0.0.1:7244/ingest/18122730-0b1f-4d35-9513-5329bc6405f1', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: 'debug-session',
+            runId: 'pre-fix',
+            hypothesisId: 'H2',
+            location: 'server.js:/api/match-history/contact',
+            message: 'contact_entry_not_found',
+            data: { by: matchEntryId ? 'matchEntryId' : 'candidateId' },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {})
+      } catch (_) {}
+      // #endregion agent log (debug-session)
       return res.status(404).json({ ok: false, message: '연락처를 찾지 못했습니다.' })
     }
 
-    const entry = matchingEntries[0]
-    const counterpart = getCounterpartMetaForViewer(entry, viewerId, viewerPhoneKey)
-    if (!counterpart.partnerId) {
+    const hydratedEntry = hydrateSingleMatchHistoryEntry(records, rawEntry)
+
+    // viewer 소유 확인: target/candidate 어느 쪽이든 viewer(id/phone)와 연결된 엔트리만 허용
+    const isOwnedByViewer = belongsToViewer(hydratedEntry)
+    if (!isOwnedByViewer) {
+      // #region agent log (debug-session)
+      try {
+        fetch('http://127.0.0.1:7244/ingest/18122730-0b1f-4d35-9513-5329bc6405f1', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: 'debug-session',
+            runId: 'pre-fix',
+            hypothesisId: 'H1',
+            location: 'server.js:/api/match-history/contact',
+            message: 'contact_entry_not_owned_by_viewer',
+            data: { usedMatchEntryId: Boolean(matchEntryId) },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {})
+      } catch (_) {}
+      // #endregion agent log (debug-session)
+      return res.status(403).json({ ok: false, message: '권한이 없습니다.' })
+    }
+
+    // 상대방은 "viewer 반대편"으로 결정
+    const viewerIsTarget = doesEntryBelongToViewer(hydratedEntry, viewerId, viewerPhoneKey)
+    const partnerId = viewerIsTarget ? hydratedEntry.candidateId : hydratedEntry.targetId
+    const partnerIdKey = normalizeCandidateIdentifier(partnerId)
+    const partnerRecord = partnerIdKey ? findRecordByCandidateIdentifier(records, partnerIdKey) : null
+    if (!partnerRecord) {
+      // #region agent log (debug-session)
+      try {
+        fetch('http://127.0.0.1:7244/ingest/18122730-0b1f-4d35-9513-5329bc6405f1', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: 'debug-session',
+            runId: 'pre-fix',
+            hypothesisId: 'H2',
+            location: 'server.js:/api/match-history/contact',
+            message: 'partner_record_not_found_in_consultations',
+            data: { viewerIsTarget, hasPartnerIdKey: Boolean(partnerIdKey) },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {})
+      } catch (_) {}
+      // #endregion agent log (debug-session)
       return res.status(404).json({ ok: false, message: '연락처를 찾지 못했습니다.' })
     }
+    const resolvedPhone = normalizePhoneNumber(partnerRecord.phone || '')
+    if (!resolvedPhone) {
+      // #region agent log (debug-session)
+      try {
+        fetch('http://127.0.0.1:7244/ingest/18122730-0b1f-4d35-9513-5329bc6405f1', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: 'debug-session',
+            runId: 'pre-fix',
+            hypothesisId: 'H3',
+            location: 'server.js:/api/match-history/contact',
+            message: 'partner_phone_empty_in_consultations',
+            data: { partnerHasId: Boolean(partnerRecord.id) },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {})
+      } catch (_) {}
+      // #endregion agent log (debug-session)
+      return res.status(404).json({ ok: false, message: '연락처를 찾지 못했습니다.' })
+    }
+
+    // #region agent log (debug-session)
+    try {
+      fetch('http://127.0.0.1:7244/ingest/18122730-0b1f-4d35-9513-5329bc6405f1', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: 'debug-session',
+          runId: 'pre-fix',
+          hypothesisId: 'H3',
+          location: 'server.js:/api/match-history/contact',
+          message: 'contact_success_resolved_phone',
+          data: { viewerIsTarget, resolvedPhoneLen: String(resolvedPhone).length },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {})
+    } catch (_) {}
+    // #endregion agent log (debug-session)
 
     res.json({
       ok: true,
       data: {
-        candidateId: counterpart.partnerId,
-        candidateName: counterpart.partnerName,
-        candidatePhone: counterpart.partnerPhone,
-        candidatePhoneMasked: counterpart.partnerPhoneMasked,
-        matchEntryId: entry.id,
+        candidateId: partnerRecord.id || partnerIdKey,
+        candidateName: partnerRecord.name || '',
+        candidatePhone: resolvedPhone, // ✅ 전체 번호
+        candidatePhoneMasked: maskPhoneNumber(resolvedPhone),
+        matchEntryId: hydratedEntry.id || rawEntry.id,
+        candidateGender: partnerRecord.gender || '',
       },
     })
   } catch (error) {
@@ -1665,13 +1813,15 @@ function hydrateSingleMatchHistoryEntry(records = [], entry = {}) {
 
   if (candidateRecord) {
     const phoneKey = normalizePhoneNumber(candidateRecord.phone || '')
+    const existingCandidatePhone = normalizePhoneNumber(hydrated.candidatePhone || '')
     if (!hasContent(hydrated.candidateName) && hasContent(candidateRecord.name)) {
       hydrated.candidateName = candidateRecord.name
     }
     if (!hasContent(hydrated.candidateGender) && hasContent(candidateRecord.gender)) {
       hydrated.candidateGender = candidateRecord.gender
     }
-    if (!hasContent(hydrated.candidatePhone) && phoneKey) {
+    // 깨진 번호(예: 0101185)도 원장 번호로 보정한다.
+    if ((!existingCandidatePhone || existingCandidatePhone.length < 9) && phoneKey) {
       hydrated.candidatePhone = phoneKey
     }
     // 과거에 candidateId에 전화번호가 들어간 경우 id로 정규화
@@ -1686,13 +1836,14 @@ function hydrateSingleMatchHistoryEntry(records = [], entry = {}) {
 
   if (targetRecord) {
     const phoneKey = normalizePhoneNumber(targetRecord.phone || '')
+    const existingTargetPhone = normalizePhoneNumber(hydrated.targetPhone || '')
     if (!hasContent(hydrated.targetName) && hasContent(targetRecord.name)) {
       hydrated.targetName = targetRecord.name
     }
     if (!hasContent(hydrated.targetGender) && hasContent(targetRecord.gender)) {
       hydrated.targetGender = targetRecord.gender
     }
-    if (!hasContent(hydrated.targetPhone) && phoneKey) {
+    if ((!existingTargetPhone || existingTargetPhone.length < 9) && phoneKey) {
       hydrated.targetPhone = phoneKey
     }
     if (normalizePhoneNumber(hydrated.targetId) && targetRecord.id) {
@@ -1896,13 +2047,31 @@ function buildMatchCardPayload(record) {
   return payload
 }
 
-function buildIncomingRequestsPayload({ viewer, records, history }) {
+function buildIncomingRequestsPayload({ viewer, records, history, activeWeekKey = '' }) {
   if (!viewer || !Array.isArray(records) || !Array.isArray(history)) return []
   const viewerId = viewer.id
-  if (!viewerId) return []
+  const viewerPhoneKey = normalizePhoneNumber(viewer.phone || viewer.phoneNumber || '')
+  // legacy 데이터(과거 버전)에서는 candidateId가 phoneKey로 저장된 케이스가 있어
+  // viewerId만으로 incoming을 찾으면 누락될 수 있다.
+  if (!viewerId && !viewerPhoneKey) return []
   const requestMap = new Map()
   history
-    .filter((entry) => entry?.candidateId === viewerId && entry?.targetSelected)
+    .filter((entry) => {
+      if (!entry?.targetSelected) return false
+      if (activeWeekKey) {
+        const entryWeekKey = buildWeekKey(entry?.week)
+        if (!entryWeekKey || entryWeekKey !== activeWeekKey) return false
+      }
+      const candidateId = sanitizeText(entry?.candidateId)
+      if (viewerId && candidateId && candidateId === viewerId) return true
+      if (!viewerPhoneKey) return false
+      const candidatePhoneKey = normalizePhoneNumber(
+        entry?.candidatePhone || entry?.candidate?.phone || entry?.candidate?.phoneMasked || '',
+      )
+      // candidateId가 phoneKey로 저장된 케이스도 허용
+      if (candidateId && candidateId === viewerPhoneKey) return true
+      return Boolean(candidatePhoneKey && candidatePhoneKey === viewerPhoneKey)
+    })
     .forEach((entry) => {
       const requester =
         findRecordByCandidateIdentifier(records, entry.targetId) ||
@@ -1915,7 +2084,9 @@ function buildIncomingRequestsPayload({ viewer, records, history }) {
         requestMap.set(requester.id, {
           requestId: entry.id,
           requesterId: requester.id,
-          candidateId: entry.candidateId,
+          // incomingRequests는 "viewer가 선택된 쪽"이므로, candidateId는 안정적인 viewerId를 우선 사용한다.
+          // (legacy 데이터에서 entry.candidateId가 phoneKey일 수 있음)
+          candidateId: viewerId || entry.candidateId,
           requestRecordedAt: entry.matchedAt || Date.now(),
           requestWeek: entry.week || null,
           status: category,
