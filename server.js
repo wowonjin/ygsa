@@ -613,26 +613,6 @@ app.post('/api/match-history/lookup', async (req, res) => {
     const getCounterpartMeta = (entry) =>
       getCounterpartMetaForViewer(entry, viewerId, viewerPhoneKey)
 
-    const matchedCandidateIds = Array.from(
-      new Set(
-        confirmedEntries
-          .map((entry) => getCounterpartMeta(entry).partnerId)
-          .filter(Boolean),
-      ),
-    )
-    const matchedCandidates = confirmedEntries.map((entry) => {
-      const counterpart = getCounterpartMeta(entry)
-      return {
-        candidateId: counterpart.partnerId,
-        matchedAt: entry.matchedAt,
-        candidateName: counterpart.partnerName,
-        candidatePhone: counterpart.partnerPhone,
-        candidatePhoneMasked: counterpart.partnerPhoneMasked,
-        targetName: targetRecord.name || entry.targetName || '',
-        targetPhone: viewerPhoneKey,
-      }
-    })
-
     if (!introEntries.length && !confirmedEntries.length) {
       return res.status(404).json({ ok: false, message: '이번주 소개가 없습니다.' })
     }
@@ -651,6 +631,28 @@ app.post('/api/match-history/lookup', async (req, res) => {
     const weekFilteredConfirmed = activeWeekKey
       ? confirmedEntries.filter((entry) => buildWeekKey(entry.week) === activeWeekKey)
       : confirmedEntries
+
+    // ✅ 주차 기준으로 확정(confirmed) 데이터를 노출한다.
+    // (과거 주차 confirmed가 이번주 화면에 섞여 보이는 문제 방지)
+    const matchedCandidateIds = Array.from(
+      new Set(
+        weekFilteredConfirmed
+          .map((entry) => getCounterpartMeta(entry).partnerId)
+          .filter(Boolean),
+      ),
+    )
+    const matchedCandidates = weekFilteredConfirmed.map((entry) => {
+      const counterpart = getCounterpartMeta(entry)
+      return {
+        candidateId: counterpart.partnerId,
+        matchedAt: entry.matchedAt,
+        candidateName: counterpart.partnerName,
+        candidatePhone: counterpart.partnerPhone,
+        candidatePhoneMasked: counterpart.partnerPhoneMasked,
+        targetName: targetRecord.name || entry.targetName || '',
+        targetPhone: viewerPhoneKey,
+      }
+    })
 
     const selection = []
     const seen = new Set()
@@ -701,7 +703,7 @@ app.post('/api/match-history/lookup', async (req, res) => {
       history,
       activeWeekKey,
     })
-    const confirmedMatchCards = confirmedEntries
+    const confirmedMatchCards = weekFilteredConfirmed
       .map((entry) => {
         const counterpart = getCounterpartMeta(entry)
         if (!counterpart.partnerId && !counterpart.partnerName) return null
