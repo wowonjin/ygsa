@@ -1203,7 +1203,10 @@
         const UNLOCK_MESSAGE = '12월 17일 (수) 오전 11시부터 확인이 가능합니다.'
         const NEXT_UNLOCK_MESSAGE = '12월 24일 (수) 오전 11시부터 확인이 가능합니다.'
         const ACCESS_WINDOW_MS = 72 * 60 * 60 * 1000
-        const ACCESS_GRANTS_STORAGE_KEY = 'match_access_grants_v1'
+        // access grant는 "주차별"로 관리되어야 한다.
+        // 기존 v1(숫자 타임스탬프 단일 저장)은 새 주차에도 만료 상태가 남아
+        // 사용자가 새 주차에도 '기간 종료'로 막히는 문제가 생길 수 있어 v2로 분리한다.
+        const ACCESS_GRANTS_STORAGE_KEY = 'match_access_grants_v2'
         let currentTargetProfile = null
         let matchPopupTimer = null
         let lastLookupPhoneKey = ''
@@ -1327,6 +1330,12 @@
           return ADMIN_OVERRIDE_PHONES.some((entry) => normalizePhoneKey(entry) === digits)
         }
 
+        function getAccessCycleKey(now = Date.now()) {
+          const unlockTime = getCurrentUnlockTime(now)
+          if (!unlockTime) return ''
+          return buildWeekKey(buildWeekMeta(new Date(unlockTime)))
+        }
+
         async function handleSubmit(event) {
           event.preventDefault()
           if (!phoneInput) return
@@ -1343,14 +1352,15 @@
             return
           }
           if (!isAdminOverride) {
-            const grant = loadAccessGrant(phone)
+            const cycleKey = getAccessCycleKey(now)
+            const grant = loadAccessGrant(phone, cycleKey)
             if (grant && now - grant < ACCESS_WINDOW_MS) {
               // ok
             } else if (grant && now - grant >= ACCESS_WINDOW_MS) {
               showMessage(`이번주 소개 기간이 종료되었습니다. ${getNextUnlockMessage(now)}`, true)
               return
             } else {
-              saveAccessGrant(phone, now)
+              saveAccessGrant(phone, cycleKey, now)
             }
           }
           lastLookupPhoneKey = phone
@@ -2548,26 +2558,37 @@
           delete button.dataset.contactPhoneMasked
         }
 
-        function loadAccessGrant(phoneKey) {
+        function loadAccessGrant(phoneKey, cycleKey = '') {
           if (!phoneKey) return null
           try {
             const raw = localStorage.getItem(ACCESS_GRANTS_STORAGE_KEY)
             if (!raw) return null
             const parsed = JSON.parse(raw)
-            const grant = parsed?.[phoneKey]
-            return typeof grant === 'number' && Number.isFinite(grant) ? grant : null
+            const stored = parsed?.[phoneKey]
+            // v2: { weekKey, grantedAt }
+            if (stored && typeof stored === 'object') {
+              const weekKey = String(stored.weekKey || '').trim()
+              const grantedAt = Number(stored.grantedAt)
+              if (cycleKey && weekKey && weekKey !== cycleKey) return null
+              return Number.isFinite(grantedAt) ? grantedAt : null
+            }
+            // 예외적으로 숫자만 들어온 경우(오염 데이터)는 무시한다.
+            return null
           } catch (error) {
             console.warn('[match:access] 불러오기 실패', error)
             return null
           }
         }
 
-        function saveAccessGrant(phoneKey, timestamp) {
+        function saveAccessGrant(phoneKey, cycleKey, timestamp) {
           if (!phoneKey || !Number.isFinite(timestamp)) return
           try {
             const raw = localStorage.getItem(ACCESS_GRANTS_STORAGE_KEY)
             const data = raw ? JSON.parse(raw) : {}
-            data[phoneKey] = timestamp
+            data[phoneKey] = {
+              weekKey: String(cycleKey || '').trim(),
+              grantedAt: timestamp,
+            }
             localStorage.setItem(ACCESS_GRANTS_STORAGE_KEY, JSON.stringify(data))
           } catch (error) {
             console.warn('[match:access] 저장 실패', error)
